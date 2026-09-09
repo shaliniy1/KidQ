@@ -1,0 +1,81 @@
+{
+  "version": 1,
+  "policy": {
+    "youtube": "Use official APIs and the official embedded player. Never scrape pages or download video/audio.",
+    "open_sources": "Prefer official APIs. Respect terms, robots.txt, rate limits, attribution, and item-level licenses.",
+    "transcripts": "Store full transcript text only when KidQ has permission. Otherwise store availability, source URL, hash, and a short original summary.",
+    "approval": "No connector or AI model may publish directly. Every item starts in manual review unless an explicit rule rejects it."
+  },
+  "sources": [
+    {
+      "id": "youtube",
+      "name": "YouTube Data API v3",
+      "status": "recommended",
+      "contentTypes": ["VIDEO", "STORYBOOK"],
+      "discoveryEndpoint": "https://www.googleapis.com/youtube/v3/search",
+      "detailEndpoint": "https://www.googleapis.com/youtube/v3/videos",
+      "authentication": "YOUTUBE_DATA_API_KEY",
+      "fetch": ["video_id", "title", "description", "channel", "thumbnails", "duration", "caption_available", "made_for_kids", "embeddable", "license"],
+      "doNotFetch": ["video_binary", "audio_binary", "page_html", "unofficial_transcript"],
+      "playback": "https://www.youtube.com/embed/{video_id}",
+      "docs": "https://developers.google.com/youtube/v3/docs"
+    },
+    {
+      "id": "nasa_images",
+      "name": "NASA Image and Video Library",
+      "status": "recommended",
+      "contentTypes": ["VIDEO", "ACTIVITY"],
+      "discoveryEndpoint": "https://images-api.nasa.gov/search",
+      "detailEndpoint": "https://images-api.nasa.gov/asset/{nasa_id}",
+      "authentication": "none",
+      "fetch": ["nasa_id", "title", "description", "keywords", "media_type", "date_created", "asset_urls"],
+      "rightsCheck": "Apply NASA media usage guidelines and inspect third-party credits per item.",
+      "docs": "https://images.nasa.gov/docs/images.nasa.gov_api_docs.pdf"
+    },
+    {
+      "id": "wikimedia_commons",
+      "name": "Wikimedia Commons Action API",
+      "status": "recommended",
+      "contentTypes": ["VIDEO", "ACTIVITY", "STORYBOOK"],
+      "discoveryEndpoint": "https://commons.wikimedia.org/w/api.php?action=query&generator=search",
+      "detailEndpoint": "https://commons.wikimedia.org/w/api.php?action=query&prop=imageinfo&iiprop=url|mime|size|extmetadata",
+      "authentication": "none",
+      "fetch": ["page_id", "title", "media_url", "thumbnail_url", "mime_type", "creator", "license", "attribution", "description_url"],
+      "rightsCheck": "Preserve creator, license URL, attribution, and any share-alike requirements.",
+      "docs": "https://www.mediawiki.org/wiki/API:Imageinfo"
+    },
+    {
+      "id": "openverse",
+      "name": "Openverse API",
+      "status": "conditional",
+      "contentTypes": ["ACTIVITY", "STORYBOOK"],
+      "discoveryEndpoint": "https://api.openverse.org/v1/images/",
+      "authentication": "OPENVERSE_CLIENT_ID and OPENVERSE_CLIENT_SECRET for higher limits",
+      "fetch": ["id", "title", "creator", "source", "foreign_landing_url", "url", "thumbnail", "license", "license_version"],
+      "rightsCheck": "Openverse aggregates license claims; verify attribution and the source landing page before approval.",
+      "docs": "https://api.openverse.org/v1/"
+    },
+    {
+      "id": "internet_archive",
+      "name": "Internet Archive APIs",
+      "status": "conditional",
+      "contentTypes": ["VIDEO", "STORYBOOK"],
+      "discoveryEndpoint": "https://archive.org/advancedsearch.php",
+      "detailEndpoint": "https://archive.org/metadata/{identifier}",
+      "authentication": "none for public search and metadata",
+      "fetch": ["identifier", "title", "creator", "description", "language", "mediatype", "licenseurl", "files"],
+      "rightsCheck": "Availability in the archive does not itself grant reuse rights; require an explicit item-level license.",
+      "docs": "https://archive.org/services/docs/api/"
+    },
+    {
+      "id": "storyweaver",
+      "name": "StoryWeaver",
+      "status": "manual_connector_review",
+      "contentTypes": ["STORYBOOK"],
+      "authentication": "to_be_confirmed",
+      "fetch": ["story_id", "title", "author", "illustrator", "language", "reading_level", "license", "attribution", "source_url"],
+      "rightsCheck": "Confirm the current official access method and license terms before implementing automated collection.",
+      "docs": "https://storyweaver.org.in/"
+    }
+  ]
+}
