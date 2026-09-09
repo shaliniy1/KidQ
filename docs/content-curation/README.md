@@ -39,6 +39,35 @@ Supported categories include:
 - Trusted Educators
 - Activities
 
+### Discovery topics
+
+Connectors and query planners should cover the following topic vocabulary. This list is a discovery aid, not an approval signal:
+
+- educational animation and calm animation
+- alphabet learning, letters, phonics, vocabulary, and first words
+- numbers, counting, simple maths, shapes, colors, patterns, sorting, and matching
+- animal sounds, animals, fish, guppies, plants, nature, weather, and space
+- body parts, emotions, manners, social skills, empathy, and kindness
+- general knowledge and simple science concepts or experiments
+- drawing, painting, coloring, crafts, DIY projects, and clay activities
+- yoga, stretching, movement, dance, and breathing
+- interactive, narrated, animated, and read-aloud stories
+- guessing, imitation, observation, educational, and play-along games
+- imaginative play and parent-child activities
+
+Trusted educators such as Ms Rachel or Khan Academy Kids may be prioritized during discovery, but trust applies only to discovery order. Every individual item must pass the same KidQ rubric.
+
+### Source priority
+
+Process sources in this order unless a specific ingestion run says otherwise:
+
+1. YouTube through the official YouTube Data API.
+2. Whitelisted official educational YouTube channels.
+3. StoryWeaver and other appropriately licensed children's story resources.
+4. NASA educational and children's science or nature resources.
+5. Other sources whose item-level embedding, storage, and reuse rights can be established.
+6. KidQ-created activities, activity cards, and owned animations.
+
 ## Domain model
 
 KidQ keeps external facts, KidQ judgments, and publication decisions separate:
@@ -105,6 +134,41 @@ The machine-readable source inventory is [`config/content-sources.json`](../../c
 9. Never infer permission from public accessibility alone.
 10. Never expose API keys in the browser, logs, content records, or GitHub.
 
+### Connector result contract
+
+Every connector returns a batch result even when no candidates are found:
+
+```json
+{
+  "ingestion_run_id": "uuid",
+  "source_system_id": "youtube",
+  "connector_version": "1",
+  "query": {},
+  "started_at": "ISO-8601 timestamp",
+  "finished_at": "ISO-8601 timestamp",
+  "status": "SUCCEEDED | PARTIAL | FAILED",
+  "records_seen": 0,
+  "records_created": 0,
+  "records_updated": 0,
+  "records_unchanged": 0,
+  "records_rejected_before_ai": 0,
+  "errors": []
+}
+```
+
+One malformed source item must not fail the entire batch. Store item-level errors with a redacted message, external ID when known, retryability, and timestamp.
+
+### Fetch and retry policy
+
+- Apply a descriptive user agent where the source permits generic HTTP clients.
+- Set connection and response timeouts.
+- Retry network timeouts, `429`, and transient `5xx` responses with bounded exponential backoff and jitter.
+- Honor `Retry-After` when returned.
+- Do not retry authentication, authorization, malformed-request, or license failures without a configuration change.
+- Limit concurrency separately for each source.
+- Persist pagination cursors in the ingestion run so interrupted jobs can resume.
+- Redact credentials, authorization headers, cookies, signed URLs, and personal data from logs and stored errors.
+
 ## YouTube connector
 
 YouTube discovery must use the official YouTube Data API. Do not scrape YouTube pages, download videos, cache video/audio files, or use unofficial transcript endpoints.
@@ -159,6 +223,68 @@ https://www.youtube.com/embed/{video_id}
 
 Official documentation: <https://developers.google.com/youtube/v3/docs>
 
+### YouTube request sequence
+
+1. Call `search.list` to discover candidate video IDs.
+2. Deduplicate IDs within the response and against existing `source_records`.
+3. Call `videos.list` in batches for full metadata.
+4. Drop unavailable, private, deleted, or non-embeddable items before paid analysis.
+5. Store the source record and rights assertion.
+6. Record caption availability; attempt transcript work only through an authorized mechanism.
+7. Run deterministic rejection checks.
+8. Queue remaining candidates for moderation, classification, and human review.
+
+The query must not rank primarily by views, likes, subscriber count, or trending status. Query planning and candidate ordering should prefer developmental fit, calmness signals, clarity, learning value, interaction, positive messaging, and offline activity potential.
+
+## Other source connectors
+
+### NASA Image and Video Library
+
+Use the official search endpoint to find age-relevant science, nature, Earth, weather, planet, Moon, and space material. Store NASA ID, title, description, keywords, media type, creation date, preview/source URLs, and any credit or rights statements. NASA origin does not remove the need to inspect item-level third-party credits and age suitability.
+
+Official documentation: <https://images.nasa.gov/docs/images.nasa.gov_api_docs.pdf>
+
+### Wikimedia Commons
+
+Use the MediaWiki Action API for discovery and `imageinfo` with URL, MIME, dimensions, and extended metadata. Store the creator, license name, license URL, attribution, source description page, media URL, and thumbnail URL. Preserve share-alike or attribution obligations in the rights assertion.
+
+Official documentation: <https://www.mediawiki.org/wiki/API:Imageinfo>
+
+### Openverse
+
+Use Openverse for discovery of openly licensed images and audio that can support activities, story context, nature learning, or KidQ-owned presentations. Openverse aggregates upstream records, so approval requires verification against the original source landing page. Store both the Openverse record ID and upstream source details.
+
+Official documentation: <https://api.openverse.org/v1/>
+
+### Internet Archive
+
+Use official search and metadata APIs. Store identifier, title, creator, description, language, media type, file inventory, and displayed license URL. Presence in the archive does not prove public-domain or reuse status. Ingest files or full text only when the item carries explicit rights that cover KidQ's intended use.
+
+Official documentation: <https://archive.org/services/docs/api/>
+
+### Allowlisted web sources
+
+A generic web connector may run only for a configured domain with documented terms and extraction selectors. Its configuration must state:
+
+```text
+domain
+allowed_paths
+disallowed_paths
+robots_policy
+rate_limit
+title_selector
+creator_selector
+description_selector
+transcript_or_story_selector
+license_selector
+canonical_url_selector
+embed_selector
+connector_owner
+last_terms_reviewed_at
+```
+
+Do not infer a transcript by stripping all page text. Extract only content explicitly identified as a transcript, story body, captions, or equivalent permitted source field.
+
 ## StoryWeaver connector
 
 StoryWeaver is a required KidQ source, but its connector remains `PENDING_LICENSE_REVIEW` until the current official access method, rate limits, license fields, attribution obligations, and text/media reuse rights are confirmed.
@@ -175,6 +301,25 @@ Until that review is complete, KidQ may store only:
 - fetch timestamp and provenance
 
 KidQ must not copy story text, illustrations, downloadable files, or generated transcripts merely because a story is publicly readable. Enable richer ingestion only after recording a rights assertion that permits each storage or reuse operation.
+
+### StoryWeaver license-review checklist
+
+Before enabling automated StoryWeaver ingestion, record answers and evidence for:
+
+- Is there a current official API, export, feed, or partner integration?
+- Is automated retrieval allowed by the current terms and `robots.txt`?
+- Which metadata fields may be stored indefinitely?
+- What license applies to each story, translation, narration, and illustration?
+- Does the license permit commercial use, if KidQ requires it?
+- Does the license permit adaptation, translation, excerpting, and transcript storage?
+- What attribution text, links, logos, or notices are required?
+- May KidQ embed or deep-link to the reading experience?
+- May downloadable files be cached, or must they stay at the source?
+- Are there territorial, language, age, account, or redistribution restrictions?
+- How must withdrawn or relicensed stories be handled?
+- What rate limits and contact details govern the integration?
+
+Until every applicable answer is supported by evidence, keep the connector disabled and all discovered records in `MANUAL_REVIEW_REQUIRED`.
 
 ## Transcript retrieval
 
@@ -203,6 +348,26 @@ Official documentation: <https://developers.google.com/youtube/v3/docs/captions/
 - Store transcript origin, language, source URL, hash, permission status, confidence, and retrieval result.
 - When full-text storage is not permitted, store availability, source URL, hash when possible, and an original short summary permitted by policy.
 - Never treat a transcript as proof of visual or audio safety.
+
+### Transcript state machine
+
+Track transcript processing separately from content approval:
+
+```text
+NOT_REQUESTED
+    ↓
+QUEUED
+    ↓
+FETCHING
+    ├── AVAILABLE
+    ├── UNAVAILABLE
+    ├── NOT_AUTHORIZED
+    ├── STORAGE_NOT_PERMITTED
+    ├── TRANSCRIPTION_REQUIRED
+    └── FAILED_RETRYABLE / FAILED_FINAL
+```
+
+Store `retrieval_status`, `retrieval_error_code`, `attempt_count`, `last_attempted_at`, and `next_retry_at`. Never convert transcript failure into an empty transcript that appears successfully inspected.
 
 ## Required content record
 
@@ -255,32 +420,125 @@ provenance
 
 Provenance must identify the connector/method, inspected fields, source timestamps, and whether audiovisual content was actually inspected.
 
+### Canonical JSON example
+
+The following shape is mandatory. Individual rubric keys are expanded in the next section.
+
+```json
+{
+  "content_id": "youtube:VIDEO_ID",
+  "content_type": "VIDEO",
+  "title": "Example title",
+  "source": "youtube",
+  "source_url": "https://www.youtube.com/watch?v=VIDEO_ID",
+  "embed_url": "https://www.youtube.com/embed/VIDEO_ID",
+  "source_video_id": "VIDEO_ID",
+  "channel_or_creator": "Example creator",
+  "thumbnail_url": "https://example.invalid/thumbnail.jpg",
+  "duration_seconds": 180,
+  "language": "en",
+  "caption_available": true,
+  "transcript": null,
+  "transcript_source": null,
+  "description": "Source-provided description",
+  "made_for_kids": null,
+  "embeddable": true,
+  "license_if_known": "youtube",
+  "category": "Baby Learning",
+  "subcategory": "Counting",
+  "age_min": 2,
+  "age_max": 4,
+  "age_band": ["2–4 years"],
+  "learning_objective": "Recognize and count quantities from one to five.",
+  "skills_developed": ["counting", "number recognition"],
+  "topics": ["numbers", "counting"],
+  "keywords": ["calm", "count to five"],
+  "activity_supported": true,
+  "activity_title": "Show Five Fingers",
+  "activity_instruction": "Show me five fingers.",
+  "activity_duration_seconds": 5,
+  "activity_type": "IMITATION",
+  "filter_out": {
+    "rapid_visual_cuts": { "result": "UNKNOWN", "evidence": "Audiovisual content was not inspected." }
+  },
+  "filter_in": {
+    "clear_learning_objective": { "result": "PASS", "evidence": "The title and description explicitly teach counting to five." }
+  },
+  "filter_out_fail_count": 0,
+  "filter_in_pass_count": 1,
+  "content_status": "MANUAL_REVIEW_REQUIRED",
+  "rejection_reason": null,
+  "manual_review_reason": "Audiovisual stimulation and age suitability require review.",
+  "kidq_summary": "The candidate has a clear counting objective. It requires audiovisual and human review before publication.",
+  "fetched_at": "ISO-8601 timestamp",
+  "provenance": {
+    "method": "youtube_data_api",
+    "connector_version": "1",
+    "inspected_fields": ["snippet", "contentDetails", "status"],
+    "audiovisual_inspected": false
+  }
+}
+```
+
+`kidq_summary` must be at most two sentences. Evidence must identify what was actually observed rather than repeat the result label.
+
 ## Curation rubric
 
 Every criterion returns `PASS`, `FAIL`, or `UNKNOWN` with one short evidence statement. Missing evidence produces `UNKNOWN`, not a guessed pass.
 
-### Filter out
+### Filter-out criteria
 
-Reject or flag:
+Assess every criterion separately:
 
-- rapid cuts, flashing, excessive brightness, loud or jarring sound, constant noise, or cluttered visuals
-- violence, aggression, frightening imagery, mature themes, discrimination, or harmful stereotypes
-- advertisements, sponsorships, product placement, unboxing, toy reviews, or franchise-led promotion
-- endless loops, sensational titles, or clickbait thumbnails
-- repetitive passive viewing without a clear developmental objective
-- content substantially above or below the target developmental stage
+| Key | Reject or flag when | Required evidence |
+|---|---|---|
+| `rapid_visual_cuts` | Cuts or scene changes are too fast for a young child to process | Direct visual inspection or measured scene-change evidence |
+| `flashing_or_excessive_contrast` | Flashing lights or intense contrasting colors may overstimulate | Direct visual inspection or measured flashing evidence |
+| `loud_or_jarring_audio` | Sudden loud effects, aggressive music, or constant chaotic noise appears | Direct audio inspection or measured loudness-change evidence |
+| `cluttered_visuals` | Too many competing objects or movements obscure the learning focus | Direct visual inspection |
+| `physical_violence` | Hitting, fighting, weapons, injury, or physical aggression appears | Transcript, source evidence, or audiovisual inspection |
+| `verbal_or_emotional_aggression` | Threatening, bullying, humiliation, yelling, or emotional aggression appears | Transcript or audiovisual inspection |
+| `frightening_imagery` | Monsters, darkness, threat, peril, or imagery likely to induce fear appears | Direct visual and contextual inspection |
+| `mature_themes` | Adult relationships, complex social issues, substance use, or other unsuitable themes appear | Transcript and contextual inspection |
+| `discrimination_or_stereotypes` | Prejudice or harmful stereotypes involving gender, race, religion, culture, disability, or identity appear | Transcript and visual/contextual inspection |
+| `direct_advertising` | Commercials, explicit promotions, calls to purchase, or sponsor segments appear | Transcript, description, links, or audiovisual inspection |
+| `product_placement` | Products or brands are promoted as part of the content | Metadata, transcript, or visual inspection |
+| `unboxing_or_toy_review` | The primary purpose is unboxing or reviewing consumer products | Title, description, transcript, or visual inspection |
+| `franchise_led_promotion` | Educational value is secondary to promoting a toy or commercial franchise | Contextual and visual inspection |
+| `endless_or_open_loop` | Content is designed to continue indefinitely without a natural conclusion | Playback and product-flow inspection |
+| `clickbait_title_or_thumbnail` | Sensational wording or imagery exaggerates the actual content | Compare title/thumbnail with inspected content |
+| `repetitive_without_objective` | Repetition lacks a clear educational, creative, social, or motor objective | Transcript and content inspection |
+| `passive_viewing_only` | The item provides no invitation to think, speak, move, predict, create, or interact | Transcript and content inspection |
+| `developmental_mismatch` | Language, theme, motor demand, or complexity is substantially outside the assigned age band | Developmental review with specific examples |
 
-### Filter in
+### Filter-in criteria
 
-Prioritize:
+Assess every criterion separately:
 
-- clear learning objectives and vocabulary development
-- problem-solving narratives and motor-skill prompts
-- calm pacing, gentle audio, simple visuals, and predictable structure
-- empathy, kindness, emotional literacy, inclusion, and constructive conflict resolution
-- participation prompts, imitation, questions, and parent co-viewing opportunities
-- crafts, drawing, movement, nature exploration, and other offline extensions
-- explicit developmental fit for at least one KidQ age band
+| Key | Pass when | Required evidence |
+|---|---|---|
+| `clear_learning_objective` | The item teaches a specific concept or skill | State the objective and where it appears |
+| `vocabulary_in_context` | New words are introduced clearly with meaningful context | Identify example words and context |
+| `problem_solving_narrative` | A simple challenge is recognized and constructively resolved | Summarize the problem and resolution |
+| `fine_motor_prompt` | Tracing, matching, drawing, manipulating, or similar fine-motor action is encouraged | Identify the prompt |
+| `gross_motor_prompt` | Movement, balance, stretching, jumping, or imitation is encouraged | Identify the prompt |
+| `slow_deliberate_pacing` | Visual changes leave adequate processing time | Direct visual inspection or measured pacing evidence |
+| `gentle_soothing_audio` | Narration, music, and effects remain calm without disruptive peaks | Direct audio inspection or measured evidence |
+| `simple_uncluttered_visuals` | The main object or character is clear and backgrounds are minimally distracting | Direct visual inspection |
+| `predictable_structure` | The item has a comprehensible beginning, middle, and end or repeated learning pattern | Describe the structure |
+| `empathy_and_kindness` | Helping, sharing, caring, or perspective-taking is modeled | Identify the scene or transcript evidence |
+| `emotional_literacy` | Emotions are named or expressed constructively | Identify the emotion and teaching moment |
+| `diversity_and_inclusion` | People, cultures, families, or abilities are represented respectfully | Identify the representation without inferring identity |
+| `constructive_conflict_resolution` | Disagreement is resolved gently and safely | Summarize the resolution |
+| `participation_prompts` | Children are asked to answer, sing, imitate, point, count, or move | Quote or summarize the prompt |
+| `meaningful_touch_interaction` | Touch interaction is simple, age-appropriate, and serves learning | Describe the interaction and objective |
+| `open_ended_questions` | Questions invite thought or parent-child discussion rather than one fixed response | Identify the question |
+| `craft_or_diy_extension` | A safe, practical creative activity can follow | Describe materials and supervision needs |
+| `nature_exploration_extension` | The item encourages observation of the natural world | Describe the observation prompt |
+| `imaginative_play_extension` | The item can lead to role-play or open-ended imagination | Describe the play prompt |
+| `age_band_fit` | Theme, language, pace, and expected actions fit one or more KidQ bands | State the selected band and evidence |
+
+Calculate `filter_out_fail_count` from individual filter-out results and `filter_in_pass_count` from individual filter-in results. Group-level summaries do not replace individual criteria.
 
 ### Evidence boundary
 
@@ -301,6 +559,33 @@ Examples:
 | Story about emotions | Show me your happy face. |
 
 Micro-activities may last 2–10 seconds. Store activities separately from the video or story so KidQ can reuse, sequence, and own them independently.
+
+### Activity catalogue
+
+Micro-activity examples include:
+
+- Clap three times.
+- Jump twice.
+- Touch your nose.
+- Find something red.
+- Find something round.
+- Count five fingers.
+- Make a lion sound.
+- Make a happy face.
+- Copy this movement.
+- Stretch your arms.
+- Balance like a tree.
+- Take three slow breaths.
+- Name this animal.
+- Guess this color.
+- Point to the bigger object.
+- Repeat this word.
+- Finish the pattern.
+- Say what happens next.
+
+Longer sessions may include yoga, drawing, painting, crafts, simple science experiments, matching, sorting, imaginative play, and parent-child activities.
+
+Do not depend on YouTube for micro-activities. KidQ should create and store original activity cards and KidQ-owned activity animations. Each activity must include duration, supervision needs, materials, developmental skills, age bands, accessibility considerations, and safety notes when applicable.
 
 ## Decision rules
 
@@ -362,6 +647,31 @@ Official documentation:
 
 Prefer false manual-review referrals over false approvals.
 
+### Model assessment record
+
+Store enough detail to reproduce and price every model decision:
+
+```text
+content_item_id
+assessor_type
+model_name
+model_snapshot
+prompt_version
+rubric_version
+input_hash
+input_tokens
+cached_input_tokens
+output_tokens
+estimated_cost
+result
+criterion_results
+summary
+audiovisual_inspected
+created_at
+```
+
+The model receives only evidence KidQ is permitted to process. Model output must conform to a strict JSON schema, and schema failure must route the item to retry or manual review rather than silently dropping fields.
+
 ## Database design
 
 PostgreSQL is the production system of record. The initial schema is [`api/db/migrations/001_content_catalog.sql`](../../api/db/migrations/001_content_catalog.sql).
@@ -380,6 +690,55 @@ PostgreSQL is the production system of record. The initial schema is [`api/db/mi
 | `assessment_criteria` | Per-criterion `PASS` / `FAIL` / `UNKNOWN` evidence |
 | `activities` | KidQ-owned or linked offline activities |
 | `publication_decisions` | Human approval and rejection history |
+
+### Field ownership
+
+| Field family | Authoritative owner |
+|---|---|
+| External title, description, duration, creator, thumbnail, availability | Latest verified source record |
+| Source URL, external ID, embed URL | Source connector |
+| License, attribution, storage and adaptation permissions | Rights assertion with evidence |
+| Transcript text and origin | Transcript job and rights assertion |
+| Age bands, learning objective, categories, topics, rubric results | Versioned assessments |
+| Current child-facing title or summary | Approved KidQ editorial revision |
+| Published status | Latest authorized publication decision |
+
+Do not update `content_items.current_status` independently of a publication decision. Treat it as a transactionally maintained projection for fast reads.
+
+### Rights model
+
+Rights must be nullable rather than assumed. Record each permission separately:
+
+```text
+allows_embedding
+allows_metadata_storage
+allows_thumbnail_storage
+allows_transcript_storage
+allows_media_storage
+allows_adaptation
+allows_commercial_use
+attribution_required
+license_name
+license_url
+evidence_url
+evidence_text
+checked_at
+```
+
+Unknown permission means the related operation is disabled. A new rights assertion supersedes earlier evidence without deleting history.
+
+### Database write transaction
+
+For each normalized item, one transaction should:
+
+1. Lock or upsert the unique source record.
+2. Create or link the canonical content item.
+3. Write immutable raw metadata and its hash.
+4. Write the current rights assertion.
+5. Queue transcript and assessment jobs through a durable outbox record.
+6. Commit before acknowledging the source item.
+
+This prevents a saved content row from losing its provenance or follow-up jobs when a process crashes.
 
 ### Storage boundaries
 
@@ -438,6 +797,17 @@ KIDQ_MAX_TRANSCRIPT_CHARS=24000
 
 Use server-side environment variables locally and deployment secret managers in hosted environments.
 
+### Secret ownership
+
+| Secret | Used by | Storage location |
+|---|---|---|
+| `DATABASE_URL` | API and ingestion workers | Local `.env`, Supabase/Render secret settings |
+| `YOUTUBE_DATA_API_KEY` | YouTube connector worker | Server-side secret settings |
+| `OPENVERSE_CLIENT_ID` / `OPENVERSE_CLIENT_SECRET` | Openverse connector worker | Server-side secret settings |
+| `OPENAI_API_KEY` | Moderation and classifier worker | Server-side secret settings |
+
+Commit only empty examples. Rotate any credential that appears in source control or logs.
+
 ## Current API
 
 The current backend exposes:
@@ -475,6 +845,70 @@ curl -X POST http://localhost:4000/content/discover \
 ```
 
 The current implementation writes JSONL as a prototype. The PostgreSQL migration exists, but the API storage adapter has not yet been connected to PostgreSQL. Do not describe content as persisted in Supabase or Render until that integration is implemented and verified.
+
+### Desired ingestion API
+
+The PostgreSQL-backed version should expose asynchronous jobs:
+
+```text
+POST /ingestion-runs
+GET  /ingestion-runs/:id
+GET  /content-items
+GET  /content-items/:id
+GET  /review-queue
+POST /content-items/:id/assessments
+POST /content-items/:id/publication-decisions
+```
+
+Creating an ingestion run should return `202 Accepted` with the run ID. Fetching its status should return counts, pagination progress, retry state, and redacted errors. Do not keep a browser request open while an entire source collection is processed.
+
+## Claude implementation contract
+
+When Claude or another coding agent changes content ingestion, it must:
+
+1. Read this README, `CONTEXT.md`, `config/content-sources.json`, and the active database migrations.
+2. Identify the source connector, rights boundary, and data fields affected before editing code.
+3. Preserve all required output keys and explicit `null` / `[]` behavior.
+4. Keep external metadata, KidQ assessments, and publication decisions in their respective models.
+5. Add or update tests for normalization, idempotency, pagination, retry handling, rights gates, transcript states, and manual-review fallback.
+6. Use source fixtures in tests; tests must not spend API quota or call paid models.
+7. Redact all credentials and signed URLs from fixtures, logs, errors, and snapshots.
+8. Record connector, prompt, rubric, and model versions when behavior changes.
+9. Run type checking, tests, build, migration validation, and secret scanning.
+10. Report current limitations honestly; designed or documented integrations are not “working” until exercised against the real service and database.
+
+### Required connector tests
+
+Every connector must prove:
+
+- an empty result succeeds with zero counts
+- pagination collects all requested pages within configured limits
+- duplicate source records are updated rather than inserted twice
+- unchanged hashes skip paid reassessment
+- `429` and transient `5xx` responses retry within bounds
+- permanent `4xx` responses fail without retry storms
+- one malformed item produces a partial run rather than total data loss
+- missing rights disable transcript/media storage
+- missing transcript produces the correct status without invented text
+- absent audiovisual evidence keeps relevant rubric criteria `UNKNOWN`
+- no automated path creates an `APPROVED` publication decision
+- logs and persisted errors contain no secrets
+
+### Definition of done
+
+A content-source integration is complete only when:
+
+- official access and rights are documented with evidence
+- normalized records include every required field
+- repeated ingestion is idempotent
+- pagination, rate limiting, retries, and partial failure are tested
+- source records and content items are persisted in PostgreSQL
+- transcript handling follows the rights and state models
+- every rubric criterion has an evidence-bearing result
+- paid analysis is cached and token usage is recorded
+- all candidates enter the human review workflow
+- unavailable or relicensed content can be withdrawn
+- deployed behavior has been verified in the target environment
 
 ## Connector implementation sequence
 

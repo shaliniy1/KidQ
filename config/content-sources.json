@@ -9,6 +9,7 @@
   "sources": [
     {
       "id": "youtube",
+      "priority": 1,
       "name": "YouTube Data API v3",
       "status": "recommended",
       "contentTypes": ["VIDEO", "STORYBOOK"],
@@ -22,6 +23,7 @@
     },
     {
       "id": "nasa_images",
+      "priority": 4,
       "name": "NASA Image and Video Library",
       "status": "recommended",
       "contentTypes": ["VIDEO", "ACTIVITY"],
@@ -34,6 +36,7 @@
     },
     {
       "id": "wikimedia_commons",
+      "priority": 5,
       "name": "Wikimedia Commons Action API",
       "status": "recommended",
       "contentTypes": ["VIDEO", "ACTIVITY", "STORYBOOK"],
@@ -46,6 +49,7 @@
     },
     {
       "id": "openverse",
+      "priority": 5,
       "name": "Openverse API",
       "status": "conditional",
       "contentTypes": ["ACTIVITY", "STORYBOOK"],
@@ -57,6 +61,7 @@
     },
     {
       "id": "internet_archive",
+      "priority": 5,
       "name": "Internet Archive APIs",
       "status": "conditional",
       "contentTypes": ["VIDEO", "STORYBOOK"],
@@ -69,8 +74,9 @@
     },
     {
       "id": "storyweaver",
+      "priority": 3,
       "name": "StoryWeaver",
-      "status": "manual_connector_review",
+      "status": "PENDING_LICENSE_REVIEW",
       "contentTypes": ["STORYBOOK"],
       "authentication": "to_be_confirmed",
       "fetch": ["story_id", "title", "author", "illustrator", "language", "reading_level", "license", "attribution", "source_url"],

@@ -22,6 +22,16 @@ CREATE TABLE ingestion_runs (
   finished_at timestamptz
 );
 
+CREATE TABLE ingestion_errors (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  ingestion_run_id uuid NOT NULL REFERENCES ingestion_runs(id) ON DELETE CASCADE,
+  external_id text,
+  error_code text NOT NULL,
+  redacted_message text NOT NULL,
+  retryable boolean NOT NULL DEFAULT false,
+  occurred_at timestamptz NOT NULL DEFAULT now()
+);
+
 CREATE TABLE content_items (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   content_type text NOT NULL CHECK (content_type IN ('VIDEO', 'ACTIVITY', 'STORYBOOK', 'INTERACTIVE_CONTENT')),
@@ -65,6 +75,16 @@ CREATE TABLE source_records (
   UNIQUE (source_system_id, external_id)
 );
 
+CREATE TABLE source_record_snapshots (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  source_record_id uuid NOT NULL REFERENCES source_records(id) ON DELETE CASCADE,
+  ingestion_run_id uuid REFERENCES ingestion_runs(id),
+  raw_metadata jsonb NOT NULL,
+  metadata_hash text NOT NULL,
+  fetched_at timestamptz NOT NULL,
+  UNIQUE (source_record_id, metadata_hash)
+);
+
 CREATE TABLE rights_assertions (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   source_record_id uuid NOT NULL REFERENCES source_records(id) ON DELETE CASCADE,
@@ -73,8 +93,12 @@ CREATE TABLE rights_assertions (
   attribution_text text,
   allows_embedding boolean,
   allows_metadata_storage boolean,
+  allows_thumbnail_storage boolean,
   allows_transcript_storage boolean,
+  allows_media_storage boolean,
   allows_adaptation boolean,
+  allows_commercial_use boolean,
+  attribution_required boolean,
   evidence_url text,
   evidence_text text,
   checked_at timestamptz NOT NULL DEFAULT now()
@@ -85,11 +109,19 @@ CREATE TABLE transcripts (
   source_record_id uuid NOT NULL REFERENCES source_records(id) ON DELETE CASCADE,
   language text,
   origin text NOT NULL CHECK (origin IN ('SOURCE_CAPTION', 'SOURCE_TRANSCRIPT', 'AUTHORIZED_TRANSCRIPTION')),
+  retrieval_status text NOT NULL DEFAULT 'NOT_REQUESTED'
+    CHECK (retrieval_status IN ('NOT_REQUESTED', 'QUEUED', 'FETCHING', 'AVAILABLE', 'UNAVAILABLE', 'NOT_AUTHORIZED', 'STORAGE_NOT_PERMITTED', 'TRANSCRIPTION_REQUIRED', 'FAILED_RETRYABLE', 'FAILED_FINAL')),
   transcript_text text,
-  transcript_hash text NOT NULL,
+  transcript_hash text,
   source_url text,
   storage_permitted boolean NOT NULL DEFAULT false,
   confidence numeric(4,3) CHECK (confidence IS NULL OR confidence BETWEEN 0 AND 1),
+  retrieval_error_code text,
+  attempt_count integer NOT NULL DEFAULT 0 CHECK (attempt_count >= 0),
+  last_attempted_at timestamptz,
+  next_retry_at timestamptz,
+  CHECK (storage_permitted OR transcript_text IS NULL),
+  CHECK (retrieval_status <> 'AVAILABLE' OR transcript_hash IS NOT NULL),
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
@@ -98,7 +130,15 @@ CREATE TABLE assessments (
   content_item_id uuid NOT NULL REFERENCES content_items(id) ON DELETE CASCADE,
   assessor_type text NOT NULL CHECK (assessor_type IN ('RULE', 'MODEL', 'HUMAN')),
   assessor_name text NOT NULL,
+  model_name text,
+  model_snapshot text,
+  prompt_version text,
   rubric_version text NOT NULL,
+  input_hash text,
+  input_tokens integer CHECK (input_tokens IS NULL OR input_tokens >= 0),
+  cached_input_tokens integer CHECK (cached_input_tokens IS NULL OR cached_input_tokens >= 0),
+  output_tokens integer CHECK (output_tokens IS NULL OR output_tokens >= 0),
+  estimated_cost_usd numeric(14,8) CHECK (estimated_cost_usd IS NULL OR estimated_cost_usd >= 0),
   result text NOT NULL CHECK (result IN ('APPROVED', 'REJECTED', 'MANUAL_REVIEW_REQUIRED')),
   summary text NOT NULL,
   audiovisual_inspected boolean NOT NULL DEFAULT false,
@@ -121,6 +161,12 @@ CREATE TABLE activities (
   instruction text NOT NULL,
   duration_seconds integer CHECK (duration_seconds IS NULL OR duration_seconds > 0),
   activity_type text NOT NULL,
+  age_bands text[] NOT NULL DEFAULT '{}',
+  skills text[] NOT NULL DEFAULT '{}',
+  materials text[] NOT NULL DEFAULT '{}',
+  supervision_required boolean,
+  accessibility_notes text,
+  safety_notes text,
   kidq_owned boolean NOT NULL DEFAULT true,
   created_at timestamptz NOT NULL DEFAULT now()
 );
@@ -134,7 +180,25 @@ CREATE TABLE publication_decisions (
   decided_at timestamptz NOT NULL DEFAULT now()
 );
 
+CREATE TABLE outbox_events (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  aggregate_type text NOT NULL,
+  aggregate_id uuid NOT NULL,
+  event_type text NOT NULL,
+  payload jsonb NOT NULL,
+  status text NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'PROCESSING', 'SUCCEEDED', 'FAILED')),
+  attempt_count integer NOT NULL DEFAULT 0 CHECK (attempt_count >= 0),
+  available_at timestamptz NOT NULL DEFAULT now(),
+  processed_at timestamptz,
+  last_error text,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
 CREATE INDEX source_records_content_item_idx ON source_records(content_item_id);
+CREATE INDEX source_record_snapshots_record_idx ON source_record_snapshots(source_record_id, fetched_at DESC);
 CREATE INDEX content_items_status_idx ON content_items(current_status);
 CREATE INDEX content_items_topics_idx ON content_items USING gin(topics);
 CREATE INDEX assessments_content_item_idx ON assessments(content_item_id, created_at DESC);
+CREATE INDEX ingestion_errors_run_idx ON ingestion_errors(ingestion_run_id, occurred_at);
+CREATE INDEX transcripts_retry_idx ON transcripts(retrieval_status, next_retry_at);
+CREATE INDEX outbox_events_pending_idx ON outbox_events(status, available_at);
