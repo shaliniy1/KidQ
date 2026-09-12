@@ -50,7 +50,9 @@ jobs:
           node-version-file: .node-version
           cache: npm
       - run: npm ci
-      - run: npx tsc --noEmit -p web
+      # Next generates route types (LayoutProps, PageProps) under web/.next/types; a bare `tsc`
+      # before that can't see them, so generate them first.
+      - run: cd web && npx next typegen && npx tsc --noEmit
       - run: npm run build -w web
 
   admin:
