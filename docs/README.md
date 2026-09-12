@@ -1,5 +1,7 @@
 # KidQ Docs
 
+- [Status](./status.md) — what's built, what's verified, and what's pending before the QA deploy
+
 - [Content Curation System](./content-curation/README.md) — source of truth for discovery, ingestion, transcripts, rights, assessment, storage, and publishing
 - [Recommendation System](./recommendation/README.md) — content score, AI scoring agent, admin gate, recommendation engine (implementation spec)
 - [Architecture & scoring process](./recommendation/architecture-process.md) — the original architecture and scoring document
