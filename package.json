@@ -4,16 +4,21 @@
   "private": true,
   "workspaces": [
     "web",
-    "api"
+    "api",
+    "admin",
+    "packages/*"
   ],
   "scripts": {
-    "dev": "concurrently -n web,api -c blue,green \"npm run dev:web\" \"npm run dev:api\"",
+    "dev": "concurrently -n web,admin,api -c blue,magenta,green \"npm run dev:web\" \"npm run dev:admin\" \"npm run dev:api\"",
     "dev:web": "npm run dev --workspace=web",
+    "dev:admin": "npm run dev --workspace=admin",
     "dev:api": "npm run dev --workspace=api",
-    "build": "npm run build --workspace=api && npm run build --workspace=web",
+    "build": "npm run build --workspace=api && npm run build --workspace=admin && npm run build --workspace=web",
+    "build:admin": "npm run build --workspace=admin",
     "build:web": "npm run build --workspace=web",
     "build:api": "npm run build --workspace=api",
-    "typecheck": "npm run typecheck --workspace=api && (cd web && npx tsc --noEmit)"
+    "typecheck": "npm run typecheck --workspace=api && npm run typecheck --workspace=admin && npx tsc -p packages/kidq-player && (cd web && npx tsc --noEmit)",
+    "test": "npm run test --workspace=api"
   },
   "devDependencies": {
     "concurrently": "^9.1.0"

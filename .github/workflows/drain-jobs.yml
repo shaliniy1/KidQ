@@ -1,0 +1,32 @@
+# Daily run of queued ingestion + AI scoring jobs against QA. On Render free, the API's
+# in-process worker only runs while the service is awake; this keeps scoring moving every day.
+# Needs repository secrets: QA_DATABASE_URL, YOUTUBE_DATA_API_KEY, GEMINI_API_KEY.
+name: Drain QA jobs
+
+on:
+  schedule:
+    - cron: "15 8 * * *" # 08:15 UTC, just after Gemini's midnight-Pacific daily reset
+  workflow_dispatch:
+
+concurrency:
+  group: drain-qa-jobs
+  cancel-in-progress: false
+
+jobs:
+  drain:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - run: npm ci
+      - run: npm run jobs:drain -w api
+        env:
+          NODE_ENV: production
+          DATABASE_URL: ${{ secrets.QA_DATABASE_URL }}
+          DATABASE_SSL: require
+          YOUTUBE_DATA_API_KEY: ${{ secrets.YOUTUBE_DATA_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}

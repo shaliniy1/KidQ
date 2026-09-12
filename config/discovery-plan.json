@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "notes": "Seed discovery plan (~270 videos). Queries follow the README discovery topics; trusted educators come first for discovery order only. Hints are suggestions the AI and admin confirm — never approval signals.",
+  "defaults": { "language": "en", "regionCode": "IN" },
+  "sources": {
+    "youtube": [
+      { "query": "Ms Rachel songs for littles learning", "maxResults": 12, "hints": { "interests": ["words", "music"], "category": "trusted_educators", "developmentGoals": ["communication"], "ageMin": 0, "ageMax": 4 } },
+      { "query": "Khan Academy Kids", "maxResults": 12, "hints": { "category": "trusted_educators", "developmentGoals": ["learning"], "ageMin": 2, "ageMax": 6 } },
+      { "query": "calm counting for toddlers", "maxResults": 12, "hints": { "interests": ["numbers"], "category": "maths", "developmentGoals": ["cognitive"], "regulationGoals": ["calm"], "ageMin": 2, "ageMax": 4 } },
+      { "query": "phonics for preschoolers", "maxResults": 12, "hints": { "interests": ["letters"], "category": "baby_learning", "developmentGoals": ["communication"], "ageMin": 2, "ageMax": 6 } },
+      { "query": "animal sounds for babies", "maxResults": 12, "hints": { "interests": ["animals"], "category": "animals_nature", "developmentGoals": ["communication"], "ageMin": 0, "ageMax": 2 } },
+      { "query": "read aloud picture book for kids", "maxResults": 12, "hints": { "interests": ["stories"], "category": "storybooks", "developmentGoals": ["communication"], "ageMin": 2, "ageMax": 6 } },
+      { "query": "kids yoga calm", "maxResults": 12, "hints": { "interests": ["yoga"], "category": "yoga_movement", "developmentGoals": ["motor_skills"], "regulationGoals": ["calm", "movement"], "ageMin": 2, "ageMax": 6 } },
+      { "query": "shapes and colors for toddlers", "maxResults": 12, "hints": { "interests": ["shapes_colors"], "category": "baby_learning", "developmentGoals": ["cognitive"], "ageMin": 0, "ageMax": 4 } },
+      { "query": "simple science experiments for preschool", "maxResults": 12, "hints": { "interests": ["science_experiments"], "category": "science", "developmentGoals": ["cognitive", "problem_solving"], "ageMin": 4, "ageMax": 6 } },
+      { "query": "easy drawing for kids", "maxResults": 12, "hints": { "interests": ["art"], "category": "drawing_painting", "developmentGoals": ["creativity"], "regulationGoals": ["focus"], "ageMin": 4, "ageMax": 6 } },
+      { "query": "feelings and emotions for kids", "maxResults": 12, "hints": { "interests": ["emotions"], "category": "general_knowledge", "developmentGoals": ["emotional"], "regulationGoals": ["emotional_regulation"], "ageMin": 2, "ageMax": 6 } },
+      { "query": "slow calm nursery rhymes", "maxResults": 12, "hints": { "interests": ["music"], "category": "music_rhymes", "developmentGoals": ["communication"], "regulationGoals": ["calm"], "ageMin": 0, "ageMax": 4 } },
+      { "query": "kindness and sharing story for kids", "maxResults": 12, "hints": { "interests": ["kindness", "stories"], "category": "storybooks", "developmentGoals": ["social", "emotional"], "regulationGoals": ["social_regulation"], "ageMin": 2, "ageMax": 6 } },
+      { "query": "planets for kids", "maxResults": 12, "hints": { "interests": ["space"], "category": "science", "developmentGoals": ["learning"], "ageMin": 4, "ageMax": 6 } },
+      { "query": "paper craft for toddlers", "maxResults": 12, "hints": { "interests": ["art"], "category": "creative_crafts", "developmentGoals": ["creativity", "motor_skills"], "ageMin": 2, "ageMax": 6 } }
+    ],
+    "nasa_images": [
+      { "query": "moon", "maxResults": 10, "hints": { "interests": ["space"], "category": "science", "developmentGoals": ["learning"], "ageMin": 4, "ageMax": 6 } },
+      { "query": "earth from space", "maxResults": 10, "hints": { "interests": ["space", "nature"], "category": "science", "developmentGoals": ["learning"], "regulationGoals": ["calm"], "ageMin": 4, "ageMax": 6 } },
+      { "query": "mars rover", "maxResults": 10, "hints": { "interests": ["space", "how_things_work"], "category": "science", "developmentGoals": ["cognitive"], "ageMin": 4, "ageMax": 6 } },
+      { "query": "astronaut space station", "maxResults": 10, "hints": { "interests": ["space"], "category": "science", "developmentGoals": ["learning"], "ageMin": 4, "ageMax": 6 } },
+      { "query": "sun", "maxResults": 10, "hints": { "interests": ["space", "weather"], "category": "science", "developmentGoals": ["learning"], "ageMin": 4, "ageMax": 6 } }
+    ],
+    "wikimedia_commons": [
+      { "query": "animals", "maxResults": 10, "hints": { "interests": ["animals"], "category": "animals_nature", "developmentGoals": ["learning"], "ageMin": 2, "ageMax": 6 } },
+      { "query": "birds", "maxResults": 10, "hints": { "interests": ["animals", "nature"], "category": "animals_nature", "developmentGoals": ["learning"], "regulationGoals": ["calm"], "ageMin": 2, "ageMax": 6 } },
+      { "query": "fish aquarium", "maxResults": 10, "hints": { "interests": ["ocean", "animals"], "category": "animals_nature", "developmentGoals": ["learning"], "regulationGoals": ["calm"], "ageMin": 0, "ageMax": 6 } },
+      { "query": "butterfly", "maxResults": 10, "hints": { "interests": ["nature", "animals"], "category": "animals_nature", "developmentGoals": ["learning"], "regulationGoals": ["calm"], "ageMin": 2, "ageMax": 6 } }
+    ]
+  }
+}

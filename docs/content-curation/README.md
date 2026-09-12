@@ -632,6 +632,15 @@ Official documentation:
 - <https://developers.openai.com/api/docs/models/omni-moderation-latest>
 - <https://developers.openai.com/api/docs/models/gpt-5-nano>
 
+### Video scoring agent
+
+Metadata and transcripts cannot verify pacing, flashing, visual clutter or audio intensity (see *Evidence boundary*). KidQ therefore scores video with a Gemini model that watches the video itself:
+
+- **YouTube**: the model watches the public YouTube URL directly. KidQ still downloads nothing.
+- **NASA and Wikimedia**: for items whose rights assertion permits a copy, the file goes to a temporary Files API upload that is deleted right after scoring.
+
+Its output is a MODEL assessment with `audiovisual_inspected=true`. It can recommend rejection but never approval. Component scores, weights, the free-tier guard and the admin gate are specified in [`docs/recommendation/README.md`](../recommendation/README.md). OpenAI moderation remains an optional second safety opinion.
+
 ### Token controls
 
 1. Run source, duration, embeddability, license, deduplication, and blocked-term checks without an LLM.
@@ -810,41 +819,11 @@ Commit only empty examples. Rotate any credential that appears in source control
 
 ## Current API
 
-The current backend exposes:
+The backend implements the ingestion API below, plus the admin, recommendation and parent endpoints described in [`docs/api/README.md`](../api/README.md). The live contract is `GET /openapi.json`.
 
-```text
-GET  /health
-GET  /content/discover
-POST /content/discover
-```
+The `GET/POST /content/discover` prototype and its JSONL store have been retired. So has the generic open-web fetcher: it will return only with a per-domain allowlist configuration, as the connector rules require.
 
-YouTube discovery example:
-
-```bash
-curl -X POST http://localhost:4000/content/discover \
-  -H 'content-type: application/json' \
-  -d '{
-    "source": "youtube",
-    "query": "calm counting for toddlers",
-    "max_results": 5,
-    "language": "en",
-    "region_code": "IN"
-  }'
-```
-
-Allowlisted open-page example:
-
-```bash
-curl -X POST http://localhost:4000/content/discover \
-  -H 'content-type: application/json' \
-  -d '{
-    "source": "open_web",
-    "query": "story",
-    "open_urls": ["https://example.org/story"]
-  }'
-```
-
-The current implementation writes JSONL as a prototype. The PostgreSQL migration exists, but the API storage adapter has not yet been connected to PostgreSQL. Do not describe content as persisted in Supabase or Render until that integration is implemented and verified.
+Content is persisted in PostgreSQL through the migrations in `api/db/migrations/`. This has been verified against local PostgreSQL 16. Do not describe it as running on Supabase or Render until the QA deployment has been verified.
 
 ### Desired ingestion API
 

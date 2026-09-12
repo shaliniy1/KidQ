@@ -1,0 +1,92 @@
+# Render Blueprint — KidQ QA environment (free plan). One repo, three services.
+# Free services sleep after 15 min idle (~1 min cold start) and have no background workers or
+# pre-deploy step, so the API migrates at boot and runs the job worker in-process.
+# Prod: copy these services with `plan: starter`, `branch: release`, a separate worker service
+# (`npm run start:worker -w api`) and RUN_WORKER_IN_PROCESS=false. See docs/deployment.md.
+# Values marked `sync: false` are entered in the Render dashboard — never commit them.
+services:
+  - type: web
+    name: kidq-api
+    runtime: node
+    plan: free
+    region: singapore
+    branch: main
+    buildCommand: npm ci --include=dev && npm run build -w api
+    startCommand: npm run start -w api
+    healthCheckPath: /ready
+    autoDeploy: true
+    buildFilter:
+      paths: ["api/**", "config/**", "package.json", "package-lock.json"]
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NODE_ENV
+        value: production
+      - key: RUN_MIGRATIONS_ON_BOOT
+        value: "true"
+      - key: RUN_WORKER_IN_PROCESS
+        value: "true"
+      - key: AUTH_MODE
+        value: supabase
+      - key: DATABASE_SSL
+        value: require
+      - key: DATABASE_URL
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_JWT_SECRET
+        sync: false
+      - key: YOUTUBE_DATA_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+      - key: AI_SCORING_MODEL
+        value: gemini-3.8-flash
+      - key: AI_DAILY_VIDEO_SECONDS_CAP
+        value: "27000"
+      - key: HTTP_USER_AGENT
+        value: "KidQ-content-ingestion/1.0 (+https://github.com/shaliniy1/KidQ)"
+
+  - type: web
+    name: kidq-admin
+    runtime: node
+    plan: free
+    region: singapore
+    branch: main
+    buildCommand: npm ci --include=dev && npm run build -w admin
+    startCommand: npm run start -w admin
+    autoDeploy: true
+    buildFilter:
+      paths: ["admin/**", "packages/**", "package.json", "package-lock.json"]
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NEXT_PUBLIC_API_URL
+        sync: false
+      - key: NEXT_PUBLIC_SUPABASE_URL
+        sync: false
+      - key: NEXT_PUBLIC_SUPABASE_ANON_KEY
+        sync: false
+
+  - type: web
+    name: kidq-web
+    runtime: node
+    plan: free
+    region: singapore
+    branch: main
+    buildCommand: npm ci --include=dev && npm run build -w web
+    startCommand: npm run start -w web
+    autoDeploy: true
+    buildFilter:
+      paths: ["web/**", "packages/**", "package.json", "package-lock.json"]
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NEXT_PUBLIC_API_URL
+        sync: false
+      - key: NEXT_PUBLIC_SUPABASE_URL
+        sync: false
+      - key: NEXT_PUBLIC_SUPABASE_ANON_KEY
+        sync: false
