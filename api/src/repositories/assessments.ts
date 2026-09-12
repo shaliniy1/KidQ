@@ -102,6 +102,17 @@ export async function loadAssessments(db: Db, contentItemId: string): Promise<As
   }));
 }
 
+/** Result of the rule checks already recorded for this exact source metadata and rubric, if any. */
+export async function recordedRuleResult(db: Db, contentItemId: string, inputHash: string, rubricVersion: string): Promise<string | null> {
+  const { rows } = await db.query<{ result: string }>(
+    `SELECT result FROM assessments
+     WHERE content_item_id = $1 AND assessor_type = 'RULE' AND input_hash = $2 AND rubric_version = $3
+     ORDER BY created_at DESC LIMIT 1`,
+    [contentItemId, inputHash, rubricVersion],
+  );
+  return rows[0]?.result ?? null;
+}
+
 export async function hasModelAssessment(db: Db, contentItemId: string, cacheKey: string): Promise<boolean> {
   const { rowCount } = await db.query(
     "SELECT 1 FROM assessments WHERE content_item_id = $1 AND assessor_type = 'MODEL' AND cache_key = $2 LIMIT 1",

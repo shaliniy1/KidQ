@@ -24,6 +24,9 @@ const schema = z.object({
   GEMINI_API_KEY: z.string().optional(),
   AI_SCORING_MODEL: z.string().default("gemini-3.8-flash"),
   AI_ESCALATION_MODEL: z.string().optional(),
+  // Tried in order when the scoring model's free daily quota runs out or it's overloaded. Keep them in
+  // one model family so scores stay comparable; list only the scoring model to turn fallbacks off.
+  AI_FALLBACK_MODELS: z.string().default("gemini-3.7-flash,gemini-3.6-flash"),
   AI_DAILY_VIDEO_SECONDS_CAP: z.coerce.number().int().positive().default(27_000),
   AI_PROMPT_VERSION: z.string().default("1"),
   // Free tier costs nothing; set paid-tier prices to record estimated spend per assessment.
@@ -60,6 +63,9 @@ export const env = {
   geminiApiKey: parsed.GEMINI_API_KEY,
   aiScoringModel: parsed.AI_SCORING_MODEL,
   aiEscalationModel: parsed.AI_ESCALATION_MODEL ?? null,
+  aiFallbackModels: parsed.AI_FALLBACK_MODELS.split(",")
+    .map((model) => model.trim())
+    .filter(Boolean),
   aiDailyVideoSecondsCap: parsed.AI_DAILY_VIDEO_SECONDS_CAP,
   aiPromptVersion: parsed.AI_PROMPT_VERSION,
   aiInputUsdPerMTok: parsed.AI_INPUT_USD_PER_MTOK,

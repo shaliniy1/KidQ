@@ -2,6 +2,8 @@
 // validate requests and generate /openapi.json, so UIs can generate typed clients from it.
 import { z } from "zod";
 import { SOURCE_SYSTEM_IDS } from "../connectors";
+import { AGE_BAND_KEYS } from "../domain/age";
+import { BREAK_TYPES, CONTENT_MIXES, MAX_CHILDREN } from "../domain/onboarding";
 import { RUBRIC } from "../domain/rubric";
 import { COMPONENTS } from "../domain/scoring";
 import { TAXONOMY_KINDS } from "../repositories/taxonomy";
@@ -66,8 +68,20 @@ export const playerSchema = registry.register(
         params: z.record(z.string(), z.number()),
       }),
       z.object({ provider: z.literal("html5"), media_url: z.string(), mime_type: nullableString }),
+      z.object({ provider: z.literal("story"), page_count: z.number() }),
     ])
     .nullable(),
+);
+
+// A picture book for the KidQ reader: story text per page; illustrations load from the source.
+export const storySchema = registry.register(
+  "Story",
+  z.object({
+    title: z.string(),
+    pages: z.array(z.object({ page: z.number(), text: z.string(), image_url: nullableString, image_small_url: nullableString })),
+    credits: nullableString.describe("The source's full attribution: story, illustrations, translation, publisher and license"),
+    attribution: z.object({ text: nullableString, license_name: nullableString, license_url: nullableString }),
+  }),
 );
 
 export const contentCardSchema = registry.register(
@@ -122,7 +136,7 @@ export const pageOf = <T extends z.ZodType>(item: T) =>
 // ── Admin requests ───────────────────────────────────────────────────────────
 export const listContentQuery = z.object({
   state: z.enum(STUDIO_STATES).optional(),
-  age_group: z.enum(["0_2", "2_4", "4_6"]).optional(),
+  age_group: z.enum(AGE_BAND_KEYS).optional(),
   category: z.string().max(60).optional(),
   source: z.enum(SOURCE_SYSTEM_IDS as [string, ...string[]]).optional(),
   flagged: z.enum(["true", "false"]).optional(),
@@ -247,6 +261,31 @@ export const bulkResultSchema = z.object({
   results: z.array(z.object({ content_item_id: z.uuid(), ok: z.boolean(), blockers: z.array(z.string()), message: nullableString })),
 });
 
+export const bulkReanalyzeBody = z.object({
+  scope: z.enum(["UNSCORED"]).describe("UNSCORED: every item the AI hasn't reviewed yet, except rejected ones"),
+});
+
+export const dashboardSchema = z.object({
+  total: z.number(),
+  by_state: z.record(z.string(), z.number()),
+  by_source: z.record(z.string(), z.number()),
+  flagged: z.number(),
+  queue: z.array(z.object({ event_type: z.string(), status: z.string(), n: z.number() })),
+  ai: z.object({
+    enabled: z.boolean(),
+    model: z.string().describe("The scoring model; the fallbacks in `models` take over when its free daily quota runs out"),
+    models: z
+      .array(z.object({ model: z.string(), requests: z.number(), paused: z.boolean() }))
+      .describe("The scoring model and its fallbacks, in the order they're tried, with today's use"),
+    paused_until: nullableString.describe("Set while every model has used its daily quota; AI scoring resumes then"),
+    scored: z.number().describe("Items the AI has reviewed and scored"),
+    queued: z.number().describe("Items waiting for, or going through, analysis"),
+    unscored: z.number().describe("Items the AI hasn't reviewed yet, rejected ones excluded"),
+    could_not_review: z.number().describe("Items the AI couldn't review: media rights, length, private video or invalid output"),
+    today: z.object({ requests: z.number(), youtube_video_seconds: z.number(), file_video_seconds: z.number(), youtube_daily_cap_seconds: z.number() }),
+  }),
+});
+
 export const expertReviewBody = z.object({
   reviewer_name: z.string().min(1).max(120),
   reviewer_type: z.string().min(1).max(80),
@@ -296,28 +335,62 @@ export const taxonomySchema = z.record(
 
 export const playbackErrorBody = z.object({ code: z.number().int() });
 
-// ── Parent requests ──────────────────────────────────────────────────────────
-export const childBody = z.object({
-  nickname: z.string().min(1).max(40),
-  birth_year: z.number().int().min(2015).max(2100),
-  birth_month: z.number().int().min(1).max(12),
-  languages: z.array(z.string().max(10)).min(1).max(5).default(["en"]),
-  interests: z.array(z.string().max(60)).max(20).default([]),
-  content_types: z.array(z.enum(CONTENT_TYPES)).max(4).default([]),
-  preferred_categories: z.array(z.string().max(60)).max(15).default([]),
-  development_goals: z.array(z.string().max(60)).max(10).default([]),
-  regulation_goals: z.array(z.string().max(60)).max(10).default([]),
-  daily_minutes: z.number().int().min(5).max(240).nullable().default(null),
-  break_preference: z.string().max(60).nullable().default(null),
+// ── Parent requests (onboarding: docs/recommendation/parent-onboarding.md) ──────
+const ageBand = z.enum(AGE_BAND_KEYS).describe("Age band: the same five bands admins tag content with");
+const sessionMinutes = z.union([z.literal(15), z.literal(30), z.literal(45), z.literal(60), z.literal(90)]);
+const nickname = z.string().trim().min(1).max(40).describe("A nickname only, never the child's legal name");
+const languageKey = z.string().min(2).max(10);
+
+// The optional "Customize" blocks. Anything left out keeps its age-based default.
+const childPreferences = z.object({
+  languages: z.array(languageKey).min(1).max(3).describe("Content languages the parent chose (keys from GET /taxonomy); defaults to the parent's language"),
+  interests: z.array(z.string().max(60)).max(19).describe("Block A. Empty broadens the feed; it never narrows it."),
+  content_mix: z.enum(CONTENT_MIXES).describe("Block B. SURPRISE: an age-appropriate mix. CHOSEN: only preferred_categories."),
+  preferred_categories: z.array(z.string().max(60)).max(12).describe("Block B categories; sending some without content_mix means CHOSEN"),
+  development_goals: z.array(z.string().max(60)).max(8).describe("Block C: never asked. Omit, or send [], for the age-band defaults."),
+  regulation_goals: z.array(z.string().max(60)).max(6).describe("Block D. Empty or all six means no restriction."),
+  session_minutes: sessionMinutes.describe("Block E: session length; the breaks follow from it"),
+  break_type: z.enum(BREAK_TYPES).describe("Block E: MOVEMENT, QUIET or ALTERNATE"),
 });
+
+export const childBody = childPreferences.partial().extend({ nickname, age_band: ageBand });
 export type ChildBody = z.infer<typeof childBody>;
 
 export const childPatchBody = childBody.partial();
+export type ChildPatchBody = z.infer<typeof childPatchBody>;
 
 export const childSchema = registry.register(
   "Child",
-  childBody.extend({ id: z.uuid(), age_years: z.number(), created_at: z.string(), updated_at: z.string() }),
+  childPreferences.extend({
+    id: z.uuid(),
+    nickname: z.string(),
+    age_band: ageBand.describe("The band today: the one the parent picked, moved on as the child grows"),
+    age_years: z.number().describe("Estimated from the band and the time since it was set"),
+    development_goals_source: z.enum(["AGE_DEFAULT", "PARENT"]),
+    break_plan: z
+      .object({ total_breaks: z.number(), mid_session_breaks: z.number(), wind_down: z.boolean() })
+      .describe("One break per 15 minutes; the last is always the wind-down"),
+    created_at: z.string(),
+    updated_at: z.string(),
+  }),
 );
+
+export const onboardingBody = z.object({
+  parent_name: z.string().trim().min(1).max(80),
+  language: languageKey.default("en").describe("The parent's pick, pre-selected from the device language when KidQ has it; children start with it"),
+  children: z.array(z.object({ nickname, age_band: ageBand })).min(1).max(MAX_CHILDREN),
+});
+export type OnboardingBody = z.infer<typeof onboardingBody>;
+
+export const meSchema = z.object({
+  parent: z.object({ name: z.string(), language: z.string(), created_at: z.string(), updated_at: z.string() }),
+  children: z.array(childSchema),
+});
+
+export const mePatchBody = z
+  .object({ name: z.string().trim().min(1).max(80).optional(), language: languageKey.optional() })
+  .refine((body) => Object.keys(body).length > 0, "Nothing to change");
+export type MePatchBody = z.infer<typeof mePatchBody>;
 
 export const recommendationsQuery = z.object({
   limit: z.coerce.number().int().min(1).max(50).default(20),
@@ -350,14 +423,9 @@ export const submissionSchema = z.object({
   card: z.union([contentCardSchema, z.null()]),
 });
 
-export const previewBody = z.object({
-  age_years: z.number().min(0).max(6),
-  languages: z.array(z.string().max(10)).min(1).max(5).default(["en"]),
-  interests: z.array(z.string()).max(20).default([]),
-  content_types: z.array(z.enum(CONTENT_TYPES)).max(4).default([]),
-  preferred_categories: z.array(z.string()).max(15).default([]),
-  development_goals: z.array(z.string()).max(10).default([]),
-  regulation_goals: z.array(z.string()).max(10).default([]),
-  daily_minutes: z.number().int().min(5).max(240).nullable().default(null),
+// Admin preview: the same fields as a child profile, applied to an imaginary child.
+export const previewBody = childPreferences.partial().extend({
+  age_band: ageBand,
   limit: z.number().int().min(1).max(50).default(20),
 });
+export type PreviewBody = z.infer<typeof previewBody>;

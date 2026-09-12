@@ -29,3 +29,9 @@ export function useTaxonomy(): Taxonomy | null {
 export function labelFor(taxonomy: Taxonomy | null, kind: keyof Taxonomy, key: string): string {
   return taxonomy?.[kind].find((term) => term.key === key)?.label ?? key;
 }
+
+/** An age band's [min, max] from the taxonomy (the same bands parents pick in onboarding). */
+export function ageRange(taxonomy: Taxonomy | null, key: string): [number, number] | null {
+  const meta = taxonomy?.age_group.find((term) => term.key === key)?.meta;
+  return meta && typeof meta.min === "number" && typeof meta.max === "number" ? [meta.min, meta.max] : null;
+}

@@ -4,19 +4,19 @@
   "defaults": { "language": "en", "regionCode": "IN" },
   "sources": {
     "youtube": [
-      { "query": "Ms Rachel songs for littles learning", "maxResults": 12, "hints": { "interests": ["words", "music"], "category": "trusted_educators", "developmentGoals": ["communication"], "ageMin": 0, "ageMax": 4 } },
-      { "query": "Khan Academy Kids", "maxResults": 12, "hints": { "category": "trusted_educators", "developmentGoals": ["learning"], "ageMin": 2, "ageMax": 6 } },
+      { "query": "Ms Rachel songs for littles learning", "maxResults": 12, "hints": { "interests": ["words", "music"], "category": "educational", "developmentGoals": ["communication"], "ageMin": 0, "ageMax": 4 } },
+      { "query": "Khan Academy Kids", "maxResults": 12, "hints": { "category": "educational", "developmentGoals": ["learning"], "ageMin": 2, "ageMax": 6 } },
       { "query": "calm counting for toddlers", "maxResults": 12, "hints": { "interests": ["numbers"], "category": "maths", "developmentGoals": ["cognitive"], "regulationGoals": ["calm"], "ageMin": 2, "ageMax": 4 } },
-      { "query": "phonics for preschoolers", "maxResults": 12, "hints": { "interests": ["letters"], "category": "baby_learning", "developmentGoals": ["communication"], "ageMin": 2, "ageMax": 6 } },
-      { "query": "animal sounds for babies", "maxResults": 12, "hints": { "interests": ["animals"], "category": "animals_nature", "developmentGoals": ["communication"], "ageMin": 0, "ageMax": 2 } },
-      { "query": "read aloud picture book for kids", "maxResults": 12, "hints": { "interests": ["stories"], "category": "storybooks", "developmentGoals": ["communication"], "ageMin": 2, "ageMax": 6 } },
+      { "query": "phonics for preschoolers", "maxResults": 12, "hints": { "interests": ["letters"], "category": "educational", "developmentGoals": ["communication"], "ageMin": 2, "ageMax": 6 } },
+      { "query": "animal sounds for babies", "maxResults": 12, "hints": { "interests": ["animals"], "category": "general_knowledge", "developmentGoals": ["communication"], "ageMin": 0, "ageMax": 2 } },
+      { "query": "read aloud picture book for kids", "maxResults": 12, "hints": { "interests": ["stories"], "category": "stories", "developmentGoals": ["communication"], "ageMin": 2, "ageMax": 6 } },
       { "query": "kids yoga calm", "maxResults": 12, "hints": { "interests": ["yoga"], "category": "yoga_movement", "developmentGoals": ["motor_skills"], "regulationGoals": ["calm", "movement"], "ageMin": 2, "ageMax": 6 } },
-      { "query": "shapes and colors for toddlers", "maxResults": 12, "hints": { "interests": ["shapes_colors"], "category": "baby_learning", "developmentGoals": ["cognitive"], "ageMin": 0, "ageMax": 4 } },
+      { "query": "shapes and colors for toddlers", "maxResults": 12, "hints": { "interests": ["shapes_colors"], "category": "educational", "developmentGoals": ["cognitive"], "ageMin": 0, "ageMax": 4 } },
       { "query": "simple science experiments for preschool", "maxResults": 12, "hints": { "interests": ["science_experiments"], "category": "science", "developmentGoals": ["cognitive", "problem_solving"], "ageMin": 4, "ageMax": 6 } },
       { "query": "easy drawing for kids", "maxResults": 12, "hints": { "interests": ["art"], "category": "drawing_painting", "developmentGoals": ["creativity"], "regulationGoals": ["focus"], "ageMin": 4, "ageMax": 6 } },
       { "query": "feelings and emotions for kids", "maxResults": 12, "hints": { "interests": ["emotions"], "category": "general_knowledge", "developmentGoals": ["emotional"], "regulationGoals": ["emotional_regulation"], "ageMin": 2, "ageMax": 6 } },
       { "query": "slow calm nursery rhymes", "maxResults": 12, "hints": { "interests": ["music"], "category": "music_rhymes", "developmentGoals": ["communication"], "regulationGoals": ["calm"], "ageMin": 0, "ageMax": 4 } },
-      { "query": "kindness and sharing story for kids", "maxResults": 12, "hints": { "interests": ["kindness", "stories"], "category": "storybooks", "developmentGoals": ["social", "emotional"], "regulationGoals": ["social_regulation"], "ageMin": 2, "ageMax": 6 } },
+      { "query": "kindness and sharing story for kids", "maxResults": 12, "hints": { "interests": ["kindness", "stories"], "category": "stories", "developmentGoals": ["social", "emotional"], "regulationGoals": ["social_regulation"], "ageMin": 2, "ageMax": 6 } },
       { "query": "planets for kids", "maxResults": 12, "hints": { "interests": ["space"], "category": "science", "developmentGoals": ["learning"], "ageMin": 4, "ageMax": 6 } },
       { "query": "paper craft for toddlers", "maxResults": 12, "hints": { "interests": ["art"], "category": "creative_crafts", "developmentGoals": ["creativity", "motor_skills"], "ageMin": 2, "ageMax": 6 } }
     ],
@@ -28,10 +28,18 @@
       { "query": "sun", "maxResults": 10, "hints": { "interests": ["space", "weather"], "category": "science", "developmentGoals": ["learning"], "ageMin": 4, "ageMax": 6 } }
     ],
     "wikimedia_commons": [
-      { "query": "animals", "maxResults": 10, "hints": { "interests": ["animals"], "category": "animals_nature", "developmentGoals": ["learning"], "ageMin": 2, "ageMax": 6 } },
-      { "query": "birds", "maxResults": 10, "hints": { "interests": ["animals", "nature"], "category": "animals_nature", "developmentGoals": ["learning"], "regulationGoals": ["calm"], "ageMin": 2, "ageMax": 6 } },
-      { "query": "fish aquarium", "maxResults": 10, "hints": { "interests": ["ocean", "animals"], "category": "animals_nature", "developmentGoals": ["learning"], "regulationGoals": ["calm"], "ageMin": 0, "ageMax": 6 } },
-      { "query": "butterfly", "maxResults": 10, "hints": { "interests": ["nature", "animals"], "category": "animals_nature", "developmentGoals": ["learning"], "regulationGoals": ["calm"], "ageMin": 2, "ageMax": 6 } }
+      { "query": "animals", "maxResults": 10, "hints": { "interests": ["animals"], "category": "general_knowledge", "developmentGoals": ["learning"], "ageMin": 2, "ageMax": 6 } },
+      { "query": "birds", "maxResults": 10, "hints": { "interests": ["animals", "nature"], "category": "general_knowledge", "developmentGoals": ["learning"], "regulationGoals": ["calm"], "ageMin": 2, "ageMax": 6 } },
+      { "query": "fish aquarium", "maxResults": 10, "hints": { "interests": ["ocean", "animals"], "category": "general_knowledge", "developmentGoals": ["learning"], "regulationGoals": ["calm"], "ageMin": 0, "ageMax": 6 } },
+      { "query": "butterfly", "maxResults": 10, "hints": { "interests": ["nature", "animals"], "category": "general_knowledge", "developmentGoals": ["learning"], "regulationGoals": ["calm"], "ageMin": 2, "ageMax": 6 } }
+    ],
+    "storyweaver": [
+      { "query": "animals", "maxResults": 8, "hints": { "interests": ["animals", "stories"], "category": "storybooks", "developmentGoals": ["communication"], "ageMin": 2, "ageMax": 6 } },
+      { "query": "family", "maxResults": 8, "hints": { "interests": ["stories", "kindness"], "category": "storybooks", "developmentGoals": ["social", "emotional"], "ageMin": 2, "ageMax": 6 } },
+      { "query": "friends", "maxResults": 8, "hints": { "interests": ["stories", "kindness"], "category": "storybooks", "developmentGoals": ["social"], "regulationGoals": ["social_regulation"], "ageMin": 2, "ageMax": 6 } },
+      { "query": "rain", "maxResults": 8, "hints": { "interests": ["weather", "nature", "stories"], "category": "storybooks", "developmentGoals": ["learning"], "ageMin": 2, "ageMax": 6 } },
+      { "query": "counting", "maxResults": 8, "hints": { "interests": ["numbers", "stories"], "category": "storybooks", "developmentGoals": ["cognitive"], "ageMin": 2, "ageMax": 6 } },
+      { "query": "colours", "maxResults": 8, "hints": { "interests": ["shapes_colors", "stories"], "category": "storybooks", "developmentGoals": ["cognitive"], "ageMin": 2, "ageMax": 6 } }
     ]
   }
 }

@@ -15,6 +15,18 @@ export const COMPONENT_LABELS: Record<Component, string> = {
   AUDIO_COMFORT: "Audio comfort",
 };
 
+// A picture book has no soundtrack: it is scored on three components, two of them relabelled.
+const STORY_COMPONENTS: readonly Component[] = ["CONTENT_LANGUAGE", "PACING", "VISUAL_COMFORT"];
+const STORY_LABELS: Partial<Record<Component, string>> = { PACING: "Reading pace", VISUAL_COMFORT: "Illustrations" };
+
+export function componentsFor(contentType: string): readonly Component[] {
+  return contentType === "STORYBOOK" ? STORY_COMPONENTS : COMPONENTS;
+}
+
+export function componentLabel(component: Component, contentType: string): string {
+  return (contentType === "STORYBOOK" && STORY_LABELS[component]) || COMPONENT_LABELS[component];
+}
+
 export interface ScoringConfig {
   version: string;
   weights: Record<Component, number>;
@@ -103,14 +115,14 @@ function resolveCriteria(assessments: AssessmentInput[]) {
   return resolved;
 }
 
-function resolveComponent(assessments: AssessmentInput[], component: Component, weight: number): ComponentResult {
+function resolveComponent(assessments: AssessmentInput[], component: Component, weight: number, label: string): ComponentResult {
   for (const source of PRECEDENCE) {
     for (const assessment of assessments.filter((a) => a.assessorType === source)) {
       const score = assessment.scores.find((s) => s.component === component && s.status === "MEASURED" && s.value !== null);
       if (score) {
         return {
           component,
-          label: COMPONENT_LABELS[component],
+          label,
           weight,
           value: score.value,
           source,
@@ -124,7 +136,7 @@ function resolveComponent(assessments: AssessmentInput[], component: Component, 
   }
   return {
     component,
-    label: COMPONENT_LABELS[component],
+    label,
     weight,
     value: null,
     source: null,
@@ -157,7 +169,7 @@ function buildReason(result: Omit<KidqScoreResult, "reason">) {
   return sentences.join(" ");
 }
 
-export function computeKidqScore(assessments: AssessmentInput[], config: ScoringConfig): KidqScoreResult {
+export function computeKidqScore(assessments: AssessmentInput[], config: ScoringConfig, contentType = "VIDEO"): KidqScoreResult {
   const ordered = newestFirst(assessments);
 
   // 1. Hard safety check before any weighting (scoring MD §5).
@@ -171,15 +183,18 @@ export function computeKidqScore(assessments: AssessmentInput[], config: Scoring
   const blockedBySafety = safetyFlags.length > 0;
 
   // 2. Weighted score over measured components, renormalised by the measured weight.
-  const components = COMPONENTS.map((component) => resolveComponent(ordered, component, config.weights[component]));
+  const components = componentsFor(contentType).map((component) =>
+    resolveComponent(ordered, component, config.weights[component], componentLabel(component, contentType)),
+  );
   const measured = components.filter((c) => c.value !== null);
   const measuredWeight = measured.reduce((sum, c) => sum + c.weight, 0);
   const weighted = measured.reduce((sum, c) => sum + c.weight * (c.value ?? 0), 0);
   const rawScore = measuredWeight > 0 ? weighted / measuredWeight : null;
 
-  // 3. Confidence: share of the total weight that was measured, discounted by who measured it.
+  // 3. Confidence: share of the applicable weight that was measured, discounted by who measured it.
+  const applicableWeight = components.reduce((sum, c) => sum + c.weight, 0);
   const confidence = round(
-    measured.reduce((sum, c) => sum + c.weight * config.sourceReliability[c.source ?? "RULE"], 0),
+    measured.reduce((sum, c) => sum + c.weight * config.sourceReliability[c.source ?? "RULE"], 0) / (applicableWeight || 1),
     3,
   );
 

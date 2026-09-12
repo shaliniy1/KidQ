@@ -1,11 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  childAgeYears,
-  recommend,
-  type CandidateInput,
-  type ChildProfileInput,
-  type RankingConfig,
-} from "../../src/domain/recommendation";
+import { recommend, type CandidateInput, type ChildProfileInput, type RankingConfig } from "../../src/domain/recommendation";
 
 const config: RankingConfig = {
   version: "RANK_V1",
@@ -22,12 +16,12 @@ const config: RankingConfig = {
 const profile: ChildProfileInput = {
   ageYears: 4,
   languages: ["en"],
-  contentTypes: ["VIDEO"],
   interests: ["animals", "space"],
   developmentGoals: ["social"],
   regulationGoals: ["calm"],
+  contentMix: "SURPRISE",
   preferredCategories: [],
-  dailyMinutes: 30,
+  sessionMinutes: 30,
 };
 
 let counter = 0;
@@ -42,7 +36,7 @@ function candidate(overrides: Partial<CandidateInput> = {}): CandidateInput {
     language: "en",
     ageMin: 2,
     ageMax: 6,
-    category: "animals_nature",
+    category: "general_knowledge",
     interests: ["animals"],
     developmentGoals: ["social"],
     regulationGoals: [],
@@ -66,10 +60,17 @@ describe("recommend", () => {
       candidate({ developmentGoals: [], regulationGoals: [] }),
       candidate({ ageMin: 5, ageMax: 6 }),
       candidate({ language: "hi" }),
-      candidate({ contentType: "STORYBOOK" }),
     ];
     const result = recommend(profile, [good, ...rejected], config, new Set());
     expect(result.map((r) => r.contentId)).toEqual([good.id]);
+  });
+
+  it("shows only the chosen categories when the parent picks them, and a mix otherwise", () => {
+    const science = candidate({ category: "science" });
+    const nature = candidate({ category: "general_knowledge" });
+    const chosen: ChildProfileInput = { ...profile, contentMix: "CHOSEN", preferredCategories: ["science"] };
+    expect(recommend(chosen, [science, nature], config, new Set()).map((r) => r.contentId)).toEqual([science.id]);
+    expect(recommend(profile, [science, nature], config, new Set())).toHaveLength(2);
   });
 
   it("ranks profile matches above higher-scored unmatched content, which is labelled cold start", () => {
@@ -118,8 +119,3 @@ describe("recommend", () => {
   });
 });
 
-describe("childAgeYears", () => {
-  it("computes age in years to one decimal", () => {
-    expect(childAgeYears(2022, 3, new Date(Date.UTC(2026, 8, 12)))).toBe(4.5);
-  });
-});

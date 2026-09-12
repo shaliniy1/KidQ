@@ -21,7 +21,7 @@ Domain terms are in `CONTEXT.md`.
 ## Invariants
 
 - **Admin gate.** Only an admin publication decision makes content visible, and every parent/child query reads `APPROVED` items only. RULE and MODEL assessors may recommend rejection; approval is HUMAN-only, and the database enforces it (`assessments_no_automated_approval`, `publication_decisions_admin_approval`).
-- **Official APIs only**: YouTube Data API, NASA Image and Video Library, MediaWiki. Third-party media stays at its source and plays through the KidQ Player. Gemini watches the public YouTube URL; KidQ keeps no copy of YouTube media.
+- **Official APIs only**: YouTube Data API, NASA Image and Video Library, MediaWiki, and StoryWeaver's public API (undocumented; confirm with StoryWeaver before prod — `docs/content-curation/storyweaver.md`). Third-party media stays at its source and plays through the KidQ Player; picture books open in its story reader. Gemini watches the public YouTube URL; KidQ keeps no copy of YouTube media.
 - **Rights gate.** Each item gets a `rights_assertions` row. An unknown permission disables the operation it covers: media copy, transcript storage, playback.
 - **Content score** comes only from the API (`api/src/domain/scoring`); UIs render `content_score` as given. Ranking uses relevance, content score, expert review and preference — popularity signals stay out.
 - **Family scope.** Parent queries filter by the signed-in parent. Gemini receives only the video, its public metadata and the rubric.

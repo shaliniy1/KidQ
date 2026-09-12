@@ -76,12 +76,15 @@
       "id": "storyweaver",
       "priority": 3,
       "name": "StoryWeaver",
-      "status": "PENDING_LICENSE_REVIEW",
+      "status": "enabled_for_qa",
       "contentTypes": ["STORYBOOK"],
-      "authentication": "to_be_confirmed",
-      "fetch": ["story_id", "title", "author", "illustrator", "language", "reading_level", "license", "attribution", "source_url"],
-      "rightsCheck": "Confirm the current official access method and license terms before implementing automated collection.",
-      "docs": "https://storyweaver.org.in/"
+      "discoveryEndpoint": "https://storyweaver.org.in/api/v1/books-search",
+      "detailEndpoint": "https://storyweaver.org.in/api/v1/stories/{slug}/read",
+      "authentication": "none (public web API; undocumented, so confirm KidQ's use with StoryWeaver before prod)",
+      "fetch": ["story_id", "title", "author", "illustrator", "language", "reading_level", "license", "attribution", "source_url", "page_text", "illustration_urls"],
+      "doNotFetch": ["pdf", "epub", "readalong_audio", "video"],
+      "rightsCheck": "Store a book only when its attribution page releases the story and every illustration under CC BY, CC BY-SA or CC0. Illustrations stay at the source.",
+      "docs": "docs/content-curation/storyweaver.md"
     }
   ]
 }

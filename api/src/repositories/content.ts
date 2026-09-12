@@ -13,7 +13,8 @@ export const YOUTUBE_PLAYER_PARAMS = { controls: 0, disablekb: 1, fs: 0, iv_load
 const CARD_SELECT = `
   SELECT v.*, ks.components AS score_detail, ks.reason AS score_reason, ks.missing AS score_missing,
     er.recommend AS expert_recommend, er.total AS expert_total, er.verified AS expert_verified,
-    (SELECT count(*)::int FROM library_items li WHERE li.content_item_id = v.id AND li.state = 'REQUESTED') AS parent_requests
+    (SELECT count(*)::int FROM library_items li WHERE li.content_item_id = v.id AND li.state = 'REQUESTED') AS parent_requests,
+    (SELECT jsonb_array_length(s.story->'pages') FROM source_records s WHERE s.id = v.source_record_id) AS story_page_count
   FROM content_records_v v
   LEFT JOIN LATERAL (SELECT components, reason, missing FROM kidq_scores
                      WHERE content_item_id = v.id ORDER BY created_at DESC LIMIT 1) ks ON true
@@ -65,6 +66,8 @@ function toContentScore(row: Row) {
 }
 
 function toPlayer(row: Row) {
+  // Picture books open in the KidQ story reader (GET /content-items/:id/story).
+  if (row.content_type === "STORYBOOK") return row.story_page_count ? { provider: "story" as const, page_count: row.story_page_count as number } : null;
   if (row.source === "youtube" && row.external_id) {
     return {
       provider: "youtube" as const,
@@ -123,6 +126,28 @@ export function toAdminCard(row: Row) {
   };
 }
 
+function toStory(row: Row, story: { pages: unknown[]; credits?: string | null }) {
+  return {
+    title: row.title as string,
+    pages: story.pages,
+    credits: story.credits ?? null,
+    attribution: { text: row.attribution_text ?? null, license_name: row.license_name ?? null, license_url: row.license_url ?? null },
+  };
+}
+
+/** A picture book's pages and credits for the KidQ reader; parents only ever get published books. */
+export async function getStory(db: Db, id: string, options: { approvedOnly: boolean }) {
+  const row = (
+    await db.query(
+      `SELECT v.title, v.attribution_text, v.license_name, v.license_url, s.story
+       FROM content_records_v v JOIN source_records s ON s.id = v.source_record_id
+       WHERE v.id = $1 AND s.story IS NOT NULL ${options.approvedOnly ? "AND v.current_status = 'APPROVED'" : ""}`,
+      [id],
+    )
+  ).rows[0];
+  return row ? toStory(row, row.story) : null;
+}
+
 export async function listAdminContent(db: Db, filters: ListContentQuery, extraWhere: string[] = []) {
   const where = [...extraWhere];
   const params: unknown[] = [];
@@ -135,7 +160,24 @@ export async function listAdminContent(db: Db, filters: ListContentQuery, extraW
   if (filters.source) add((p) => `v.source = ${p}`, filters.source);
   if (filters.flagged) add((p) => `v.has_critical_flag = ${p}`, filters.flagged === "true");
   if (filters.min_score !== undefined) add((p) => `v.kidq_score >= ${p}`, filters.min_score);
-  if (filters.q) add((p) => `v.title ILIKE ${p}`, `%${filters.q.replace(/[%_]/g, (c) => `\\${c}`)}%`);
+  if (filters.q) {
+    const normalizedAge = filters.q.toLowerCase().replace(/[–—]/g, "-").replace(/years?|age/g, "").trim();
+    const searchedAge = AGE_GROUPS.find((group) => normalizedAge === group.key.replace("_", "-") || normalizedAge === `${group.min}-${group.max}`);
+    const ageSearch = searchedAge ? `OR (v.age_min < ${searchedAge.max} AND v.age_max > ${searchedAge.min})` : "";
+    add(
+      (p) => `(v.title ILIKE ${p}
+        OR v.channel_or_creator ILIKE ${p}
+        OR v.kidq_summary ILIKE ${p}
+        OR replace(v.category, '_', ' ') ILIKE ${p}
+        OR replace(v.content_type, '_', ' ') ILIKE ${p}
+        OR array_to_string(v.interests, ' ') ILIKE ${p}
+        OR array_to_string(v.keywords, ' ') ILIKE ${p}
+        OR array_to_string(v.development_goals, ' ') ILIKE ${p}
+        OR array_to_string(v.regulation_goals, ' ') ILIKE ${p}
+        ${ageSearch})`,
+      `%${filters.q.replace(/[%_\\]/g, (c) => `\\${c}`)}%`,
+    );
+  }
   if (filters.age_group) {
     const group = AGE_GROUPS.find((g) => g.key === filters.age_group);
     if (group) {
@@ -199,7 +241,7 @@ export async function getAdminDetail(db: Db, id: string) {
     db.query("SELECT changes, edited_by, created_at FROM editorial_revisions WHERE content_item_id = $1 ORDER BY created_at DESC", [id]),
     db.query("SELECT * FROM expert_reviews WHERE content_item_id = $1 ORDER BY created_at DESC", [id]),
     db.query(
-      `SELECT sr.connector_version, sr.raw_metadata FROM (
+      `SELECT sr.connector_version, sr.raw_metadata, sr.story FROM (
          SELECT s.*, ss.connector_version FROM source_records s JOIN source_systems ss ON ss.id = s.source_system_id
          WHERE s.content_item_id = $1 ORDER BY s.fetched_at DESC LIMIT 1) sr`,
       [id],
@@ -271,7 +313,12 @@ export async function getAdminDetail(db: Db, id: string) {
     provenance: {
       method: `${row.source}_api`,
       connector_version: source.rows[0]?.connector_version ?? null,
-      inspected_fields: row.source === "youtube" ? ["snippet", "contentDetails", "status", "topicDetails"] : ["search", "asset metadata"],
+      inspected_fields:
+        row.source === "youtube"
+          ? ["snippet", "contentDetails", "status", "topicDetails"]
+          : row.source === "storyweaver"
+            ? ["books-search", "story reader pages"]
+            : ["search", "asset metadata"],
       audiovisual_inspected: meta.rows.some((a) => a.audiovisual_inspected),
     },
   };
@@ -316,5 +363,6 @@ export async function getAdminDetail(db: Db, id: string) {
     },
     transcript_status: row.transcript_status ?? null,
     raw_metadata: source.rows[0]?.raw_metadata ?? null,
+    story: source.rows[0]?.story ? toStory(row, source.rows[0].story) : null,
   };
 }

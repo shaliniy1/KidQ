@@ -232,8 +232,107 @@
             ]
           },
           {
+            "type": "object",
+            "properties": {
+              "provider": {
+                "type": "string",
+                "enum": [
+                  "story"
+                ]
+              },
+              "page_count": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "provider",
+              "page_count"
+            ]
+          },
+          {
             "type": "null"
           }
+        ]
+      },
+      "Story": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "pages": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "page": {
+                  "type": "number"
+                },
+                "text": {
+                  "type": "string"
+                },
+                "image_url": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "image_small_url": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "page",
+                "text",
+                "image_url",
+                "image_small_url"
+              ]
+            }
+          },
+          "credits": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The source's full attribution: story, illustrations, translation, publisher and license"
+          },
+          "attribution": {
+            "type": "object",
+            "properties": {
+              "text": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "license_name": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "license_url": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "text",
+              "license_name",
+              "license_url"
+            ]
+          }
+        },
+        "required": [
+          "title",
+          "pages",
+          "credits",
+          "attribution"
         ]
       },
       "ContentCard": {
@@ -266,7 +365,8 @@
             "enum": [
               "youtube",
               "nasa_images",
-              "wikimedia_commons"
+              "wikimedia_commons",
+              "storyweaver"
             ]
           },
           "creator": {
@@ -514,32 +614,16 @@
       "Child": {
         "type": "object",
         "properties": {
-          "nickname": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 40
-          },
-          "birth_year": {
-            "type": "integer",
-            "minimum": 2015,
-            "maximum": 2100
-          },
-          "birth_month": {
-            "type": "integer",
-            "minimum": 1,
-            "maximum": 12
-          },
           "languages": {
             "type": "array",
             "items": {
               "type": "string",
+              "minLength": 2,
               "maxLength": 10
             },
             "minItems": 1,
-            "maxItems": 5,
-            "default": [
-              "en"
-            ]
+            "maxItems": 3,
+            "description": "Content languages the parent chose (keys from GET /taxonomy); defaults to the parent's language"
           },
           "interests": {
             "type": "array",
@@ -547,22 +631,16 @@
               "type": "string",
               "maxLength": 60
             },
-            "maxItems": 20,
-            "default": []
+            "maxItems": 19,
+            "description": "Block A. Empty broadens the feed; it never narrows it."
           },
-          "content_types": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "enum": [
-                "VIDEO",
-                "ACTIVITY",
-                "STORYBOOK",
-                "INTERACTIVE_CONTENT"
-              ]
-            },
-            "maxItems": 4,
-            "default": []
+          "content_mix": {
+            "type": "string",
+            "enum": [
+              "SURPRISE",
+              "CHOSEN"
+            ],
+            "description": "Block B. SURPRISE: an age-appropriate mix. CHOSEN: only preferred_categories."
           },
           "preferred_categories": {
             "type": "array",
@@ -570,8 +648,8 @@
               "type": "string",
               "maxLength": 60
             },
-            "maxItems": 15,
-            "default": []
+            "maxItems": 12,
+            "description": "Block B categories; sending some without content_mix means CHOSEN"
           },
           "development_goals": {
             "type": "array",
@@ -579,8 +657,8 @@
               "type": "string",
               "maxLength": 60
             },
-            "maxItems": 10,
-            "default": []
+            "maxItems": 8,
+            "description": "Block C: never asked. Omit, or send [], for the age-band defaults."
           },
           "regulation_goals": {
             "type": "array",
@@ -588,32 +666,101 @@
               "type": "string",
               "maxLength": 60
             },
-            "maxItems": 10,
-            "default": []
+            "maxItems": 6,
+            "description": "Block D. Empty or all six means no restriction."
           },
-          "daily_minutes": {
-            "type": [
-              "integer",
-              "null"
+          "session_minutes": {
+            "anyOf": [
+              {
+                "type": "number",
+                "enum": [
+                  15
+                ]
+              },
+              {
+                "type": "number",
+                "enum": [
+                  30
+                ]
+              },
+              {
+                "type": "number",
+                "enum": [
+                  45
+                ]
+              },
+              {
+                "type": "number",
+                "enum": [
+                  60
+                ]
+              },
+              {
+                "type": "number",
+                "enum": [
+                  90
+                ]
+              }
             ],
-            "minimum": 5,
-            "maximum": 240,
-            "default": null
+            "description": "Block E: session length; the breaks follow from it"
           },
-          "break_preference": {
-            "type": [
-              "string",
-              "null"
+          "break_type": {
+            "type": "string",
+            "enum": [
+              "MOVEMENT",
+              "QUIET",
+              "ALTERNATE"
             ],
-            "maxLength": 60,
-            "default": null
+            "description": "Block E: MOVEMENT, QUIET or ALTERNATE"
           },
           "id": {
             "type": "string",
             "format": "uuid"
           },
+          "nickname": {
+            "type": "string"
+          },
+          "age_band": {
+            "type": "string",
+            "enum": [
+              "0_2",
+              "2_3",
+              "3_4",
+              "4_5",
+              "5_6"
+            ],
+            "description": "The band today: the one the parent picked, moved on as the child grows"
+          },
           "age_years": {
-            "type": "number"
+            "type": "number",
+            "description": "Estimated from the band and the time since it was set"
+          },
+          "development_goals_source": {
+            "type": "string",
+            "enum": [
+              "AGE_DEFAULT",
+              "PARENT"
+            ]
+          },
+          "break_plan": {
+            "type": "object",
+            "properties": {
+              "total_breaks": {
+                "type": "number"
+              },
+              "mid_session_breaks": {
+                "type": "number"
+              },
+              "wind_down": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "total_breaks",
+              "mid_session_breaks",
+              "wind_down"
+            ],
+            "description": "One break per 15 minutes; the last is always the wind-down"
           },
           "created_at": {
             "type": "string"
@@ -623,11 +770,20 @@
           }
         },
         "required": [
-          "nickname",
-          "birth_year",
-          "birth_month",
+          "languages",
+          "interests",
+          "content_mix",
+          "preferred_categories",
+          "development_goals",
+          "regulation_goals",
+          "session_minutes",
+          "break_type",
           "id",
+          "nickname",
+          "age_band",
           "age_years",
+          "development_goals_source",
+          "break_plan",
           "created_at",
           "updated_at"
         ]
@@ -768,7 +924,8 @@
                         "enum": [
                           "youtube",
                           "nasa_images",
-                          "wikimedia_commons"
+                          "wikimedia_commons",
+                          "storyweaver"
                         ]
                       },
                       "queries": {
@@ -1284,8 +1441,10 @@
               "type": "string",
               "enum": [
                 "0_2",
-                "2_4",
-                "4_6"
+                "2_3",
+                "3_4",
+                "4_5",
+                "5_6"
               ]
             },
             "required": false,
@@ -1307,7 +1466,8 @@
               "enum": [
                 "youtube",
                 "nasa_images",
-                "wikimedia_commons"
+                "wikimedia_commons",
+                "storyweaver"
               ]
             },
             "required": false,
@@ -1654,7 +1814,17 @@
                         "null"
                       ]
                     },
-                    "raw_metadata": {}
+                    "raw_metadata": {},
+                    "story": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/Story"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
                   },
                   "required": [
                     "content",
@@ -1664,7 +1834,8 @@
                     "revisions",
                     "expert_reviews",
                     "rights",
-                    "transcript_status"
+                    "transcript_status",
+                    "story"
                   ]
                 }
               }
@@ -1824,7 +1995,17 @@
                         "null"
                       ]
                     },
-                    "raw_metadata": {}
+                    "raw_metadata": {},
+                    "story": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/Story"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
                   },
                   "required": [
                     "content",
@@ -1834,7 +2015,8 @@
                     "revisions",
                     "expert_reviews",
                     "rights",
-                    "transcript_status"
+                    "transcript_status",
+                    "story"
                   ]
                 }
               }
@@ -2128,7 +2310,17 @@
                         "null"
                       ]
                     },
-                    "raw_metadata": {}
+                    "raw_metadata": {},
+                    "story": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/Story"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
                   },
                   "required": [
                     "content",
@@ -2138,7 +2330,8 @@
                     "revisions",
                     "expert_reviews",
                     "rights",
-                    "transcript_status"
+                    "transcript_status",
+                    "story"
                   ]
                 }
               }
@@ -2344,7 +2537,17 @@
                         "null"
                       ]
                     },
-                    "raw_metadata": {}
+                    "raw_metadata": {},
+                    "story": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/Story"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
                   },
                   "required": [
                     "content",
@@ -2354,7 +2557,8 @@
                     "revisions",
                     "expert_reviews",
                     "rights",
-                    "transcript_status"
+                    "transcript_status",
+                    "story"
                   ]
                 }
               }
@@ -2713,7 +2917,17 @@
                         "null"
                       ]
                     },
-                    "raw_metadata": {}
+                    "raw_metadata": {},
+                    "story": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/Story"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
                   },
                   "required": [
                     "content",
@@ -2723,7 +2937,8 @@
                     "revisions",
                     "expert_reviews",
                     "rights",
-                    "transcript_status"
+                    "transcript_status",
+                    "story"
                   ]
                 }
               }
@@ -3061,7 +3276,17 @@
                         "null"
                       ]
                     },
-                    "raw_metadata": {}
+                    "raw_metadata": {},
+                    "story": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/Story"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
                   },
                   "required": [
                     "content",
@@ -3071,7 +3296,8 @@
                     "revisions",
                     "expert_reviews",
                     "rights",
-                    "transcript_status"
+                    "transcript_status",
+                    "story"
                   ]
                 }
               }
@@ -3122,7 +3348,7 @@
     },
     "/content-items/{id}/reanalyze": {
       "post": {
-        "summary": "Queue the rule checks and AI scoring again (ignores the cache)",
+        "summary": "Queue AI scoring again, ignoring the AI cache (rule checks re-run only if the source metadata changed)",
         "tags": [
           "Scoring"
         ],
@@ -3152,6 +3378,100 @@
                   "properties": {
                     "queued": {
                       "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "queued"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/content-items/bulk-reanalyze": {
+      "post": {
+        "summary": "Queue AI scoring for every item the AI hasn't reviewed yet (shortest first)",
+        "tags": [
+          "Scoring"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "scope": {
+                    "type": "string",
+                    "enum": [
+                      "UNSCORED"
+                    ],
+                    "description": "UNSCORED: every item the AI hasn't reviewed yet, except rejected ones"
+                  }
+                },
+                "required": [
+                  "scope"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "queued": {
+                      "type": "integer"
                     }
                   },
                   "required": [
@@ -3305,9 +3625,85 @@
         }
       }
     },
+    "/content-items/{id}/story": {
+      "get": {
+        "summary": "A picture book's pages and credits for the KidQ reader (parents: published books only)",
+        "tags": [
+          "Content"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Story"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/dashboard": {
       "get": {
-        "summary": "Counts by state and source, flags, queue and AI usage today",
+        "summary": "Counts by state and source, flags, the job queue, and AI scoring coverage and usage",
         "tags": [
           "Content"
         ],
@@ -3323,7 +3719,148 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "additionalProperties": {}
+                  "properties": {
+                    "total": {
+                      "type": "number"
+                    },
+                    "by_state": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "number"
+                      }
+                    },
+                    "by_source": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "number"
+                      }
+                    },
+                    "flagged": {
+                      "type": "number"
+                    },
+                    "queue": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "event_type": {
+                            "type": "string"
+                          },
+                          "status": {
+                            "type": "string"
+                          },
+                          "n": {
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "event_type",
+                          "status",
+                          "n"
+                        ]
+                      }
+                    },
+                    "ai": {
+                      "type": "object",
+                      "properties": {
+                        "enabled": {
+                          "type": "boolean"
+                        },
+                        "model": {
+                          "type": "string",
+                          "description": "The scoring model; the fallbacks in `models` take over when its free daily quota runs out"
+                        },
+                        "models": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "model": {
+                                "type": "string"
+                              },
+                              "requests": {
+                                "type": "number"
+                              },
+                              "paused": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "model",
+                              "requests",
+                              "paused"
+                            ]
+                          },
+                          "description": "The scoring model and its fallbacks, in the order they're tried, with today's use"
+                        },
+                        "paused_until": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "description": "Set while every model has used its daily quota; AI scoring resumes then"
+                        },
+                        "scored": {
+                          "type": "number",
+                          "description": "Items the AI has reviewed and scored"
+                        },
+                        "queued": {
+                          "type": "number",
+                          "description": "Items waiting for, or going through, analysis"
+                        },
+                        "unscored": {
+                          "type": "number",
+                          "description": "Items the AI hasn't reviewed yet, rejected ones excluded"
+                        },
+                        "could_not_review": {
+                          "type": "number",
+                          "description": "Items the AI couldn't review: media rights, length, private video or invalid output"
+                        },
+                        "today": {
+                          "type": "object",
+                          "properties": {
+                            "requests": {
+                              "type": "number"
+                            },
+                            "youtube_video_seconds": {
+                              "type": "number"
+                            },
+                            "file_video_seconds": {
+                              "type": "number"
+                            },
+                            "youtube_daily_cap_seconds": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "requests",
+                            "youtube_video_seconds",
+                            "file_video_seconds",
+                            "youtube_daily_cap_seconds"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "enabled",
+                        "model",
+                        "models",
+                        "paused_until",
+                        "scored",
+                        "queued",
+                        "unscored",
+                        "could_not_review",
+                        "today"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "total",
+                    "by_state",
+                    "by_source",
+                    "flagged",
+                    "queue",
+                    "ai"
+                  ]
                 }
               }
             }
@@ -3388,77 +3925,115 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "age_years": {
-                    "type": "number",
-                    "minimum": 0,
-                    "maximum": 6
-                  },
                   "languages": {
                     "type": "array",
                     "items": {
                       "type": "string",
+                      "minLength": 2,
                       "maxLength": 10
                     },
                     "minItems": 1,
-                    "maxItems": 5,
-                    "default": [
-                      "en"
-                    ]
+                    "maxItems": 3,
+                    "description": "Content languages the parent chose (keys from GET /taxonomy); defaults to the parent's language"
                   },
                   "interests": {
                     "type": "array",
                     "items": {
-                      "type": "string"
-                    },
-                    "maxItems": 20,
-                    "default": []
-                  },
-                  "content_types": {
-                    "type": "array",
-                    "items": {
                       "type": "string",
-                      "enum": [
-                        "VIDEO",
-                        "ACTIVITY",
-                        "STORYBOOK",
-                        "INTERACTIVE_CONTENT"
-                      ]
+                      "maxLength": 60
                     },
-                    "maxItems": 4,
-                    "default": []
+                    "maxItems": 19,
+                    "description": "Block A. Empty broadens the feed; it never narrows it."
+                  },
+                  "content_mix": {
+                    "type": "string",
+                    "enum": [
+                      "SURPRISE",
+                      "CHOSEN"
+                    ],
+                    "description": "Block B. SURPRISE: an age-appropriate mix. CHOSEN: only preferred_categories."
                   },
                   "preferred_categories": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "maxLength": 60
                     },
-                    "maxItems": 15,
-                    "default": []
+                    "maxItems": 12,
+                    "description": "Block B categories; sending some without content_mix means CHOSEN"
                   },
                   "development_goals": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "maxLength": 60
                     },
-                    "maxItems": 10,
-                    "default": []
+                    "maxItems": 8,
+                    "description": "Block C: never asked. Omit, or send [], for the age-band defaults."
                   },
                   "regulation_goals": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "maxLength": 60
                     },
-                    "maxItems": 10,
-                    "default": []
+                    "maxItems": 6,
+                    "description": "Block D. Empty or all six means no restriction."
                   },
-                  "daily_minutes": {
-                    "type": [
-                      "integer",
-                      "null"
+                  "session_minutes": {
+                    "anyOf": [
+                      {
+                        "type": "number",
+                        "enum": [
+                          15
+                        ]
+                      },
+                      {
+                        "type": "number",
+                        "enum": [
+                          30
+                        ]
+                      },
+                      {
+                        "type": "number",
+                        "enum": [
+                          45
+                        ]
+                      },
+                      {
+                        "type": "number",
+                        "enum": [
+                          60
+                        ]
+                      },
+                      {
+                        "type": "number",
+                        "enum": [
+                          90
+                        ]
+                      }
                     ],
-                    "minimum": 5,
-                    "maximum": 240,
-                    "default": null
+                    "description": "Block E: session length; the breaks follow from it"
+                  },
+                  "break_type": {
+                    "type": "string",
+                    "enum": [
+                      "MOVEMENT",
+                      "QUIET",
+                      "ALTERNATE"
+                    ],
+                    "description": "Block E: MOVEMENT, QUIET or ALTERNATE"
+                  },
+                  "age_band": {
+                    "type": "string",
+                    "enum": [
+                      "0_2",
+                      "2_3",
+                      "3_4",
+                      "4_5",
+                      "5_6"
+                    ],
+                    "description": "Age band: the same five bands admins tag content with"
                   },
                   "limit": {
                     "type": "integer",
@@ -3468,7 +4043,7 @@
                   }
                 },
                 "required": [
-                  "age_years"
+                  "age_band"
                 ]
               }
             }
@@ -4284,6 +4859,383 @@
         }
       }
     },
+    "/onboarding": {
+      "post": {
+        "summary": "Screen 1 in one call: the parent's name and language, and each child's nickname and age band (1–6); the rest starts from age-based defaults",
+        "tags": [
+          "Onboarding"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "parent_name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 80
+                  },
+                  "language": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 10,
+                    "default": "en",
+                    "description": "The parent's pick, pre-selected from the device language when KidQ has it; children start with it"
+                  },
+                  "children": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "nickname": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 40,
+                          "description": "A nickname only, never the child's legal name"
+                        },
+                        "age_band": {
+                          "type": "string",
+                          "enum": [
+                            "0_2",
+                            "2_3",
+                            "3_4",
+                            "4_5",
+                            "5_6"
+                          ],
+                          "description": "Age band: the same five bands admins tag content with"
+                        }
+                      },
+                      "required": [
+                        "nickname",
+                        "age_band"
+                      ]
+                    },
+                    "minItems": 1,
+                    "maxItems": 6
+                  }
+                },
+                "required": [
+                  "parent_name",
+                  "children"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "parent": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "language": {
+                          "type": "string"
+                        },
+                        "created_at": {
+                          "type": "string"
+                        },
+                        "updated_at": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "language",
+                        "created_at",
+                        "updated_at"
+                      ]
+                    },
+                    "children": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Child"
+                      }
+                    }
+                  },
+                  "required": [
+                    "parent",
+                    "children"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me": {
+      "get": {
+        "summary": "The parent's profile and children; 404 NOT_ONBOARDED means show onboarding",
+        "tags": [
+          "Onboarding"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "parent": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "language": {
+                          "type": "string"
+                        },
+                        "created_at": {
+                          "type": "string"
+                        },
+                        "updated_at": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "language",
+                        "created_at",
+                        "updated_at"
+                      ]
+                    },
+                    "children": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Child"
+                      }
+                    }
+                  },
+                  "required": [
+                    "parent",
+                    "children"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "summary": "Change the parent's name or language",
+        "tags": [
+          "Onboarding"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 80
+                  },
+                  "language": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 10
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "parent": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "language": {
+                          "type": "string"
+                        },
+                        "created_at": {
+                          "type": "string"
+                        },
+                        "updated_at": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "language",
+                        "created_at",
+                        "updated_at"
+                      ]
+                    },
+                    "children": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Child"
+                      }
+                    }
+                  },
+                  "required": [
+                    "parent",
+                    "children"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/children": {
       "get": {
         "summary": "The signed-in parent's children",
@@ -4360,7 +5312,7 @@
         }
       },
       "post": {
-        "summary": "Create a child profile (onboarding). Use keys from GET /taxonomy.",
+        "summary": "Add a child: nickname and age band (up to 6 per family); keys from GET /taxonomy",
         "tags": [
           "Children"
         ],
@@ -4375,32 +5327,16 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "nickname": {
-                    "type": "string",
-                    "minLength": 1,
-                    "maxLength": 40
-                  },
-                  "birth_year": {
-                    "type": "integer",
-                    "minimum": 2015,
-                    "maximum": 2100
-                  },
-                  "birth_month": {
-                    "type": "integer",
-                    "minimum": 1,
-                    "maximum": 12
-                  },
                   "languages": {
                     "type": "array",
                     "items": {
                       "type": "string",
+                      "minLength": 2,
                       "maxLength": 10
                     },
                     "minItems": 1,
-                    "maxItems": 5,
-                    "default": [
-                      "en"
-                    ]
+                    "maxItems": 3,
+                    "description": "Content languages the parent chose (keys from GET /taxonomy); defaults to the parent's language"
                   },
                   "interests": {
                     "type": "array",
@@ -4408,22 +5344,16 @@
                       "type": "string",
                       "maxLength": 60
                     },
-                    "maxItems": 20,
-                    "default": []
+                    "maxItems": 19,
+                    "description": "Block A. Empty broadens the feed; it never narrows it."
                   },
-                  "content_types": {
-                    "type": "array",
-                    "items": {
-                      "type": "string",
-                      "enum": [
-                        "VIDEO",
-                        "ACTIVITY",
-                        "STORYBOOK",
-                        "INTERACTIVE_CONTENT"
-                      ]
-                    },
-                    "maxItems": 4,
-                    "default": []
+                  "content_mix": {
+                    "type": "string",
+                    "enum": [
+                      "SURPRISE",
+                      "CHOSEN"
+                    ],
+                    "description": "Block B. SURPRISE: an age-appropriate mix. CHOSEN: only preferred_categories."
                   },
                   "preferred_categories": {
                     "type": "array",
@@ -4431,8 +5361,8 @@
                       "type": "string",
                       "maxLength": 60
                     },
-                    "maxItems": 15,
-                    "default": []
+                    "maxItems": 12,
+                    "description": "Block B categories; sending some without content_mix means CHOSEN"
                   },
                   "development_goals": {
                     "type": "array",
@@ -4440,8 +5370,8 @@
                       "type": "string",
                       "maxLength": 60
                     },
-                    "maxItems": 10,
-                    "default": []
+                    "maxItems": 8,
+                    "description": "Block C: never asked. Omit, or send [], for the age-band defaults."
                   },
                   "regulation_goals": {
                     "type": "array",
@@ -4449,31 +5379,74 @@
                       "type": "string",
                       "maxLength": 60
                     },
-                    "maxItems": 10,
-                    "default": []
+                    "maxItems": 6,
+                    "description": "Block D. Empty or all six means no restriction."
                   },
-                  "daily_minutes": {
-                    "type": [
-                      "integer",
-                      "null"
+                  "session_minutes": {
+                    "anyOf": [
+                      {
+                        "type": "number",
+                        "enum": [
+                          15
+                        ]
+                      },
+                      {
+                        "type": "number",
+                        "enum": [
+                          30
+                        ]
+                      },
+                      {
+                        "type": "number",
+                        "enum": [
+                          45
+                        ]
+                      },
+                      {
+                        "type": "number",
+                        "enum": [
+                          60
+                        ]
+                      },
+                      {
+                        "type": "number",
+                        "enum": [
+                          90
+                        ]
+                      }
                     ],
-                    "minimum": 5,
-                    "maximum": 240,
-                    "default": null
+                    "description": "Block E: session length; the breaks follow from it"
                   },
-                  "break_preference": {
-                    "type": [
-                      "string",
-                      "null"
+                  "break_type": {
+                    "type": "string",
+                    "enum": [
+                      "MOVEMENT",
+                      "QUIET",
+                      "ALTERNATE"
                     ],
-                    "maxLength": 60,
-                    "default": null
+                    "description": "Block E: MOVEMENT, QUIET or ALTERNATE"
+                  },
+                  "nickname": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 40,
+                    "description": "A nickname only, never the child's legal name"
+                  },
+                  "age_band": {
+                    "type": "string",
+                    "enum": [
+                      "0_2",
+                      "2_3",
+                      "3_4",
+                      "4_5",
+                      "5_6"
+                    ],
+                    "description": "Age band: the same five bands admins tag content with"
                   }
                 },
                 "required": [
                   "nickname",
-                  "birth_year",
-                  "birth_month"
+                  "age_band"
                 ]
               }
             }
@@ -4609,7 +5582,7 @@
         }
       },
       "patch": {
-        "summary": "Update onboarding preferences",
+        "summary": "Customize: interests, content mix, regulation goals, session length, breaks, languages or a new age band",
         "tags": [
           "Children"
         ],
@@ -4635,32 +5608,16 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "nickname": {
-                    "type": "string",
-                    "minLength": 1,
-                    "maxLength": 40
-                  },
-                  "birth_year": {
-                    "type": "integer",
-                    "minimum": 2015,
-                    "maximum": 2100
-                  },
-                  "birth_month": {
-                    "type": "integer",
-                    "minimum": 1,
-                    "maximum": 12
-                  },
                   "languages": {
                     "type": "array",
                     "items": {
                       "type": "string",
+                      "minLength": 2,
                       "maxLength": 10
                     },
                     "minItems": 1,
-                    "maxItems": 5,
-                    "default": [
-                      "en"
-                    ]
+                    "maxItems": 3,
+                    "description": "Content languages the parent chose (keys from GET /taxonomy); defaults to the parent's language"
                   },
                   "interests": {
                     "type": "array",
@@ -4668,22 +5625,16 @@
                       "type": "string",
                       "maxLength": 60
                     },
-                    "maxItems": 20,
-                    "default": []
+                    "maxItems": 19,
+                    "description": "Block A. Empty broadens the feed; it never narrows it."
                   },
-                  "content_types": {
-                    "type": "array",
-                    "items": {
-                      "type": "string",
-                      "enum": [
-                        "VIDEO",
-                        "ACTIVITY",
-                        "STORYBOOK",
-                        "INTERACTIVE_CONTENT"
-                      ]
-                    },
-                    "maxItems": 4,
-                    "default": []
+                  "content_mix": {
+                    "type": "string",
+                    "enum": [
+                      "SURPRISE",
+                      "CHOSEN"
+                    ],
+                    "description": "Block B. SURPRISE: an age-appropriate mix. CHOSEN: only preferred_categories."
                   },
                   "preferred_categories": {
                     "type": "array",
@@ -4691,8 +5642,8 @@
                       "type": "string",
                       "maxLength": 60
                     },
-                    "maxItems": 15,
-                    "default": []
+                    "maxItems": 12,
+                    "description": "Block B categories; sending some without content_mix means CHOSEN"
                   },
                   "development_goals": {
                     "type": "array",
@@ -4700,8 +5651,8 @@
                       "type": "string",
                       "maxLength": 60
                     },
-                    "maxItems": 10,
-                    "default": []
+                    "maxItems": 8,
+                    "description": "Block C: never asked. Omit, or send [], for the age-band defaults."
                   },
                   "regulation_goals": {
                     "type": "array",
@@ -4709,25 +5660,69 @@
                       "type": "string",
                       "maxLength": 60
                     },
-                    "maxItems": 10,
-                    "default": []
+                    "maxItems": 6,
+                    "description": "Block D. Empty or all six means no restriction."
                   },
-                  "daily_minutes": {
-                    "type": [
-                      "integer",
-                      "null"
+                  "session_minutes": {
+                    "anyOf": [
+                      {
+                        "type": "number",
+                        "enum": [
+                          15
+                        ]
+                      },
+                      {
+                        "type": "number",
+                        "enum": [
+                          30
+                        ]
+                      },
+                      {
+                        "type": "number",
+                        "enum": [
+                          45
+                        ]
+                      },
+                      {
+                        "type": "number",
+                        "enum": [
+                          60
+                        ]
+                      },
+                      {
+                        "type": "number",
+                        "enum": [
+                          90
+                        ]
+                      }
                     ],
-                    "minimum": 5,
-                    "maximum": 240,
-                    "default": null
+                    "description": "Block E: session length; the breaks follow from it"
                   },
-                  "break_preference": {
-                    "type": [
-                      "string",
-                      "null"
+                  "break_type": {
+                    "type": "string",
+                    "enum": [
+                      "MOVEMENT",
+                      "QUIET",
+                      "ALTERNATE"
                     ],
-                    "maxLength": 60,
-                    "default": null
+                    "description": "Block E: MOVEMENT, QUIET or ALTERNATE"
+                  },
+                  "nickname": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 40,
+                    "description": "A nickname only, never the child's legal name"
+                  },
+                  "age_band": {
+                    "type": "string",
+                    "enum": [
+                      "0_2",
+                      "2_3",
+                      "3_4",
+                      "4_5",
+                      "5_6"
+                    ],
+                    "description": "Age band: the same five bands admins tag content with"
                   }
                 }
               }

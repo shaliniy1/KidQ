@@ -44,6 +44,8 @@ export interface RequestOptions {
   body?: string;
   retries?: number;
   timeoutMs?: number;
+  /** Statuses handed back to the caller as-is instead of being retried or thrown. */
+  passStatuses?: number[];
 }
 
 export async function request(url: string, options: RequestOptions = {}): Promise<Response> {
@@ -58,7 +60,7 @@ export async function request(url: string, options: RequestOptions = {}): Promis
         body: options.body,
         signal: controller.signal,
       });
-      if (response.ok) return response;
+      if (response.ok || options.passStatuses?.includes(response.status)) return response;
       const retryable = response.status === 429 || response.status >= 500;
       if (!retryable || attempt >= retries) {
         throw new HttpError(response.status, `${redactUrl(url)} returned HTTP ${response.status}`, retryable);

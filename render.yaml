@@ -44,6 +44,8 @@ services:
         sync: false
       - key: AI_SCORING_MODEL
         value: gemini-3.8-flash
+      - key: AI_FALLBACK_MODELS
+        value: gemini-3.7-flash,gemini-3.6-flash
       - key: AI_DAILY_VIDEO_SECONDS_CAP
         value: "27000"
       - key: HTTP_USER_AGENT

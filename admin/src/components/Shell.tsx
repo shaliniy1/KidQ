@@ -6,11 +6,11 @@ import { useEffect, useState, type ReactNode } from "react";
 import { getAccessToken, signOut } from "@/lib/session";
 
 const LINKS = [
-  ["/", "Dashboard"],
-  ["/review", "Review queue"],
-  ["/content", "Content library"],
+  ["/", "Overview"],
+  ["/review", "Review"],
+  ["/content", "Content"],
   ["/add", "Add content"],
-  ["/config", "Configuration"],
+  ["/config", "Settings"],
 ] as const;
 
 export function Shell({ children }: { children: ReactNode }) {
@@ -35,7 +35,7 @@ export function Shell({ children }: { children: ReactNode }) {
     <div className="shell">
       <nav className="nav" aria-label="Admin">
         <div className="brand">
-          <span className="brand-mark">Q</span>KidQ Admin
+          <span className="brand-mark">Q</span>KidQ
         </div>
         {LINKS.map(([href, label]) => (
           <Link key={href} href={href} className={isActive(href) ? "active" : undefined}>
@@ -44,8 +44,7 @@ export function Shell({ children }: { children: ReactNode }) {
         ))}
         <button
           type="button"
-          className="btn small"
-          style={{ marginTop: "auto" }}
+          className="btn small sign-out"
           onClick={async () => {
             await signOut();
             router.replace("/login");

@@ -5,7 +5,16 @@ import { runMigrations } from "../../src/db/migrate";
 import { closePool, getPool } from "../../src/db/pool";
 import { createIngestionRun, getIngestionRun } from "../../src/services/ingestion";
 import { drainQueue } from "../../src/services/worker";
-import { agentOutput, fakeApis, installFakeApis, youtubeVideo, type FakeApis } from "../fixtures/sources";
+import {
+  agentOutput,
+  fakeApis,
+  geminiQuotaError,
+  installFakeApis,
+  storyAgentOutput,
+  storyweaverBook,
+  youtubeVideo,
+  type FakeApis,
+} from "../fixtures/sources";
 
 const pool = getPool();
 const VIDEO = "AAAAAAAAAAA";
@@ -131,6 +140,108 @@ describe("content pipeline (fixtures, real Postgres)", () => {
     const job = (await pool.query("SELECT status, available_at > now() AS later FROM outbox_events WHERE event_type = 'ANALYZE'")).rows[0];
     expect(job).toEqual({ status: "PENDING", later: true });
     expect(geminiCalls(apis)).toBe(0);
+  });
+
+  it("pauses AI scoring until the daily reset when every model's daily quota is used up, then resumes", async () => {
+    const apis = fakeApis();
+    apis.youtube.set(VIDEO, youtubeVideo(VIDEO));
+    apis.youtube.set("BBBBBBBBBBB", youtubeVideo("BBBBBBBBBBB", { title: "Gentle shapes" }));
+    apis.gemini.push(geminiQuotaError(), geminiQuotaError());
+    installFakeApis(apis);
+
+    await importUrls([VIDEO, "BBBBBBBBBBB"]);
+
+    // The first item used up the scoring model and its fallback; the second saw both paused and never called Gemini.
+    expect(geminiCalls(apis)).toBe(2);
+    const jobs = (await pool.query("SELECT status, available_at > now() AS later FROM outbox_events WHERE event_type = 'ANALYZE'")).rows;
+    expect(jobs).toEqual([
+      { status: "PENDING", later: true },
+      { status: "PENDING", later: true },
+    ]);
+    const statuses = async () => (await pool.query("SELECT analysis_status FROM content_items")).rows.map((row) => row.analysis_status);
+    expect(await statuses()).toEqual(["QUEUED", "QUEUED"]);
+    expect((await pool.query("SELECT model, quota_exhausted_at IS NOT NULL AS paused FROM ai_usage_daily ORDER BY model")).rows).toEqual([
+      { model: "gemini-3.7-flash", paused: true },
+      { model: "gemini-3.8-flash", paused: true },
+    ]);
+
+    // Next day the quota is back: both items are scored, each with a single rule check.
+    await pool.query("DELETE FROM ai_usage_daily");
+    await pool.query("UPDATE outbox_events SET available_at = now() WHERE event_type = 'ANALYZE'");
+    apis.gemini.push(agentOutput(), agentOutput());
+    await drainQueue();
+
+    expect(await statuses()).toEqual(["ASSESSED", "ASSESSED"]);
+    const assessors = (await pool.query("SELECT array_agg(assessor_type::text ORDER BY created_at) AS types FROM assessments GROUP BY content_item_id")).rows;
+    expect(assessors).toEqual([{ types: ["RULE", "MODEL"] }, { types: ["RULE", "MODEL"] }]);
+  });
+
+  it("moves to the next Flash model when one's daily quota runs out or it's overloaded", async () => {
+    const apis = fakeApis();
+    apis.youtube.set(VIDEO, youtubeVideo(VIDEO));
+    apis.youtube.set("BBBBBBBBBBB", youtubeVideo("BBBBBBBBBBB", { title: "Gentle shapes" }));
+    const overloaded = { status: 503, body: { error: { code: 503, status: "UNAVAILABLE", message: "The model is overloaded." } } };
+    // Item 1: the scoring model's daily quota is used up, so the fallback scores it.
+    // Item 2: the fallback is overloaded (three tries) and no other model is left today, so the item waits a few minutes.
+    apis.gemini.push(geminiQuotaError(), agentOutput(), overloaded, overloaded, overloaded);
+    installFakeApis(apis);
+
+    await importUrls([VIDEO, "BBBBBBBBBBB"]);
+
+    const models = apis.calls.filter((url) => url.includes(":generateContent")).map((url) => url.match(/models\/([^:]+):generateContent/)?.[1]);
+    expect(models).toEqual(["gemini-3.8-flash", "gemini-3.7-flash", "gemini-3.7-flash", "gemini-3.7-flash", "gemini-3.7-flash"]);
+    expect((await pool.query("SELECT model_name FROM assessments WHERE assessor_type = 'MODEL'")).rows).toEqual([{ model_name: "gemini-3.7-flash" }]);
+    const waiting = (
+      await pool.query(
+        `SELECT e.status, e.attempt_count, e.available_at > now() AS later, e.last_error FROM outbox_events e
+         JOIN source_records s ON s.content_item_id = e.aggregate_id WHERE e.event_type = 'ANALYZE' AND s.external_id = 'BBBBBBBBBBB'`,
+      )
+    ).rows[0];
+    // An overload is Google's problem, not the item's: it waits without using up a retry.
+    expect(waiting).toMatchObject({ status: "PENDING", attempt_count: 0, later: true });
+    expect(waiting.last_error).toMatch(/overloaded/);
+  });
+
+  it("imports an openly licensed StoryWeaver book, stores its pages and scores it without audio", async () => {
+    const apis = fakeApis();
+    const book = storyweaverBook(9001);
+    const closed = storyweaverBook(9002, { license: "CC BY-NC-ND 4.0", title: "Closed book" });
+    apis.storyweaver.hits.push(book.hit, closed.hit);
+    apis.storyweaver.reads.set(book.hit.slug, book.pages);
+    apis.storyweaver.reads.set(closed.hit.slug, closed.pages);
+    apis.gemini.push(storyAgentOutput());
+    installFakeApis(apis);
+
+    const runId = await createIngestionRun(pool, {
+      sourceSystemId: "storyweaver",
+      query: { mode: "search", queries: [{ query: "rain", maxResults: 5 }] },
+      requestedBy: "test",
+    });
+    await drainQueue();
+
+    const run = await getIngestionRun(pool, runId);
+    expect(run).toMatchObject({ status: "SUCCEEDED", records_seen: 2, records_created: 1, records_rejected_before_ai: 1 });
+    expect(run?.errors.map((error: { code: string }) => error.code)).toEqual(["REJECTED_LICENSE_NOT_OPEN"]);
+
+    const record = await item();
+    expect(record).toMatchObject({
+      content_type: "STORYBOOK",
+      source: "storyweaver",
+      license_name: "CC BY 4.0",
+      analysis_status: "ASSESSED",
+      studio_state: "READY_TO_APPROVE",
+      category: "storybooks",
+    });
+    // (0.40×92 + 0.25×85 + 0.20×88) / 0.85: a picture book has no audio component.
+    expect(Number(record.kidq_score)).toBe(89);
+    const story = (await pool.query("SELECT story FROM source_records")).rows[0].story;
+    expect(story.pages.map((page: { text: string }) => page.text)).toEqual(["On Sunday, Manu's parents got him a red raincoat.", "At last it rained, and Manu danced."]);
+    const labels = (await pool.query("SELECT components FROM kidq_scores ORDER BY created_at DESC LIMIT 1")).rows[0].components.components.map(
+      (component: { label: string }) => component.label,
+    );
+    expect(labels).toEqual(["Content & language", "Reading pace", "Illustrations"]);
+    // The AI read both pages and saw both illustrations inline.
+    expect(apis.calls.filter((url) => url.includes("illustration_crops")).length).toBe(2);
   });
 
   it("refuses automated approvals at the database level", async () => {

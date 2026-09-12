@@ -47,7 +47,7 @@ With `AUTH_MODE=dev`:
 npm run seed:discover -w api -- --drain
 ```
 
-Loads ~270 videos from YouTube, NASA and Wikimedia. Needs `YOUTUBE_DATA_API_KEY`; add `GEMINI_API_KEY` for AI scores.
+Loads ~270 videos from YouTube, NASA and Wikimedia, and ~48 StoryWeaver picture books. YouTube needs `YOUTUBE_DATA_API_KEY`; add `GEMINI_API_KEY` for AI scores.
 
 ## Checks
 

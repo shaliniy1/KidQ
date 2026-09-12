@@ -6,7 +6,7 @@ import { runMigrations } from "../../src/db/migrate";
 import { closePool, getPool } from "../../src/db/pool";
 import { createIngestionRun } from "../../src/services/ingestion";
 import { drainQueue } from "../../src/services/worker";
-import { agentOutput, fakeApis, installFakeApis, youtubeVideo, type FakeApis } from "../fixtures/sources";
+import { agentOutput, fakeApis, installFakeApis, storyAgentOutput, storyweaverBook, youtubeVideo, type FakeApis } from "../fixtures/sources";
 
 const app = createApp();
 const pool = getPool();
@@ -16,8 +16,8 @@ const PARENT_B = "Bearer dev:parent:33333333-3333-4333-8333-333333333333";
 
 let apis: FakeApis;
 
-async function importVideo(id: string, gemini: string[] = [agentOutput()]) {
-  apis.youtube.set(id, youtubeVideo(id));
+async function importVideo(id: string, gemini: string[] = [agentOutput()], title?: string) {
+  apis.youtube.set(id, youtubeVideo(id, { title }));
   apis.gemini.push(...gemini);
   await createIngestionRun(pool, { sourceSystemId: "youtube", query: { mode: "urls", urls: [id] }, requestedBy: "test" });
   await drainQueue();
@@ -25,14 +25,12 @@ async function importVideo(id: string, gemini: string[] = [agentOutput()]) {
 }
 
 async function createChild(auth: string, overrides: Record<string, unknown> = {}) {
-  const now = new Date();
   const response = await request(app)
     .post("/children")
     .set("Authorization", auth)
     .send({
       nickname: "Mia",
-      birth_year: now.getUTCFullYear() - 3,
-      birth_month: now.getUTCMonth() + 1,
+      age_band: "3_4",
       interests: ["numbers", "animals"],
       development_goals: ["cognitive"],
       regulation_goals: ["calm"],
@@ -50,7 +48,7 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-  await pool.query("TRUNCATE ingestion_runs, content_items, outbox_events, ai_usage_daily, child_profiles CASCADE");
+  await pool.query("TRUNCATE ingestion_runs, content_items, outbox_events, ai_usage_daily, child_profiles, parent_profiles CASCADE");
   vi.unstubAllGlobals();
   apis = fakeApis();
   installFakeApis(apis);
@@ -145,6 +143,52 @@ describe("API", () => {
     expect(overridden.body.content.content_score.score).toBe(88.8);
   });
 
+  it("sends every item the AI hasn't reviewed to the AI once, skipping rejected items", async () => {
+    await importVideo("AAAAAAAAAAA");
+    // The keyword rules hold these two back from the AI at import ("scary").
+    const held = await importVideo("EEEEEEEEEEE", [], "Scary monster story");
+    const rejected = await importVideo("FFFFFFFFFFF", [], "Scary monster story, part two");
+    await publish(rejected, { decision: "REJECTED", reason: "Not for young children." }).expect(201);
+
+    const scoreAll = () => request(app).post("/content-items/bulk-reanalyze").set("Authorization", ADMIN).send({ scope: "UNSCORED" });
+    const first = await scoreAll();
+    expect(first.status).toBe(202);
+    expect(first.body).toEqual({ queued: 1 });
+    expect((await scoreAll()).body).toEqual({ queued: 0 });
+
+    const ai = async () => (await request(app).get("/dashboard").set("Authorization", ADMIN)).body.ai;
+    expect(await ai()).toMatchObject({ enabled: true, scored: 1, queued: 1, unscored: 0, could_not_review: 0 });
+
+    apis.gemini.push(agentOutput());
+    await drainQueue();
+    expect(await ai()).toMatchObject({ scored: 2, queued: 0, unscored: 0 });
+    const reviews = (await pool.query("SELECT count(*)::int AS n FROM assessments WHERE content_item_id = $1 AND assessor_type = 'MODEL'", [held])).rows[0];
+    expect(reviews.n).toBe(1);
+  });
+
+  it("serves a picture book's pages to admins, and to parents only once it's published", async () => {
+    const book = storyweaverBook(9101);
+    apis.storyweaver.hits.push(book.hit);
+    apis.storyweaver.reads.set(book.hit.slug, book.pages);
+    apis.gemini.push(storyAgentOutput());
+    await createIngestionRun(pool, { sourceSystemId: "storyweaver", query: { mode: "search", queries: [{ query: "rain", maxResults: 5 }] }, requestedBy: "test" });
+    await drainQueue();
+    const id = (await pool.query("SELECT id FROM content_items WHERE content_type = 'STORYBOOK'")).rows[0].id as string;
+
+    const detail = (await request(app).get(`/content-items/${id}`).set("Authorization", ADMIN)).body;
+    expect(detail.content.player).toEqual({ provider: "story", page_count: 2 });
+    expect(detail.story.pages).toHaveLength(2);
+    expect(detail.content.content_score.breakdown.map((part: { key: string }) => part.key)).toEqual(["CONTENT_LANGUAGE", "PACING", "VISUAL_COMFORT"]);
+
+    const story = () => request(app).get(`/content-items/${id}/story`).set("Authorization", PARENT_A);
+    expect((await story()).status).toBe(404);
+    await publish(id, { decision: "APPROVED", reason: "Gentle rainy-day story." }).expect(201);
+    const published = await story();
+    expect(published.status).toBe(200);
+    expect(published.body).toMatchObject({ title: "A Rainy Day", attribution: { license_name: "CC BY 4.0" } });
+    expect(published.body.credits).toContain("Released under CC BY 4.0 license");
+  });
+
   it("keeps families apart", async () => {
     const id = await importVideo("AAAAAAAAAAA");
     await publish(id, { decision: "APPROVED", reason: "Good." });
@@ -187,12 +231,87 @@ describe("API", () => {
   });
 
   it("rejects onboarding keys that aren't in the shared taxonomy", async () => {
-    const response = await request(app)
-      .post("/children")
-      .set("Authorization", PARENT_A)
-      .send({ nickname: "Leo", birth_year: 2023, birth_month: 1, interests: ["dinosaurs"] });
+    const response = await request(app).post("/children").set("Authorization", PARENT_A).send({ nickname: "Leo", age_band: "2_3", interests: ["dinosaurs"] });
     expect(response.status).toBe(400);
     expect(response.body.error.code).toBe("UNKNOWN_TAXONOMY_KEY");
+  });
+
+  it("onboards a family in one call and fills in the rest from each child's age", async () => {
+    expect((await request(app).get("/me").set("Authorization", PARENT_A)).body.error.code).toBe("NOT_ONBOARDED");
+    const onboarded = await request(app)
+      .post("/onboarding")
+      .set("Authorization", PARENT_A)
+      .send({ parent_name: "Asha", language: "hi", children: [{ nickname: "Mia", age_band: "0_2" }, { nickname: "Leo", age_band: "4_5" }] });
+    expect(onboarded.status).toBe(201);
+    expect(onboarded.body.parent).toMatchObject({ name: "Asha", language: "hi" });
+    const [mia, leo] = onboarded.body.children;
+    expect(mia).toMatchObject({
+      nickname: "Mia",
+      age_band: "0_2",
+      age_years: 1,
+      languages: ["hi"],
+      interests: [],
+      content_mix: "SURPRISE",
+      development_goals: ["motor_skills", "communication", "emotional"],
+      development_goals_source: "AGE_DEFAULT",
+      regulation_goals: [],
+      session_minutes: 15,
+      break_type: "ALTERNATE",
+      break_plan: { total_breaks: 1, mid_session_breaks: 0, wind_down: true },
+    });
+    expect(leo).toMatchObject({ age_band: "4_5", session_minutes: 30, development_goals: ["cognitive", "creativity", "problem_solving"] });
+
+    // "Customize for Leo": every optional block at once. All six regulation goals mean no restriction.
+    const customized = await request(app)
+      .patch(`/children/${leo.id}`)
+      .set("Authorization", PARENT_A)
+      .send({
+        interests: ["space"],
+        content_mix: "CHOSEN",
+        preferred_categories: ["science"],
+        regulation_goals: ["calm", "emotional_regulation", "focus", "movement", "relaxation", "social_regulation"],
+        session_minutes: 45,
+        break_type: "QUIET",
+      });
+    expect(customized.body).toMatchObject({
+      content_mix: "CHOSEN",
+      preferred_categories: ["science"],
+      regulation_goals: [],
+      session_minutes: 45,
+      break_type: "QUIET",
+      break_plan: { total_breaks: 3, mid_session_breaks: 2, wind_down: true },
+    });
+    const noCategories = await request(app).patch(`/children/${leo.id}`).set("Authorization", PARENT_A).send({ content_mix: "CHOSEN", preferred_categories: [] });
+    expect(noCategories.body.error.code).toBe("CATEGORIES_REQUIRED");
+
+    const me = await request(app).get("/me").set("Authorization", PARENT_A);
+    expect(me.body.children.map((child: { nickname: string }) => child.nickname)).toEqual(["Mia", "Leo"]);
+    const tooMany = await request(app)
+      .post("/onboarding")
+      .set("Authorization", PARENT_A)
+      .send({ parent_name: "Asha", language: "hi", children: Array.from({ length: 5 }, (_, index) => ({ nickname: `Kid ${index}`, age_band: "2_3" })) });
+    expect(tooMany.status).toBe(422);
+    expect(tooMany.body.error.code).toBe("TOO_MANY_CHILDREN");
+  });
+
+  it("shares one vocabulary between onboarding and admin tagging", async () => {
+    const taxonomy = (await request(app).get("/taxonomy")).body;
+    expect(taxonomy.age_group.map((term: { key: string }) => term.key)).toEqual(["0_2", "2_3", "3_4", "4_5", "5_6"]);
+    expect(taxonomy.category.map((term: { label: string }) => term.label)).toEqual([
+      "Animation",
+      "Stories",
+      "Storybooks",
+      "Crafts",
+      "Painting",
+      "Science",
+      "Maths",
+      "Yoga",
+      "Activities",
+      "Educational",
+      "Music / Rhymes",
+      "Knowledge / General Learning",
+    ]);
+    expect(taxonomy.regulation_goal.find((term: { key: string }) => term.key === "calm").meta.parent_label).toBe("Help them calm down");
   });
 
   it("serves the OpenAPI contract", async () => {

@@ -1,102 +1,77 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { STATE_LABELS, api, unwrap } from "@/lib/api";
-
-interface Dashboard {
-  total: number;
-  by_state: Record<string, number>;
-  by_source: Record<string, number>;
-  flagged: number;
-  queue: Array<{ event_type: string; status: string; n: number }>;
-  ai_today: { youtube_video_seconds: number; daily_cap_seconds: number; requests: number; enabled: boolean };
-}
-
-const STATE_ORDER = ["READY_TO_APPROVE", "NEEDS_ATTENTION", "ANALYSIS_INCOMPLETE", "PENDING_ANALYSIS", "ANALYSING", "FAILED", "APPROVED", "REJECTED"];
+import { useCallback, useEffect, useState } from "react";
+import { api, friendlyError, unwrap, type Dashboard } from "@/lib/api";
 
 export default function DashboardPage() {
   const [data, setData] = useState<Dashboard | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    api
-      .GET("/dashboard")
-      .then((result) => setData(unwrap(result) as unknown as Dashboard))
-      .catch((failure: Error) => setError(failure.message));
+  const load = useCallback(async () => {
+    try {
+      setData(unwrap(await api.GET("/dashboard")));
+      setError(null);
+    } catch (failure) {
+      setError(friendlyError(failure, "The overview could not be loaded. Please try again."));
+    }
   }, []);
 
-  if (error) return <p className="error">{error}</p>;
-  if (!data) return <p className="muted">Loading…</p>;
+  useEffect(() => { void load(); }, [load]);
 
-  const minutesUsed = Math.round(data.ai_today.youtube_video_seconds / 60);
-  const minutesCap = Math.round(data.ai_today.daily_cap_seconds / 60);
+  if (!data) {
+    return error ? <div className="notice-error">{error}<button className="link-button" onClick={() => void load()}>Try again</button></div> : <p className="muted">Loading content…</p>;
+  }
+
+  const summaries = [
+    { label: "Draft", count: data.by_state.PENDING_ANALYSIS ?? 0, href: "/content?state=PENDING_ANALYSIS", tone: "draft" },
+    {
+      label: "Under review",
+      count: (data.by_state.READY_TO_APPROVE ?? 0) + (data.by_state.ANALYSING ?? 0) + (data.by_state.ANALYSIS_INCOMPLETE ?? 0),
+      href: "/review",
+      tone: "review",
+    },
+    {
+      label: "Needs changes",
+      count: (data.by_state.NEEDS_ATTENTION ?? 0) + (data.by_state.FAILED ?? 0) + (data.by_state.REJECTED ?? 0),
+      href: "/content?state=NEEDS_ATTENTION",
+      tone: "changes",
+    },
+    { label: "Published", count: data.by_state.APPROVED ?? 0, href: "/content?state=APPROVED", tone: "published" },
+  ];
+
   return (
-    <div className="stack">
-      <h1>Dashboard</h1>
-      <section className="grid">
-        <div className="card">
-          <div className="muted">All content</div>
-          <div className="stat">{data.total}</div>
+    <div className="stack overview-page">
+      <div className="page-heading">
+        <div>
+          <h1>Content overview</h1>
+          <p className="muted">Review what needs attention or find content in the library.</p>
         </div>
-        {STATE_ORDER.map((state) => (
-          <Link key={state} href={`/content?state=${state}`} className="card" style={{ textDecoration: "none" }}>
-            <div className="muted">{STATE_LABELS[state]}</div>
-            <div className="stat">{data.by_state[state] ?? 0}</div>
+        <Link className="btn primary" href="/add">Add content</Link>
+      </div>
+
+      <section className="summary-strip" aria-label="Content status summary">
+        {summaries.map((item) => (
+          <Link key={item.label} href={item.href} className={`summary-item summary-${item.tone}`}>
+            <span>{item.label}</span>
+            <strong>{item.count}</strong>
           </Link>
         ))}
-        <Link href="/content?flagged=true" className="card" style={{ textDecoration: "none" }}>
-          <div className="muted">Safety flags</div>
-          <div className="stat">{data.flagged}</div>
-        </Link>
       </section>
 
-      <section className="two-col">
-        <div className="card">
-          <h2>AI scoring today</h2>
-          {data.ai_today.enabled ? (
-            <>
-              <p>
-                {minutesUsed} of {minutesCap} free-tier minutes of YouTube video used ({data.ai_today.requests} requests).
-              </p>
-              <div className="bar">
-                <i style={{ width: `${Math.min(100, (minutesUsed / Math.max(1, minutesCap)) * 100)}%` }} />
-              </div>
-              <p className="muted">Scoring resumes automatically after midnight Pacific when the limit is reached.</p>
-            </>
-          ) : (
-            <p className="muted">GEMINI_API_KEY isn&apos;t set on the API, so items wait for manual scoring.</p>
-          )}
+      <section className="next-action">
+        <div>
+          <p className="eyebrow">Next step</p>
+          <h2>Review content waiting for you</h2>
+          <p className="muted">Check the content, confirm its category and age group, then publish or request changes.</p>
         </div>
-        <div className="card">
-          <h2>By source</h2>
-          {Object.keys(data.by_source).length === 0 ? (
-            <p className="muted">
-              No content yet. <Link href="/add">Add content</Link>
-            </p>
-          ) : (
-            <ul>
-              {Object.entries(data.by_source).map(([source, count]) => (
-                <li key={source}>
-                  {source}: {count}
-                </li>
-              ))}
-            </ul>
-          )}
-          <h3>Job queue</h3>
-          {data.queue.length === 0 ? (
-            <p className="muted">Nothing waiting.</p>
-          ) : (
-            <ul>
-              {data.queue.map((job) => (
-                <li key={`${job.event_type}-${job.status}`}>
-                  {job.event_type} · {job.status.toLowerCase()}: {job.n}
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+        <Link href="/review" className="btn good">Open review list</Link>
       </section>
+
+      <div className="simple-links">
+        <Link href="/content" className="simple-link browse-link"><strong>Browse all content <span aria-hidden="true">→</span></strong><small>Search and filter {data.total} items</small></Link>
+        <Link href="/add" className="simple-link add-link"><strong>Add new content <span aria-hidden="true">＋</span></strong><small>Import links or discover open content</small></Link>
+      </div>
     </div>
   );
 }

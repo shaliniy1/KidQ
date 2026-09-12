@@ -7,17 +7,17 @@ import { ageBandsFor } from "../domain/age";
 import { analyzeWithRules, type SuggestedClassification } from "../domain/analysis/rules";
 import { RUBRIC_VERSION } from "../domain/rubric";
 import { COMPONENTS } from "../domain/scoring";
-import { hasModelAssessment, insertAssessment } from "../repositories/assessments";
+import { hasModelAssessment, insertAssessment, recordedRuleResult } from "../repositories/assessments";
 import { listTaxonomy } from "../repositories/taxonomy";
 import { rescoreItem } from "./scoring";
 
-export type AnalysisResult = { status: "ASSESSED" | "ANALYSIS_INCOMPLETE" } | { status: "DEFERRED"; retryAt: Date };
+export type AnalysisResult = { status: "ASSESSED" | "ANALYSIS_INCOMPLETE" } | { status: "DEFERRED"; retryAt: Date; reason: string };
 
 async function loadTarget(db: Db, contentItemId: string) {
   const row = (
     await db.query(
-      `SELECT ci.id, ci.title, ci.description, ci.language, ci.duration_seconds, ci.keywords,
-         sr.source_system_id, sr.external_id, sr.media_url, sr.media_mime_type, sr.creator, sr.metadata_hash,
+      `SELECT ci.id, ci.content_type, ci.title, ci.description, ci.language, ci.duration_seconds, ci.keywords,
+         sr.source_system_id, sr.external_id, sr.media_url, sr.media_mime_type, sr.creator, sr.metadata_hash, sr.story,
          ra.allows_media_storage
        FROM content_items ci
        JOIN LATERAL (SELECT * FROM source_records WHERE content_item_id = ci.id ORDER BY fetched_at DESC LIMIT 1) sr ON true
@@ -40,6 +40,8 @@ async function loadTarget(db: Db, contentItemId: string) {
     creator: row.creator,
     durationSeconds: row.duration_seconds,
     metadataHash: row.metadata_hash,
+    contentType: row.content_type,
+    story: row.story ?? null,
   };
   return { target, language: row.language as string | null, keywords: (row.keywords ?? []) as string[] };
 }
@@ -106,27 +108,39 @@ export async function analyzeItem(contentItemId: string, options: { hints?: Disc
   try {
     const { target, language, keywords } = await loadTarget(pool, contentItemId);
 
-    // 1. Deterministic pre-checks: free, instant, and never an approval.
-    const rules = analyzeWithRules({ title: target.title, description: target.description, tags: keywords, language }, options.hints ?? {});
-    await withTransaction(async (client) => {
-      await insertAssessment(client, {
-        contentItemId,
-        assessorType: "RULE",
-        assessorName: "kidq-rule-prechecks",
-        rubricVersion: RUBRIC_VERSION,
-        result: rules.skipAiReason ? "REJECTED" : "MANUAL_REVIEW_REQUIRED",
-        summary: rules.summary,
-        audiovisualInspected: false,
-        scores: rules.scores,
-        criteria: rules.criteria,
-        classification: rules.classification,
+    // 1. Deterministic pre-checks: free, instant, and never an approval. They run once per version of
+    //    the source metadata, so a deferred or repeated analysis doesn't stack duplicate results.
+    let ruleFlagged: boolean;
+    const recorded = await recordedRuleResult(pool, contentItemId, target.metadataHash, RUBRIC_VERSION);
+    if (recorded) {
+      ruleFlagged = recorded === "REJECTED";
+    } else {
+      const rules = analyzeWithRules(
+        { title: target.title, description: target.description, tags: keywords, language, contentType: target.contentType },
+        options.hints ?? {},
+      );
+      await withTransaction(async (client) => {
+        await insertAssessment(client, {
+          contentItemId,
+          assessorType: "RULE",
+          assessorName: "kidq-rule-prechecks",
+          rubricVersion: RUBRIC_VERSION,
+          inputHash: target.metadataHash,
+          result: rules.skipAiReason ? "REJECTED" : "MANUAL_REVIEW_REQUIRED",
+          summary: rules.summary,
+          audiovisualInspected: false,
+          scores: rules.scores,
+          criteria: rules.criteria,
+          classification: rules.classification,
+        });
+        await applySuggestedClassification(client, contentItemId, rules.classification, "RULE");
+        await rescoreItem(client, contentItemId);
       });
-      await applySuggestedClassification(client, contentItemId, rules.classification, "RULE");
-      await rescoreItem(client, contentItemId);
-    });
+      ruleFlagged = Boolean(rules.skipAiReason);
+    }
 
     // A rule-level critical flag waits for an admin instead of spending AI quota ("Re-analyze" forces it).
-    if (rules.skipAiReason && !options.force) {
+    if (ruleFlagged && !options.force) {
       await setStatus(contentItemId, "ASSESSED");
       return { status: "ASSESSED" };
     }
@@ -150,9 +164,9 @@ export async function analyzeItem(contentItemId: string, options: { hints?: Disc
       case "CACHED":
         await setStatus(contentItemId, "ASSESSED");
         return { status: "ASSESSED" };
-      case "QUOTA_EXHAUSTED":
+      case "DEFERRED":
         await setStatus(contentItemId, "QUEUED");
-        return { status: "DEFERRED", retryAt: outcome.retryAt };
+        return { status: "DEFERRED", retryAt: outcome.retryAt, reason: outcome.reason };
       case "DISABLED":
         await setStatus(contentItemId, "ANALYSIS_INCOMPLETE");
         return { status: "ANALYSIS_INCOMPLETE" };

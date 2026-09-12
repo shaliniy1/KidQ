@@ -1,11 +1,11 @@
 "use client";
 
-import { KidQPlayer, parseTimestamp, type KidQPlayerHandle } from "@kidq/player";
+import { KidQPlayer, KidQStoryReader, parseTimestamp, type KidQPlayerHandle } from "@kidq/player";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ApiFailure, BLOCKER_LABELS, STATE_LABELS, api, blockersOf, unwrap, type AdminContent } from "@/lib/api";
-import { labelFor, useTaxonomy, type Taxonomy } from "@/lib/useTaxonomy";
+import { ApiFailure, BLOCKER_LABELS, api, blockersOf, friendlyError, simpleStatus, unwrap, type AdminContent } from "@/lib/api";
+import { ageRange, labelFor, useTaxonomy, type Taxonomy } from "@/lib/useTaxonomy";
 
 type Criterion = { result: "PASS" | "FAIL" | "UNKNOWN"; evidence: string };
 interface Detail {
@@ -17,11 +17,13 @@ interface Detail {
   expert_reviews: Array<{ id: string; reviewer_name: string; reviewer_type: string; recommendation: string; source_url: string; verified: boolean }>;
   rights: Record<string, unknown>;
   transcript_status: string | null;
+  story: { pages: Array<{ page: number; text: string; image_url: string | null; image_small_url: string | null }>; credits: string | null } | null;
 }
 
 const COMPONENTS = ["CONTENT_LANGUAGE", "PACING", "VISUAL_COMFORT", "AUDIO_COMFORT"] as const;
+// Picture books have no soundtrack, so they are scored on three components.
+const STORY_COMPONENTS = ["CONTENT_LANGUAGE", "PACING", "VISUAL_COMFORT"] as const;
 const CRITICAL = new Set(["physical_violence", "verbal_or_emotional_aggression", "frightening_imagery", "mature_themes", "discrimination_or_stereotypes", "dangerous_behaviour"]);
-const AGE_GROUPS: Record<string, [number, number]> = { "0_2": [0, 2], "2_4": [2, 4], "4_6": [4, 6] };
 
 export default function ContentDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -35,7 +37,7 @@ export default function ContentDetailPage() {
     try {
       setDetail(unwrap(await api.GET("/content-items/{id}", { params: { path: { id } } })) as unknown as Detail);
     } catch (failure) {
-      setError(failure instanceof Error ? failure.message : "Could not load this item.");
+      setError(friendlyError(failure, "This content could not be loaded. Please try again."));
     }
   }, [id]);
 
@@ -54,7 +56,7 @@ export default function ContentDetailPage() {
       setNotice(label);
     } catch (failure) {
       const blockers = blockersOf(failure).map((b) => BLOCKER_LABELS[b] ?? b);
-      setError(`${failure instanceof Error ? failure.message : "Action failed."}${blockers.length ? ` (${blockers.join(", ")})` : ""}`);
+      setError(`${friendlyError(failure, "That change could not be saved. Please try again.")}${blockers.length ? ` ${blockers.join(", ")}.` : ""}`);
       throw failure;
     }
   };
@@ -62,48 +64,64 @@ export default function ContentDetailPage() {
   if (error && !detail) return <p className="error">{error}</p>;
   if (!detail) return <p className="muted">Loading…</p>;
   const { content } = detail;
+  const status = simpleStatus(content);
   const seek = (timestamp: string) => player.current?.seekTo(parseTimestamp(timestamp));
 
   return (
     <div className="stack">
-      <div className="row">
-        <Link href="/content">← Library</Link>
-        <span className={`badge ${content.studio_state}`}>{STATE_LABELS[content.studio_state]}</span>
+      <div className="detail-topline">
+        <Link href="/content">← Content</Link>
+        <span className={`status status-${status.key}`}>{status.label}</span>
         {content.parent_requests > 0 && <span className="badge warn">{content.parent_requests} parent request(s)</span>}
       </div>
       <h1 style={{ marginBottom: 0 }}>{content.title}</h1>
       <p className="muted" style={{ marginTop: 0 }}>
-        {content.creator ?? "Unknown creator"} · {content.source} · <a href={detail.record.source_url} target="_blank" rel="noreferrer">source page</a>
+        {content.creator ?? "Unknown creator"} · {content.content_type === "STORYBOOK" ? "Storybook" : "Video"} · <a href={detail.record.source_url} target="_blank" rel="noreferrer">View original</a>
       </p>
       {notice && <p className="muted">✓ {notice}</p>}
       {error && <p className="error">{error}</p>}
 
       <div className="two-col">
         <div className="stack">
-          <div className="card">
-            <KidQPlayer
-              ref={player}
-              player={content.player}
-              title={content.title}
-              poster={content.thumbnail_url}
-              attribution={content.attribution}
-              onError={(code) => void api.POST("/content-items/{id}/playback-errors", { params: { path: { id } }, body: { code } })}
-            />
+          <div className="content-preview">
+            {content.content_type === "STORYBOOK" && detail.story ? (
+              <KidQStoryReader title={content.title} pages={detail.story.pages} credits={detail.story.credits} attribution={content.attribution} />
+            ) : (
+              <KidQPlayer
+                ref={player}
+                player={content.player}
+                title={content.title}
+                poster={content.thumbnail_url}
+                attribution={content.attribution}
+                onError={(code) => void api.POST("/content-items/{id}/playback-errors", { params: { path: { id } }, body: { code } })}
+              />
+            )}
           </div>
-          <ScoreCard content={content} onSeek={seek} />
-          <Sliders content={content} act={act} id={id} />
-          <Rubric detail={detail} act={act} id={id} />
         </div>
 
         <div className="stack">
           <Publish content={content} act={act} id={id} />
           <Tags content={content} taxonomy={taxonomy} act={act} id={id} />
           <TextEdit content={content} act={act} id={id} />
-          <ParentPreview content={content} taxonomy={taxonomy} />
-          <Experts detail={detail} act={act} id={id} />
-          <History detail={detail} />
         </div>
       </div>
+
+      <details className="advanced-review">
+        <summary>Additional review checks</summary>
+        <p className="muted">Open this only when you need to inspect or adjust scoring and safety checks.</p>
+        <div className="two-col">
+          <div className="stack">
+            <ScoreCard content={content} onSeek={seek} />
+            <Sliders content={content} act={act} id={id} />
+            <Rubric detail={detail} act={act} id={id} />
+          </div>
+          <div className="stack">
+            <ParentPreview content={content} taxonomy={taxonomy} />
+            <Experts detail={detail} act={act} id={id} />
+            <History detail={detail} />
+          </div>
+        </div>
+      </details>
     </div>
   );
 }
@@ -164,19 +182,27 @@ function ScoreCard({ content, onSeek }: { content: AdminContent; onSeek: (value:
 }
 
 function Sliders({ content, act, id }: { content: AdminContent; act: Act; id: string }) {
-  const initial = Object.fromEntries(COMPONENTS.map((key) => [key, content.content_score?.breakdown.find((p) => p.key === key)?.score ?? 50])) as Record<string, number>;
+  const story = content.content_type === "STORYBOOK";
+  const keys: readonly string[] = story ? STORY_COMPONENTS : COMPONENTS;
+  const fallbackLabel: Record<string, string> = {
+    CONTENT_LANGUAGE: "Content & language",
+    PACING: story ? "Reading pace" : "Pacing",
+    VISUAL_COMFORT: story ? "Illustrations" : "Visual comfort",
+    AUDIO_COMFORT: "Audio comfort",
+  };
+  const initial = Object.fromEntries(keys.map((key) => [key, content.content_score?.breakdown.find((p) => p.key === key)?.score ?? 50])) as Record<string, number>;
   const [values, setValues] = useState(initial);
-  const [note, setNote] = useState("Checked by watching the video.");
-  const changed = COMPONENTS.filter((key) => values[key] !== initial[key] || initial[key] === null);
+  const [note, setNote] = useState(story ? "Checked by reading the story." : "Checked by watching the video.");
+  const changed = keys.filter((key) => values[key] !== initial[key] || initial[key] === null);
   return (
     <div className="card stack">
       <h2 style={{ margin: 0 }}>Your scores (0–100)</h2>
       <p className="muted" style={{ margin: 0 }}>
         Pre-filled from the AI. Your changes are saved as an admin review and override the AI.
       </p>
-      {COMPONENTS.map((key) => (
+      {keys.map((key) => (
         <label key={key} className="slider-row" style={{ fontWeight: 600 }}>
-          {content.content_score?.breakdown.find((p) => p.key === key)?.label ?? key}
+          {content.content_score?.breakdown.find((p) => p.key === key)?.label ?? fallbackLabel[key]}
           <input type="range" min={0} max={100} value={values[key]} onChange={(event) => setValues({ ...values, [key]: Number(event.target.value) })} />
           <span>{values[key]}</span>
         </label>
@@ -289,9 +315,9 @@ function Publish({ content, act, id }: { content: AdminContent; act: Act; id: st
   const approved = content.current_status === "APPROVED";
   return (
     <div className="card stack">
-      <h2 style={{ margin: 0 }}>Publishing</h2>
+      <h2 style={{ margin: 0 }}>Review decision</h2>
       <p style={{ margin: 0 }}>
-        {approved ? "Published — families can see this." : content.current_status === "REJECTED" ? "Rejected." : "Not visible to families yet."}
+        {approved ? "Published — families can see this." : content.current_status === "REJECTED" ? "Marked as needing changes." : "Not visible to families yet."}
       </p>
       {content.publish_blockers.length > 0 && (
         <div className="chips">
@@ -322,15 +348,9 @@ function Publish({ content, act, id }: { content: AdminContent; act: Act; id: st
         )}
         {content.current_status !== "REJECTED" && (
           <button className="btn" disabled={reason.trim().length < 3} onClick={() => void decide("REJECTED", "Rejected")}>
-            Reject
+            Needs changes
           </button>
         )}
-        <button
-          className="btn small"
-          onClick={() => void act("AI scoring queued again", async () => unwrap(await api.POST("/content-items/{id}/reanalyze", { params: { path: { id } } }))).catch(() => undefined)}
-        >
-          Re-run AI
-        </button>
       </div>
     </div>
   );
@@ -359,17 +379,27 @@ function Tags({ content, taxonomy, act, id }: { content: AdminContent; taxonomy:
   const [development, setDevelopment] = useState(content.development_goals);
   const [regulation, setRegulation] = useState(content.regulation_goals);
   const [language, setLanguage] = useState(content.language ?? "");
+  const [contentType, setContentType] = useState(content.content_type);
   if (!taxonomy) return null;
-  const groupKey = Object.entries(AGE_GROUPS).find(([, [min, max]]) => min === ageMin && max === ageMax)?.[0] ?? "";
+  const groupKey = taxonomy.age_group.find((term) => term.meta.min === ageMin && term.meta.max === ageMax)?.key ?? "";
   return (
     <div className="card stack">
-      <h2 style={{ margin: 0 }}>Tags</h2>
+      <h2 style={{ margin: 0 }}>Content details</h2>
+      <label>
+        Content type
+        <select value={contentType} onChange={(event) => setContentType(event.target.value as typeof contentType)}>
+          <option value="VIDEO">Video</option>
+          <option value="STORYBOOK">Storybook</option>
+          <option value="ACTIVITY">Activity</option>
+          <option value="INTERACTIVE_CONTENT">Interactive content</option>
+        </select>
+      </label>
       <label>
         Age group
         <select
           value={groupKey}
           onChange={(event) => {
-            const range = AGE_GROUPS[event.target.value];
+            const range = ageRange(taxonomy, event.target.value);
             if (range) [setAgeMin, setAgeMax].forEach((set, index) => set(range[index]));
           }}
         >
@@ -392,20 +422,14 @@ function Tags({ content, taxonomy, act, id }: { content: AdminContent; taxonomy:
           ))}
         </select>
       </label>
-      <div>
-        <h3>Interests</h3>
-        <MultiPick terms={taxonomy.interest} value={interests} onChange={setInterests} />
-      </div>
-      <div>
-        <h3>Development goals</h3>
-        <MultiPick terms={taxonomy.development_goal} value={development} onChange={setDevelopment} />
-      </div>
-      <div>
-        <h3>Regulation goals</h3>
-        <MultiPick terms={taxonomy.regulation_goal} value={regulation} onChange={setRegulation} />
-      </div>
+      <details className="metadata-details">
+        <summary>Interests and learning goals</summary>
+        <div><h3>Interests</h3><MultiPick terms={taxonomy.interest} value={interests} onChange={setInterests} /></div>
+        <div><h3>Development goals</h3><MultiPick terms={taxonomy.development_goal} value={development} onChange={setDevelopment} /></div>
+        <div><h3>Regulation goals</h3><MultiPick terms={taxonomy.regulation_goal} value={regulation} onChange={setRegulation} /></div>
+      </details>
       <label>
-        Spoken language
+        Language
         <input value={language} onChange={(event) => setLanguage(event.target.value)} placeholder="en" />
       </label>
       <button
@@ -423,13 +447,14 @@ function Tags({ content, taxonomy, act, id }: { content: AdminContent; taxonomy:
                   development_goals: development,
                   regulation_goals: regulation,
                   language: language || null,
+                  content_type: contentType,
                 },
               }),
             ),
           ).catch(() => undefined)
         }
       >
-        Save tags
+        Save details
       </button>
     </div>
   );
@@ -440,7 +465,7 @@ function TextEdit({ content, act, id }: { content: AdminContent; act: Act; id: s
   const [summary, setSummary] = useState(content.kidq_summary ?? "");
   return (
     <div className="card stack">
-      <h2 style={{ margin: 0 }}>What families see</h2>
+      <h2 style={{ margin: 0 }}>Title and summary</h2>
       <label>
         Title
         <input value={title} onChange={(event) => setTitle(event.target.value)} maxLength={200} />

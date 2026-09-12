@@ -33,6 +33,7 @@ export function metadataHash(record: NormalizedRecord): string {
     language: record.language,
     tags: record.tags,
     license: record.rights.licenseName,
+    story: record.story ?? null,
   };
   return crypto.createHash("sha256").update(JSON.stringify(relevant)).digest("hex");
 }
@@ -203,6 +204,7 @@ async function upsertInTransaction(client: PoolClient, record: NormalizedRecord,
     record.embeddable,
     JSON.stringify(record.rawMetadata),
     hash,
+    record.story ? JSON.stringify(record.story) : null,
   ];
   let contentItemId: string;
   let sourceRecordId: string;
@@ -220,8 +222,8 @@ async function upsertInTransaction(client: PoolClient, record: NormalizedRecord,
       await client.query(
         `INSERT INTO source_records (content_item_id, source_system_id, external_id, ingestion_run_id, source_url, embed_url,
            media_url, media_mime_type, thumbnails, creator, caption_available, made_for_kids, embeddable, raw_metadata,
-           metadata_hash, fetched_at, last_verified_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, now(), now()) RETURNING id`,
+           metadata_hash, story, fetched_at, last_verified_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, now(), now()) RETURNING id`,
         [contentItemId, record.sourceSystemId, record.externalId, ...sourceValues],
       )
     ).rows[0].id;
@@ -236,7 +238,7 @@ async function upsertInTransaction(client: PoolClient, record: NormalizedRecord,
     await client.query(
       `UPDATE source_records SET ingestion_run_id = $2, source_url = $3, embed_url = $4, media_url = $5, media_mime_type = $6,
          thumbnails = $7, creator = $8, caption_available = $9, made_for_kids = $10, embeddable = $11, raw_metadata = $12,
-         metadata_hash = $13, fetched_at = now(), last_verified_at = now(), available = true
+         metadata_hash = $13, story = $14, fetched_at = now(), last_verified_at = now(), available = true
        WHERE id = $1`,
       [sourceRecordId, ...sourceValues],
     );

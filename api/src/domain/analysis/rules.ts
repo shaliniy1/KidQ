@@ -30,6 +30,7 @@ export interface RuleInput {
   description: string | null;
   tags: string[];
   language: string | null;
+  contentType?: string;
 }
 
 const word = (alternatives: string) => new RegExp(`\\b(?:${alternatives})\\b`, "i");
@@ -45,16 +46,20 @@ const TEXT_CHECKS: Array<{ key: string; pattern: RegExp; critical: boolean }> = 
   { key: "clickbait_title_or_thumbnail", pattern: word("shocking|you won'?t believe|gone wrong|prank|omg"), critical: false },
 ];
 
+// The onboarding categories (architecture doc §9), first match wins. Picture books are always "storybooks".
 const CATEGORY_RULES: Array<[string, RegExp]> = [
-  ["storybooks", word("story|stories|read[- ]?aloud|storybook|bedtime")],
+  ["storybooks", word("storybooks?|picture books?")],
+  ["stories", word("story|stories|read[- ]?aloud|bedtime")],
   ["yoga_movement", word("yoga|stretch(?:ing)?|movement|exercise")],
   ["drawing_painting", word("draw(?:ing)?|paint(?:ing)?|colou?ring")],
   ["creative_crafts", word("crafts?|diy|clay|origami")],
   ["music_rhymes", word("songs?|rhymes?|sing[- ]?along|music|dance")],
   ["science", word("science|experiments?|space|planets?|moon|rocket|weather")],
   ["maths", word("count(?:ing)?|numbers?|maths?|shapes?|patterns?")],
-  ["animals_nature", word("animals?|fish|guppy|nature|plants?|ocean|birds?|insects?")],
-  ["baby_learning", word("baby|babies|toddlers?|first words|alphabet|abc|phonics|letters?")],
+  ["educational", word("alphabet|abc|phonics|letters?|first words|lessons?")],
+  ["general_knowledge", word("animals?|fish|guppy|nature|plants?|ocean|birds?|insects?|facts?")],
+  ["activities", word("activit(?:y|ies)|play[- ]?along|games?")],
+  ["animated_videos", word("cartoons?|animated|animation")],
 ];
 
 const INTEREST_RULES: Array<[string, RegExp]> = [
@@ -76,6 +81,7 @@ const INTEREST_RULES: Array<[string, RegExp]> = [
 ];
 
 const CATEGORY_GOALS: Record<string, { development: string[]; regulation: string[] }> = {
+  stories: { development: ["communication"], regulation: [] },
   storybooks: { development: ["communication"], regulation: [] },
   yoga_movement: { development: ["motor_skills"], regulation: ["movement", "relaxation"] },
   drawing_painting: { development: ["creativity"], regulation: ["focus"] },
@@ -83,15 +89,18 @@ const CATEGORY_GOALS: Record<string, { development: string[]; regulation: string
   music_rhymes: { development: ["communication"], regulation: [] },
   science: { development: ["cognitive"], regulation: [] },
   maths: { development: ["cognitive"], regulation: [] },
-  animals_nature: { development: ["learning"], regulation: [] },
-  baby_learning: { development: ["communication", "cognitive"], regulation: [] },
+  educational: { development: ["communication", "cognitive"], regulation: [] },
+  general_knowledge: { development: ["learning"], regulation: [] },
+  activities: { development: ["problem_solving"], regulation: ["focus"] },
 };
 
+// Age words mapped onto the five onboarding bands.
 function suggestAge(text: string, hints: DiscoveryHints): { ageMin: number | null; ageMax: number | null } {
   if (hints.ageMin !== undefined && hints.ageMax !== undefined) return { ageMin: hints.ageMin, ageMax: hints.ageMax };
   if (word("baby|babies|infants?").test(text)) return { ageMin: 0, ageMax: 2 };
-  if (word("toddlers?").test(text)) return { ageMin: 2, ageMax: 4 };
-  if (word("preschool(?:ers)?|kindergarten|pre-?k").test(text)) return { ageMin: 4, ageMax: 6 };
+  if (word("toddlers?").test(text)) return { ageMin: 1, ageMax: 3 };
+  if (word("preschool(?:ers)?|pre-?k").test(text)) return { ageMin: 3, ageMax: 5 };
+  if (word("kindergarten").test(text)) return { ageMin: 5, ageMax: 6 };
   return { ageMin: null, ageMax: null };
 }
 
@@ -111,7 +120,8 @@ export function analyzeWithRules(input: RuleInput, hints: DiscoveryHints = {}): 
     criteria.push({ key: "clickbait_title_or_thumbnail", result: "FAIL", evidence: "Title is mostly capitals or uses repeated exclamation marks.", timestamps: [] });
   }
 
-  const category = hints.category ?? CATEGORY_RULES.find(([, pattern]) => pattern.test(text))?.[0] ?? null;
+  const category =
+    hints.category ?? (input.contentType === "STORYBOOK" ? "storybooks" : (CATEGORY_RULES.find(([, pattern]) => pattern.test(text))?.[0] ?? null));
   const interests = [...new Set([...(hints.interests ?? []), ...INTEREST_RULES.filter(([, pattern]) => pattern.test(text)).map(([key]) => key)])];
   const goals = category ? CATEGORY_GOALS[category] : undefined;
   const regulationFromText = word("calm(?:ing)?|sleep|bedtime|relax(?:ing)?|lullaby").test(text) ? ["calm", "relaxation"] : [];

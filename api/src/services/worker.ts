@@ -26,7 +26,7 @@ export async function runJob(job: Job): Promise<Handled> {
         hints: job.payload.hints as DiscoveryHints | undefined,
         force: job.payload.force === true,
       });
-      if (result.status === "DEFERRED") return { deferUntil: result.retryAt, reason: "AI daily video quota reached; resumes after the daily reset." };
+      if (result.status === "DEFERRED") return { deferUntil: result.retryAt, reason: result.reason };
       return;
     }
     case "RESCORE_ALL": {

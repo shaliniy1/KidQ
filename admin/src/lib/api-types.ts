@@ -104,7 +104,7 @@ export interface paths {
                         /** @enum {string} */
                         mode: "search";
                         /** @enum {string} */
-                        source: "youtube" | "nasa_images" | "wikimedia_commons";
+                        source: "youtube" | "nasa_images" | "wikimedia_commons" | "storyweaver";
                         queries: {
                             query: string;
                             /** @default 10 */
@@ -305,9 +305,9 @@ export interface paths {
             parameters: {
                 query?: {
                     state?: "PENDING_ANALYSIS" | "ANALYSING" | "READY_TO_APPROVE" | "NEEDS_ATTENTION" | "ANALYSIS_INCOMPLETE" | "FAILED" | "APPROVED" | "REJECTED";
-                    age_group?: "0_2" | "2_4" | "4_6";
+                    age_group?: "0_2" | "2_3" | "3_4" | "4_5" | "5_6";
                     category?: string;
-                    source?: "youtube" | "nasa_images" | "wikimedia_commons";
+                    source?: "youtube" | "nasa_images" | "wikimedia_commons" | "storyweaver";
                     flagged?: "true" | "false";
                     min_score?: number | null;
                     q?: string;
@@ -509,6 +509,7 @@ export interface paths {
                             };
                             transcript_status: string | null;
                             raw_metadata?: unknown;
+                            story: components["schemas"]["Story"] | null;
                         };
                     };
                 };
@@ -605,6 +606,7 @@ export interface paths {
                             };
                             transcript_status: string | null;
                             raw_metadata?: unknown;
+                            story: components["schemas"]["Story"] | null;
                         };
                     };
                 };
@@ -731,6 +733,7 @@ export interface paths {
                             };
                             transcript_status: string | null;
                             raw_metadata?: unknown;
+                            story: components["schemas"]["Story"] | null;
                         };
                     };
                 };
@@ -847,6 +850,7 @@ export interface paths {
                             };
                             transcript_status: string | null;
                             raw_metadata?: unknown;
+                            story: components["schemas"]["Story"] | null;
                         };
                     };
                 };
@@ -1048,6 +1052,7 @@ export interface paths {
                             };
                             transcript_status: string | null;
                             raw_metadata?: unknown;
+                            story: components["schemas"]["Story"] | null;
                         };
                     };
                 };
@@ -1251,6 +1256,7 @@ export interface paths {
                             };
                             transcript_status: string | null;
                             raw_metadata?: unknown;
+                            story: components["schemas"]["Story"] | null;
                         };
                     };
                 };
@@ -1307,7 +1313,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Queue the rule checks and AI scoring again (ignores the cache) */
+        /** Queue AI scoring again, ignoring the AI cache (rule checks re-run only if the source metadata changed) */
         post: {
             parameters: {
                 query?: never;
@@ -1327,6 +1333,90 @@ export interface paths {
                     content: {
                         "application/json": {
                             queued: boolean;
+                        };
+                    };
+                };
+                /** @description Validation failed */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not signed in */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Wrong role */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/content-items/bulk-reanalyze": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Queue AI scoring for every item the AI hasn't reviewed yet (shortest first) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        /**
+                         * @description UNSCORED: every item the AI hasn't reviewed yet, except rejected ones
+                         * @enum {string}
+                         */
+                        scope: "UNSCORED";
+                    };
+                };
+            };
+            responses: {
+                /** @description Success */
+                202: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            queued: number;
                         };
                     };
                 };
@@ -1456,6 +1546,80 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/content-items/{id}/story": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A picture book's pages and credits for the KidQ reader (parents: published books only) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Success */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Story"];
+                    };
+                };
+                /** @description Validation failed */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not signed in */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Wrong role */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/dashboard": {
         parameters: {
             query?: never;
@@ -1463,7 +1627,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Counts by state and source, flags, queue and AI usage today */
+        /** Counts by state and source, flags, the job queue, and AI scoring coverage and usage */
         get: {
             parameters: {
                 query?: never;
@@ -1480,7 +1644,46 @@ export interface paths {
                     };
                     content: {
                         "application/json": {
-                            [key: string]: unknown;
+                            total: number;
+                            by_state: {
+                                [key: string]: number;
+                            };
+                            by_source: {
+                                [key: string]: number;
+                            };
+                            flagged: number;
+                            queue: {
+                                event_type: string;
+                                status: string;
+                                n: number;
+                            }[];
+                            ai: {
+                                enabled: boolean;
+                                /** @description The scoring model; the fallbacks in `models` take over when its free daily quota runs out */
+                                model: string;
+                                /** @description The scoring model and its fallbacks, in the order they're tried, with today's use */
+                                models: {
+                                    model: string;
+                                    requests: number;
+                                    paused: boolean;
+                                }[];
+                                /** @description Set while every model has used its daily quota; AI scoring resumes then */
+                                paused_until: string | null;
+                                /** @description Items the AI has reviewed and scored */
+                                scored: number;
+                                /** @description Items waiting for, or going through, analysis */
+                                queued: number;
+                                /** @description Items the AI hasn't reviewed yet, rejected ones excluded */
+                                unscored: number;
+                                /** @description Items the AI couldn't review: media rights, length, private video or invalid output */
+                                could_not_review: number;
+                                today: {
+                                    requests: number;
+                                    youtube_video_seconds: number;
+                                    file_video_seconds: number;
+                                    youtube_daily_cap_seconds: number;
+                                };
+                            };
                         };
                     };
                 };
@@ -1550,25 +1753,33 @@ export interface paths {
             requestBody?: {
                 content: {
                     "application/json": {
-                        age_years: number;
-                        /**
-                         * @default [
-                         *       "en"
-                         *     ]
-                         */
+                        /** @description Content languages the parent chose (keys from GET /taxonomy); defaults to the parent's language */
                         languages?: string[];
-                        /** @default [] */
+                        /** @description Block A. Empty broadens the feed; it never narrows it. */
                         interests?: string[];
-                        /** @default [] */
-                        content_types?: ("VIDEO" | "ACTIVITY" | "STORYBOOK" | "INTERACTIVE_CONTENT")[];
-                        /** @default [] */
+                        /**
+                         * @description Block B. SURPRISE: an age-appropriate mix. CHOSEN: only preferred_categories.
+                         * @enum {string}
+                         */
+                        content_mix?: "SURPRISE" | "CHOSEN";
+                        /** @description Block B categories; sending some without content_mix means CHOSEN */
                         preferred_categories?: string[];
-                        /** @default [] */
+                        /** @description Block C: never asked. Omit, or send [], for the age-band defaults. */
                         development_goals?: string[];
-                        /** @default [] */
+                        /** @description Block D. Empty or all six means no restriction. */
                         regulation_goals?: string[];
-                        /** @default null */
-                        daily_minutes?: number | null;
+                        /** @description Block E: session length; the breaks follow from it */
+                        session_minutes?: 15 | 30 | 45 | 60 | 90;
+                        /**
+                         * @description Block E: MOVEMENT, QUIET or ALTERNATE
+                         * @enum {string}
+                         */
+                        break_type?: "MOVEMENT" | "QUIET" | "ALTERNATE";
+                        /**
+                         * @description Age band: the same five bands admins tag content with
+                         * @enum {string}
+                         */
+                        age_band: "0_2" | "2_3" | "3_4" | "4_5" | "5_6";
                         /** @default 20 */
                         limit?: number;
                     };
@@ -2100,6 +2311,257 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/onboarding": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Screen 1 in one call: the parent's name and language, and each child's nickname and age band (1–6); the rest starts from age-based defaults */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        parent_name: string;
+                        /**
+                         * @description The parent's pick, pre-selected from the device language when KidQ has it; children start with it
+                         * @default en
+                         */
+                        language?: string;
+                        children: {
+                            /** @description A nickname only, never the child's legal name */
+                            nickname: string;
+                            /**
+                             * @description Age band: the same five bands admins tag content with
+                             * @enum {string}
+                             */
+                            age_band: "0_2" | "2_3" | "3_4" | "4_5" | "5_6";
+                        }[];
+                    };
+                };
+            };
+            responses: {
+                /** @description Success */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            parent: {
+                                name: string;
+                                language: string;
+                                created_at: string;
+                                updated_at: string;
+                            };
+                            children: components["schemas"]["Child"][];
+                        };
+                    };
+                };
+                /** @description Validation failed */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not signed in */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Wrong role */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The parent's profile and children; 404 NOT_ONBOARDED means show onboarding */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Success */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            parent: {
+                                name: string;
+                                language: string;
+                                created_at: string;
+                                updated_at: string;
+                            };
+                            children: components["schemas"]["Child"][];
+                        };
+                    };
+                };
+                /** @description Validation failed */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not signed in */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Wrong role */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Change the parent's name or language */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        name?: string;
+                        language?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Success */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            parent: {
+                                name: string;
+                                language: string;
+                                created_at: string;
+                                updated_at: string;
+                            };
+                            children: components["schemas"]["Child"][];
+                        };
+                    };
+                };
+                /** @description Validation failed */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not signed in */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Wrong role */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
     "/children": {
         parameters: {
             query?: never;
@@ -2167,7 +2629,7 @@ export interface paths {
             };
         };
         put?: never;
-        /** Create a child profile (onboarding). Use keys from GET /taxonomy. */
+        /** Add a child: nickname and age band (up to 6 per family); keys from GET /taxonomy */
         post: {
             parameters: {
                 query?: never;
@@ -2178,29 +2640,35 @@ export interface paths {
             requestBody?: {
                 content: {
                     "application/json": {
-                        nickname: string;
-                        birth_year: number;
-                        birth_month: number;
-                        /**
-                         * @default [
-                         *       "en"
-                         *     ]
-                         */
+                        /** @description Content languages the parent chose (keys from GET /taxonomy); defaults to the parent's language */
                         languages?: string[];
-                        /** @default [] */
+                        /** @description Block A. Empty broadens the feed; it never narrows it. */
                         interests?: string[];
-                        /** @default [] */
-                        content_types?: ("VIDEO" | "ACTIVITY" | "STORYBOOK" | "INTERACTIVE_CONTENT")[];
-                        /** @default [] */
+                        /**
+                         * @description Block B. SURPRISE: an age-appropriate mix. CHOSEN: only preferred_categories.
+                         * @enum {string}
+                         */
+                        content_mix?: "SURPRISE" | "CHOSEN";
+                        /** @description Block B categories; sending some without content_mix means CHOSEN */
                         preferred_categories?: string[];
-                        /** @default [] */
+                        /** @description Block C: never asked. Omit, or send [], for the age-band defaults. */
                         development_goals?: string[];
-                        /** @default [] */
+                        /** @description Block D. Empty or all six means no restriction. */
                         regulation_goals?: string[];
-                        /** @default null */
-                        daily_minutes?: number | null;
-                        /** @default null */
-                        break_preference?: string | null;
+                        /** @description Block E: session length; the breaks follow from it */
+                        session_minutes?: 15 | 30 | 45 | 60 | 90;
+                        /**
+                         * @description Block E: MOVEMENT, QUIET or ALTERNATE
+                         * @enum {string}
+                         */
+                        break_type?: "MOVEMENT" | "QUIET" | "ALTERNATE";
+                        /** @description A nickname only, never the child's legal name */
+                        nickname: string;
+                        /**
+                         * @description Age band: the same five bands admins tag content with
+                         * @enum {string}
+                         */
+                        age_band: "0_2" | "2_3" | "3_4" | "4_5" | "5_6";
                     };
                 };
             };
@@ -2329,7 +2797,7 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Update onboarding preferences */
+        /** Customize: interests, content mix, regulation goals, session length, breaks, languages or a new age band */
         patch: {
             parameters: {
                 query?: never;
@@ -2342,29 +2810,35 @@ export interface paths {
             requestBody?: {
                 content: {
                     "application/json": {
-                        nickname?: string;
-                        birth_year?: number;
-                        birth_month?: number;
-                        /**
-                         * @default [
-                         *       "en"
-                         *     ]
-                         */
+                        /** @description Content languages the parent chose (keys from GET /taxonomy); defaults to the parent's language */
                         languages?: string[];
-                        /** @default [] */
+                        /** @description Block A. Empty broadens the feed; it never narrows it. */
                         interests?: string[];
-                        /** @default [] */
-                        content_types?: ("VIDEO" | "ACTIVITY" | "STORYBOOK" | "INTERACTIVE_CONTENT")[];
-                        /** @default [] */
+                        /**
+                         * @description Block B. SURPRISE: an age-appropriate mix. CHOSEN: only preferred_categories.
+                         * @enum {string}
+                         */
+                        content_mix?: "SURPRISE" | "CHOSEN";
+                        /** @description Block B categories; sending some without content_mix means CHOSEN */
                         preferred_categories?: string[];
-                        /** @default [] */
+                        /** @description Block C: never asked. Omit, or send [], for the age-band defaults. */
                         development_goals?: string[];
-                        /** @default [] */
+                        /** @description Block D. Empty or all six means no restriction. */
                         regulation_goals?: string[];
-                        /** @default null */
-                        daily_minutes?: number | null;
-                        /** @default null */
-                        break_preference?: string | null;
+                        /** @description Block E: session length; the breaks follow from it */
+                        session_minutes?: 15 | 30 | 45 | 60 | 90;
+                        /**
+                         * @description Block E: MOVEMENT, QUIET or ALTERNATE
+                         * @enum {string}
+                         */
+                        break_type?: "MOVEMENT" | "QUIET" | "ALTERNATE";
+                        /** @description A nickname only, never the child's legal name */
+                        nickname?: string;
+                        /**
+                         * @description Age band: the same five bands admins tag content with
+                         * @enum {string}
+                         */
+                        age_band?: "0_2" | "2_3" | "3_4" | "4_5" | "5_6";
                     };
                 };
             };
@@ -3005,7 +3479,27 @@ export interface components {
             provider: "html5";
             media_url: string;
             mime_type: string | null;
+        } | {
+            /** @enum {string} */
+            provider: "story";
+            page_count: number;
         } | null;
+        Story: {
+            title: string;
+            pages: {
+                page: number;
+                text: string;
+                image_url: string | null;
+                image_small_url: string | null;
+            }[];
+            /** @description The source's full attribution: story, illustrations, translation, publisher and license */
+            credits: string | null;
+            attribution: {
+                text: string | null;
+                license_name: string | null;
+                license_url: string | null;
+            };
+        };
         ContentCard: {
             /** Format: uuid */
             id: string;
@@ -3014,7 +3508,7 @@ export interface components {
             /** @enum {string} */
             content_type: "VIDEO" | "ACTIVITY" | "STORYBOOK" | "INTERACTIVE_CONTENT";
             /** @enum {string} */
-            source: "youtube" | "nasa_images" | "wikimedia_commons";
+            source: "youtube" | "nasa_images" | "wikimedia_commons" | "storyweaver";
             creator: string | null;
             duration_seconds: number | null;
             language: string | null;
@@ -3058,32 +3552,46 @@ export interface components {
             published_at: string | null;
         };
         Child: {
-            nickname: string;
-            birth_year: number;
-            birth_month: number;
-            /**
-             * @default [
-             *       "en"
-             *     ]
-             */
+            /** @description Content languages the parent chose (keys from GET /taxonomy); defaults to the parent's language */
             languages: string[];
-            /** @default [] */
+            /** @description Block A. Empty broadens the feed; it never narrows it. */
             interests: string[];
-            /** @default [] */
-            content_types: ("VIDEO" | "ACTIVITY" | "STORYBOOK" | "INTERACTIVE_CONTENT")[];
-            /** @default [] */
+            /**
+             * @description Block B. SURPRISE: an age-appropriate mix. CHOSEN: only preferred_categories.
+             * @enum {string}
+             */
+            content_mix: "SURPRISE" | "CHOSEN";
+            /** @description Block B categories; sending some without content_mix means CHOSEN */
             preferred_categories: string[];
-            /** @default [] */
+            /** @description Block C: never asked. Omit, or send [], for the age-band defaults. */
             development_goals: string[];
-            /** @default [] */
+            /** @description Block D. Empty or all six means no restriction. */
             regulation_goals: string[];
-            /** @default null */
-            daily_minutes: number | null;
-            /** @default null */
-            break_preference: string | null;
+            /** @description Block E: session length; the breaks follow from it */
+            session_minutes: 15 | 30 | 45 | 60 | 90;
+            /**
+             * @description Block E: MOVEMENT, QUIET or ALTERNATE
+             * @enum {string}
+             */
+            break_type: "MOVEMENT" | "QUIET" | "ALTERNATE";
             /** Format: uuid */
             id: string;
+            nickname: string;
+            /**
+             * @description The band today: the one the parent picked, moved on as the child grows
+             * @enum {string}
+             */
+            age_band: "0_2" | "2_3" | "3_4" | "4_5" | "5_6";
+            /** @description Estimated from the band and the time since it was set */
             age_years: number;
+            /** @enum {string} */
+            development_goals_source: "AGE_DEFAULT" | "PARENT";
+            /** @description One break per 15 minutes; the last is always the wind-down */
+            break_plan: {
+                total_breaks: number;
+                mid_session_breaks: number;
+                wind_down: boolean;
+            };
             created_at: string;
             updated_at: string;
         };

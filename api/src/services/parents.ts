@@ -1,12 +1,22 @@
-// Parent side: child profiles (onboarding), recommendations, the parent-approved library and
-// URL submissions. Every query is scoped to the signed-in parent; unapproved content is
+// Parent side: onboarding (parent and child profiles), recommendations, the parent-approved library
+// and URL submissions. Every query is scoped to the signed-in parent; unapproved content is
 // invisible except a parent's own submissions, which wait for admin approval.
 import { fetchYouTubeVideos, parseYouTubeId } from "../connectors/youtube";
-import { getPool, type Db } from "../db/pool";
-import { childAgeYears, recommend, type CandidateInput, type ChildProfileInput } from "../domain/recommendation";
+import { getPool, withTransaction, type Db } from "../db/pool";
+import { ageFromBand, bandForAge, type AgeBand } from "../domain/age";
+import {
+  breakPlan,
+  DEFAULT_DEVELOPMENT_GOALS,
+  defaultSessionMinutes,
+  MAX_CHILDREN,
+  type BreakType,
+  type ContentMix,
+  type SessionMinutes,
+} from "../domain/onboarding";
+import { recommend, type CandidateInput, type ChildProfileInput } from "../domain/recommendation";
 import type { AuthUser } from "../http/auth";
 import { ApiError, notFound } from "../http/errors";
-import type { ChildBody } from "../http/schemas";
+import type { ChildBody, ChildPatchBody, MePatchBody, OnboardingBody, PreviewBody } from "../http/schemas";
 import { getActiveRankingConfig } from "../repositories/config";
 import { getCardRows, listApprovedCardRows, toCard, type ContentCard } from "../repositories/content";
 import { keysOf, listTaxonomy, type Taxonomy, type TaxonomyKind } from "../repositories/taxonomy";
@@ -19,37 +29,169 @@ const PARENT_PRIORITY = 10;
 type Row = Record<string, any>;
 const toNumber = (value: unknown) => (value === null || value === undefined ? null : Number(value));
 const toIso = (value: unknown) => (value instanceof Date ? value.toISOString() : String(value));
+/** A local calendar date; Postgres `date` values arrive as local midnight. */
+const dateOnly = (value: Date) => `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, "0")}-${String(value.getDate()).padStart(2, "0")}`;
+const notOnboarded = () => new ApiError(404, "NOT_ONBOARDED", "No parent profile yet: start with POST /onboarding.");
+
+// ── Parent and child profiles ─────────────────────────────────────────────────
+interface ChildColumns {
+  nickname: string;
+  age_band: AgeBand;
+  age_band_set_on: string;
+  languages: string[];
+  interests: string[];
+  content_mix: ContentMix;
+  preferred_categories: string[];
+  development_goals: string[];
+  development_goals_custom: boolean;
+  regulation_goals: string[];
+  session_minutes: number;
+  break_type: BreakType;
+}
+
+const CHILD_COLUMNS = [
+  "nickname",
+  "age_band",
+  "age_band_set_on",
+  "languages",
+  "interests",
+  "content_mix",
+  "preferred_categories",
+  "development_goals",
+  "development_goals_custom",
+  "regulation_goals",
+  "session_minutes",
+  "break_type",
+] as const;
 
 function toChild(row: Row) {
+  const ageYears = ageFromBand(row.age_band, new Date(row.age_band_set_on));
+  const band = bandForAge(ageYears);
+  const custom = row.development_goals_custom === true;
   return {
-    id: row.id,
-    nickname: row.nickname,
-    birth_year: row.birth_year,
-    birth_month: row.birth_month,
-    age_years: childAgeYears(row.birth_year, row.birth_month),
-    languages: row.languages,
-    interests: row.interests,
-    content_types: row.content_types,
-    preferred_categories: row.preferred_categories,
-    development_goals: row.development_goals,
-    regulation_goals: row.regulation_goals,
-    daily_minutes: row.daily_minutes,
-    break_preference: row.break_preference,
+    id: row.id as string,
+    nickname: row.nickname as string,
+    age_band: band,
+    age_years: ageYears,
+    languages: row.languages as string[],
+    interests: row.interests as string[],
+    content_mix: row.content_mix as ContentMix,
+    preferred_categories: row.preferred_categories as string[],
+    // Block C is never asked: the goals follow the child's age unless someone set them on purpose.
+    development_goals: custom ? (row.development_goals as string[]) : DEFAULT_DEVELOPMENT_GOALS[band],
+    development_goals_source: custom ? ("PARENT" as const) : ("AGE_DEFAULT" as const),
+    regulation_goals: row.regulation_goals as string[],
+    session_minutes: row.session_minutes as SessionMinutes,
+    break_type: row.break_type as BreakType,
+    break_plan: breakPlan(row.session_minutes),
     created_at: toIso(row.created_at),
     updated_at: toIso(row.updated_at),
   };
 }
+type Child = ReturnType<typeof toChild>;
 
-async function assertOnboardingKeys(profile: Partial<ChildBody>) {
-  const taxonomy = await listTaxonomy(getPool());
-  const check = (kind: TaxonomyKind, field: string, values: string[] | undefined) => {
-    const unknown = (values ?? []).filter((value) => !keysOf(taxonomy, kind).includes(value));
+function toParent(row: Row) {
+  return { name: row.name as string, language: row.language as string, created_at: toIso(row.created_at), updated_at: toIso(row.updated_at) };
+}
+
+function columnsOf(row: Row): ChildColumns {
+  return {
+    nickname: row.nickname,
+    age_band: row.age_band,
+    age_band_set_on: row.age_band_set_on instanceof Date ? dateOnly(row.age_band_set_on) : String(row.age_band_set_on),
+    languages: row.languages,
+    interests: row.interests,
+    content_mix: row.content_mix,
+    preferred_categories: row.preferred_categories,
+    development_goals: row.development_goals,
+    development_goals_custom: row.development_goals_custom,
+    regulation_goals: row.regulation_goals,
+    session_minutes: row.session_minutes,
+    break_type: row.break_type,
+  };
+}
+
+/** A new child: only the nickname and age band come from the parent; the rest follows from age. */
+function newChild(nickname: string, band: AgeBand, language: string): ChildColumns {
+  return {
+    nickname,
+    age_band: band,
+    age_band_set_on: dateOnly(new Date()),
+    languages: [language],
+    interests: [],
+    content_mix: "SURPRISE",
+    preferred_categories: [],
+    development_goals: [],
+    development_goals_custom: false,
+    regulation_goals: [],
+    session_minutes: defaultSessionMinutes(band),
+    break_type: "ALTERNATE",
+  };
+}
+
+/** Every key comes from the shared vocabulary (GET /taxonomy), the one admins tag content with. */
+function assertKnownKeys(taxonomy: Taxonomy, values: Partial<Record<"languages" | "interests" | "preferred_categories" | "development_goals" | "regulation_goals", string[]>>) {
+  const check = (kind: TaxonomyKind, field: keyof typeof values) => {
+    const unknown = (values[field] ?? []).filter((value) => !keysOf(taxonomy, kind).includes(value));
     if (unknown.length) throw new ApiError(400, "UNKNOWN_TAXONOMY_KEY", `Unknown ${field}: ${unknown.join(", ")}. Use keys from GET /taxonomy.`, { field, unknown });
   };
-  check("interest", "interests", profile.interests);
-  check("category", "preferred_categories", profile.preferred_categories);
-  check("development_goal", "development_goals", profile.development_goals);
-  check("regulation_goal", "regulation_goals", profile.regulation_goals);
+  check("language", "languages");
+  check("interest", "interests");
+  check("category", "preferred_categories");
+  check("development_goal", "development_goals");
+  check("regulation_goal", "regulation_goals");
+}
+
+const unique = (values: string[]) => [...new Set(values)];
+
+/** Applies a request on top of the current values (or a new child's defaults). */
+function applyChange(current: ChildColumns, change: ChildPatchBody, taxonomy: Taxonomy): ChildColumns {
+  const next: ChildColumns = { ...current };
+  if (change.nickname !== undefined) next.nickname = change.nickname;
+  if (change.age_band !== undefined) {
+    next.age_band = change.age_band;
+    next.age_band_set_on = dateOnly(new Date());
+  }
+  if (change.languages !== undefined) next.languages = unique(change.languages);
+  if (change.interests !== undefined) next.interests = unique(change.interests);
+  if (change.preferred_categories !== undefined) {
+    next.preferred_categories = unique(change.preferred_categories);
+    if (change.content_mix === undefined && next.preferred_categories.length > 0) next.content_mix = "CHOSEN";
+  }
+  if (change.content_mix !== undefined) next.content_mix = change.content_mix;
+  if (next.content_mix === "SURPRISE") next.preferred_categories = [];
+  if (next.content_mix === "CHOSEN" && next.preferred_categories.length === 0) {
+    throw new ApiError(400, "CATEGORIES_REQUIRED", "Choose at least one category, or pick “Surprise us”.");
+  }
+  if (change.development_goals !== undefined) {
+    next.development_goals = unique(change.development_goals);
+    next.development_goals_custom = next.development_goals.length > 0;
+  }
+  if (change.regulation_goals !== undefined) {
+    // "All six" and "none" both mean no restriction (the Block D default).
+    const all = keysOf(taxonomy, "regulation_goal");
+    next.regulation_goals = all.every((key) => change.regulation_goals?.includes(key)) ? [] : unique(change.regulation_goals);
+  }
+  if (change.session_minutes !== undefined) next.session_minutes = change.session_minutes;
+  if (change.break_type !== undefined) next.break_type = change.break_type;
+  return next;
+}
+
+async function insertChild(db: Db, parentUserId: string, child: ChildColumns): Promise<Row> {
+  const placeholders = CHILD_COLUMNS.map((_, index) => `$${index + 2}`).join(", ");
+  // clock_timestamp keeps the order children were entered in, even inside one onboarding transaction.
+  const { rows } = await db.query(
+    `INSERT INTO child_profiles (parent_user_id, ${CHILD_COLUMNS.join(", ")}, created_at) VALUES ($1, ${placeholders}, clock_timestamp()) RETURNING *`,
+    [parentUserId, ...CHILD_COLUMNS.map((column) => child[column])],
+  );
+  return rows[0];
+}
+
+async function assertRoomFor(db: Db, parentUserId: string, adding: number) {
+  const { rows } = await db.query("SELECT count(*)::int AS n FROM child_profiles WHERE parent_user_id = $1", [parentUserId]);
+  if (rows[0].n + adding > MAX_CHILDREN) {
+    throw new ApiError(422, "TOO_MANY_CHILDREN", `A family can have up to ${MAX_CHILDREN} child profiles.`, { existing: rows[0].n, adding });
+  }
 }
 
 async function childRow(user: AuthUser, childId: string): Promise<Row> {
@@ -59,51 +201,77 @@ async function childRow(user: AuthUser, childId: string): Promise<Row> {
   return row;
 }
 
-// ── Child profiles ────────────────────────────────────────────────────────────
+async function childRows(db: Db, user: AuthUser): Promise<Row[]> {
+  return (await db.query("SELECT * FROM child_profiles WHERE parent_user_id = $1 ORDER BY created_at, id", [user.id])).rows;
+}
+
+/** Screen 1 in one call: the parent's name and language, and each child's nickname and age band. */
+export async function onboard(user: AuthUser, body: OnboardingBody) {
+  assertKnownKeys(await listTaxonomy(getPool()), { languages: [body.language] });
+  return withTransaction(async (client) => {
+    const parent = (
+      await client.query(
+        `INSERT INTO parent_profiles (parent_user_id, name, language) VALUES ($1, $2, $3)
+         ON CONFLICT (parent_user_id) DO UPDATE SET name = EXCLUDED.name, language = EXCLUDED.language, updated_at = now()
+         RETURNING *`,
+        [user.id, body.parent_name, body.language],
+      )
+    ).rows[0];
+    await assertRoomFor(client, user.id, body.children.length);
+    for (const child of body.children) await insertChild(client, user.id, newChild(child.nickname, child.age_band, body.language));
+    return { parent: toParent(parent), children: (await childRows(client, user)).map(toChild) };
+  });
+}
+
+export async function getMe(user: AuthUser) {
+  const db = getPool();
+  const parent = (await db.query("SELECT * FROM parent_profiles WHERE parent_user_id = $1", [user.id])).rows[0];
+  if (!parent) throw notOnboarded();
+  return { parent: toParent(parent), children: (await childRows(db, user)).map(toChild) };
+}
+
+export async function updateMe(user: AuthUser, patch: MePatchBody) {
+  const db = getPool();
+  if (patch.language) assertKnownKeys(await listTaxonomy(db), { languages: [patch.language] });
+  const { rowCount } = await db.query(
+    "UPDATE parent_profiles SET name = COALESCE($2, name), language = COALESCE($3, language), updated_at = now() WHERE parent_user_id = $1",
+    [user.id, patch.name ?? null, patch.language ?? null],
+  );
+  if (!rowCount) throw notOnboarded();
+  return getMe(user);
+}
+
 export async function listChildren(user: AuthUser) {
-  const { rows } = await getPool().query("SELECT * FROM child_profiles WHERE parent_user_id = $1 ORDER BY created_at", [user.id]);
-  return { items: rows.map(toChild) };
+  return { items: (await childRows(getPool(), user)).map(toChild) };
 }
 
 export async function getChild(user: AuthUser, childId: string) {
   return toChild(await childRow(user, childId));
 }
 
-const CHILD_FIELDS = [
-  "nickname",
-  "birth_year",
-  "birth_month",
-  "languages",
-  "interests",
-  "content_types",
-  "preferred_categories",
-  "development_goals",
-  "regulation_goals",
-  "daily_minutes",
-  "break_preference",
-] as const;
-
+/** Adds a child after onboarding; they start with the parent's language. */
 export async function createChild(user: AuthUser, body: ChildBody) {
-  await assertOnboardingKeys(body);
-  const values = CHILD_FIELDS.map((field) => body[field]);
-  const placeholders = CHILD_FIELDS.map((_, index) => `$${index + 2}`).join(", ");
-  const { rows } = await getPool().query(
-    `INSERT INTO child_profiles (parent_user_id, ${CHILD_FIELDS.join(", ")}) VALUES ($1, ${placeholders}) RETURNING *`,
-    [user.id, ...values],
-  );
-  return toChild(rows[0]);
+  const db = getPool();
+  const taxonomy = await listTaxonomy(db);
+  assertKnownKeys(taxonomy, body);
+  await assertRoomFor(db, user.id, 1);
+  const language = (await db.query("SELECT language FROM parent_profiles WHERE parent_user_id = $1", [user.id])).rows[0]?.language ?? "en";
+  return toChild(await insertChild(db, user.id, applyChange(newChild(body.nickname, body.age_band, language), body, taxonomy)));
 }
 
-export async function updateChild(user: AuthUser, childId: string, patch: Partial<ChildBody>) {
-  await childRow(user, childId);
-  await assertOnboardingKeys(patch);
-  const fields = CHILD_FIELDS.filter((field) => field in patch);
-  if (fields.length === 0) return getChild(user, childId);
-  const sets = fields.map((field, index) => `${field} = $${index + 3}`).join(", ");
-  const { rows } = await getPool().query(
-    `UPDATE child_profiles SET ${sets}, updated_at = now() WHERE id = $1 AND parent_user_id = $2 RETURNING *`,
-    [childId, user.id, ...fields.map((field) => patch[field])],
-  );
+/** "Customize for {child}": any of the optional blocks, the language or a new age band. */
+export async function updateChild(user: AuthUser, childId: string, patch: ChildPatchBody) {
+  const current = await childRow(user, childId);
+  const db = getPool();
+  const taxonomy = await listTaxonomy(db);
+  assertKnownKeys(taxonomy, patch);
+  const next = applyChange(columnsOf(current), patch, taxonomy);
+  const sets = CHILD_COLUMNS.map((column, index) => `${column} = $${index + 3}`).join(", ");
+  const { rows } = await db.query(`UPDATE child_profiles SET ${sets}, updated_at = now() WHERE id = $1 AND parent_user_id = $2 RETURNING *`, [
+    childId,
+    user.id,
+    ...CHILD_COLUMNS.map((column) => next[column]),
+  ]);
   return toChild(rows[0]);
 }
 
@@ -156,31 +324,21 @@ async function rankFor(db: Db, profile: ChildProfileInput, excluded: Set<string>
   };
 }
 
-function profileFrom(row: Row | ChildProfileLike, ageYears: number): ChildProfileInput {
+function profileOf(child: Pick<Child, "age_years" | "languages" | "interests" | "development_goals" | "regulation_goals" | "content_mix" | "preferred_categories"> & { session_minutes: number }): ChildProfileInput {
   return {
-    ageYears,
-    languages: row.languages,
-    contentTypes: row.content_types,
-    interests: row.interests,
-    developmentGoals: row.development_goals,
-    regulationGoals: row.regulation_goals,
-    preferredCategories: row.preferred_categories,
-    dailyMinutes: row.daily_minutes,
+    ageYears: child.age_years,
+    languages: child.languages,
+    interests: child.interests,
+    developmentGoals: child.development_goals,
+    regulationGoals: child.regulation_goals,
+    contentMix: child.content_mix,
+    preferredCategories: child.preferred_categories,
+    sessionMinutes: child.session_minutes,
   };
 }
 
-interface ChildProfileLike {
-  languages: string[];
-  content_types: string[];
-  interests: string[];
-  development_goals: string[];
-  regulation_goals: string[];
-  preferred_categories: string[];
-  daily_minutes: number | null;
-}
-
 export async function recommendationsFor(user: AuthUser, childId: string, paging: { limit: number; offset: number }) {
-  const child = await childRow(user, childId);
+  const child = toChild(await childRow(user, childId));
   const db = getPool();
   const config = await getActiveRankingConfig(db);
   const excluded = new Set(
@@ -192,12 +350,18 @@ export async function recommendationsFor(user: AuthUser, childId: string, paging
       )
     ).rows.map((row) => row.content_item_id as string),
   );
-  return rankFor(db, profileFrom(child, childAgeYears(child.birth_year, child.birth_month)), excluded, paging.limit, paging.offset);
+  return rankFor(db, profileOf(child), excluded, paging.limit, paging.offset);
 }
 
-/** Admin preview: what would a child with this profile see right now? */
-export async function previewRecommendations(profile: ChildProfileLike & { age_years: number; limit: number }) {
-  return rankFor(getPool(), profileFrom(profile, profile.age_years), new Set(), profile.limit, 0);
+/** Admin preview: what a child with this profile would see right now. */
+export async function previewRecommendations(body: PreviewBody) {
+  const db = getPool();
+  const taxonomy = await listTaxonomy(db);
+  assertKnownKeys(taxonomy, body);
+  const child = applyChange(newChild("Preview", body.age_band, body.languages?.[0] ?? "en"), body, taxonomy);
+  const developmentGoals = child.development_goals_custom ? child.development_goals : DEFAULT_DEVELOPMENT_GOALS[child.age_band];
+  const profile = profileOf({ ...child, age_years: ageFromBand(child.age_band, new Date()), development_goals: developmentGoals });
+  return rankFor(db, profile, new Set(), body.limit, 0);
 }
 
 // ── Parent-approved library ───────────────────────────────────────────────────

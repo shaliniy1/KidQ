@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState, type FormEvent } from "react";
 import { api, unwrap } from "@/lib/api";
 import { useTaxonomy } from "@/lib/useTaxonomy";
@@ -26,29 +27,61 @@ interface Preview {
   items: Array<{ rank: number; cold_start: boolean; why: string[]; card: { id: string; title: string; content_score: { score: number | null } | null } }>;
 }
 
-const sum = (weights: Weights) => Math.round(Object.values(weights).reduce((total, value) => total + value, 0) * 1000) / 1000;
+// Plain-language names for every weight, so admins see what each number does.
+const SCORE_PARTS: Record<string, [string, string]> = {
+  CONTENT_LANGUAGE: ["Content & language", "Safe, suitable themes, words and behaviour"],
+  PACING: ["Pacing", "Calm, slow scenes with few quick cuts"],
+  VISUAL_COMFORT: ["Visual comfort", "Soft, light colours; no flashing or clutter"],
+  AUDIO_COMFORT: ["Audio comfort", "Gentle, even sound; no sudden loud noises"],
+};
+const TRUST: Record<string, [string, string]> = {
+  HUMAN: ["Your ratings", "Admins and experts"],
+  MODEL: ["AI ratings", "The Gemini scoring agent"],
+  RULE: ["Rule checks", "Title and description checks"],
+};
+const RANK_PARTS: Record<string, [string, string]> = {
+  relevance: ["Matches the child", "Interests, goals and chosen categories"],
+  score: ["KidQ score", "Better-scored items first"],
+  expert: ["Expert reviews", "Items experts recommend"],
+  preference: ["Fits one session", "Short enough for the child's session length"],
+};
 
-function WeightInputs({ weights, onChange }: { weights: Weights; onChange: (next: Weights) => void }) {
+const percent = (value: number) => Math.round(value * 100);
+const total = (weights: Weights) => Object.values(weights).reduce((sum, value) => sum + percent(value), 0);
+
+function PercentRows({ weights, names, onChange }: { weights: Weights; names: Record<string, [string, string]>; onChange: (next: Weights) => void }) {
   return (
-    <div className="grid">
+    <div className="stack" style={{ gap: 10 }}>
       {Object.entries(weights).map(([key, value]) => (
-        <label key={key}>
-          {key.replace(/_/g, " ").toLowerCase()}
-          <input type="number" step={0.05} min={0} max={1} value={value} onChange={(event) => onChange({ ...weights, [key]: Number(event.target.value) })} />
+        <label key={key} className="slider-row" style={{ gridTemplateColumns: "minmax(0, 1fr) 90px", fontWeight: 600 }}>
+          <span>
+            {names[key]?.[0] ?? key}
+            <span className="muted" style={{ display: "block", fontWeight: 400, fontSize: 13 }}>
+              {names[key]?.[1]}
+            </span>
+          </span>
+          <span className="row" style={{ flexWrap: "nowrap", gap: 4 }}>
+            <input type="number" min={0} max={100} step={5} value={percent(value)} onChange={(event) => onChange({ ...weights, [key]: Number(event.target.value) / 100 })} style={{ width: 64 }} />%
+          </span>
         </label>
       ))}
     </div>
   );
 }
 
-export default function ConfigurationPage() {
+function TotalLine({ weights }: { weights: Weights }) {
+  const sum = total(weights);
+  return <p className={sum === 100 ? "muted" : "error"}>{sum === 100 ? "Adds up to 100% ✓" : `Adds up to ${sum}% — make it 100% to save.`}</p>;
+}
+
+export default function SettingsPage() {
   const taxonomy = useTaxonomy();
   const [scoring, setScoring] = useState<ScoringConfig | null>(null);
   const [ranking, setRanking] = useState<RankingConfig | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [term, setTerm] = useState({ kind: "category", key: "", label: "" });
-  const [previewAge, setPreviewAge] = useState(4);
+  const [previewBand, setPreviewBand] = useState("3_4");
   const [previewInterests, setPreviewInterests] = useState<string[]>([]);
   const [preview, setPreview] = useState<Preview | null>(null);
 
@@ -70,7 +103,7 @@ export default function ConfigurationPage() {
 
   const saveScoring = () =>
     scoring &&
-    run("Score weights saved as a new version; everything is being rescored.", async () => {
+    run("Saved. Every item's score is being recalculated with the new weights.", async () => {
       const saved = unwrap(
         await api.PUT("/config/scoring", {
           body: {
@@ -85,7 +118,7 @@ export default function ConfigurationPage() {
 
   const saveRanking = () =>
     ranking &&
-    run("Ranking weights saved as a new version.", async () => {
+    run("Saved. Recommendations use the new order from now on.", async () => {
       const p = ranking.params;
       const saved = unwrap(
         await api.PUT("/config/ranking", {
@@ -109,7 +142,7 @@ export default function ConfigurationPage() {
 
   const addTerm = (event: FormEvent) => {
     event.preventDefault();
-    void run(`Added "${term.label}". Reload to see it in pickers.`, async () => {
+    void run(`Added “${term.label}”. Reload to see it in the pickers.`, async () => {
       unwrap(await api.POST("/taxonomy", { body: { kind: term.kind as never, key: term.key, label: term.label } }));
       setTerm({ ...term, key: "", label: "" });
     });
@@ -118,86 +151,114 @@ export default function ConfigurationPage() {
   const runPreview = (event: FormEvent) => {
     event.preventDefault();
     void run("Preview updated.", async () => {
-      setPreview(unwrap(await api.POST("/recommendations/preview", { body: { age_years: previewAge, interests: previewInterests, limit: 10 } as never })) as unknown as Preview);
+      setPreview(unwrap(await api.POST("/recommendations/preview", { body: { age_band: previewBand, interests: previewInterests, limit: 10 } as never })) as unknown as Preview);
     });
   };
 
   return (
     <div className="stack">
       <h1>Configuration</h1>
+      <div className="card stack" style={{ gap: 6 }}>
+        <p style={{ margin: 0 }}>
+          These settings decide how KidQ works out each item&apos;s score and the order of each child&apos;s recommendations. The defaults are sensible, so you rarely need to
+          change them.
+        </p>
+        <p className="muted" style={{ margin: 0 }}>
+          Looking to publish? Use the <Link href="/review">Review queue</Link> or the <Link href="/content?state=READY_TO_APPROVE">Content library</Link>: tick the items (or
+          “Select all ready to approve”), then press <strong>Publish selected</strong>.
+        </p>
+      </div>
       {message && <p className="muted">✓ {message}</p>}
       {error && <p className="error">{error}</p>}
 
       <div className="two-col">
         <div className="card stack">
-          <h2 style={{ margin: 0 }}>KidQ score weights {scoring && <span className="badge">{scoring.version}</span>}</h2>
+          <h2 style={{ margin: 0 }}>How the KidQ score is worked out</h2>
+          <p className="muted" style={{ margin: 0 }}>
+            Every item gets four ratings from 0 to 100, from the AI or from you. The score is their weighted average; these percentages are the weights.
+          </p>
           {scoring && (
             <>
-              <WeightInputs weights={scoring.weights} onChange={(weights) => setScoring({ ...scoring, weights })} />
-              <p className={sum(scoring.weights) === 1 ? "muted" : "error"}>Total {sum(scoring.weights)} (must be 1)</p>
-              <h3>How much each reviewer is trusted (confidence)</h3>
-              <WeightInputs weights={scoring.sourceReliability} onChange={(sourceReliability) => setScoring({ ...scoring, sourceReliability })} />
-              <label>
-                Minimum AI self-confidence before an item needs attention
-                <input type="number" step={0.05} min={0} max={1} value={scoring.minAiConfidence} onChange={(event) => setScoring({ ...scoring, minAiConfidence: Number(event.target.value) })} />
-              </label>
-              <button className="btn primary" disabled={sum(scoring.weights) !== 1} onClick={() => void saveScoring()}>
-                Save as new version
+              <PercentRows weights={scoring.weights} names={SCORE_PARTS} onChange={(weights) => setScoring({ ...scoring, weights })} />
+              <TotalLine weights={scoring.weights} />
+              <details>
+                <summary>Advanced: how much each kind of rating is trusted</summary>
+                <div className="stack" style={{ marginTop: 10 }}>
+                  <p className="muted" style={{ margin: 0 }}>
+                    This sets the confidence shown next to a score. Your own ratings always override the AI&apos;s.
+                  </p>
+                  <PercentRows weights={scoring.sourceReliability} names={TRUST} onChange={(sourceReliability) => setScoring({ ...scoring, sourceReliability })} />
+                  <label className="slider-row" style={{ gridTemplateColumns: "minmax(0, 1fr) 90px", fontWeight: 600 }}>
+                    <span>
+                      Ask me to check AI ratings below
+                      <span className="muted" style={{ display: "block", fontWeight: 400, fontSize: 13 }}>
+                        Items whose AI confidence is lower go to “Needs attention”
+                      </span>
+                    </span>
+                    <span className="row" style={{ flexWrap: "nowrap", gap: 4 }}>
+                      <input
+                        type="number"
+                        min={0}
+                        max={100}
+                        step={5}
+                        value={percent(scoring.minAiConfidence)}
+                        onChange={(event) => setScoring({ ...scoring, minAiConfidence: Number(event.target.value) / 100 })}
+                        style={{ width: 64 }}
+                      />
+                      %
+                    </span>
+                  </label>
+                </div>
+              </details>
+              <button className="btn primary" disabled={total(scoring.weights) !== 100} onClick={() => void saveScoring()}>
+                Save and recalculate all scores
               </button>
+              <p className="muted" style={{ margin: 0, fontSize: 13 }}>
+                Version {scoring.version}. Each save creates a new version, so earlier scores stay explainable.
+              </p>
             </>
           )}
         </div>
 
         <div className="card stack">
-          <h2 style={{ margin: 0 }}>Recommendation ranking {ranking && <span className="badge">{ranking.version}</span>}</h2>
+          <h2 style={{ margin: 0 }}>How recommendations are ordered</h2>
+          <p className="muted" style={{ margin: 0 }}>
+            Only published items are ever recommended. Among those that fit the child&apos;s age and language, these percentages set what counts most. Popularity is never used.
+          </p>
           {ranking && (
             <>
-              <WeightInputs weights={ranking.weights} onChange={(weights) => setRanking({ ...ranking, weights })} />
-              <p className={sum(ranking.weights) === 1 ? "muted" : "error"}>Total {sum(ranking.weights)} (must be 1)</p>
+              <PercentRows weights={ranking.weights} names={RANK_PARTS} onChange={(weights) => setRanking({ ...ranking, weights })} />
+              <TotalLine weights={ranking.weights} />
               <p className="muted" style={{ margin: 0 }}>
-                At most {ranking.params.maxPerCreatorInTop} items per creator in the top {ranking.params.topWindow}; dismissed items return after{" "}
-                {ranking.params.dismissCooldownDays} days. Popularity is never used.
+                At most {ranking.params.maxPerCreatorInTop} items from one creator appear in the top {ranking.params.topWindow}; items a parent skips come back after{" "}
+                {ranking.params.dismissCooldownDays} days.
               </p>
-              <button className="btn primary" disabled={sum(ranking.weights) !== 1} onClick={() => void saveRanking()}>
-                Save as new version
+              <button className="btn primary" disabled={total(ranking.weights) !== 100} onClick={() => void saveRanking()}>
+                Save
               </button>
+              <p className="muted" style={{ margin: 0, fontSize: 13 }}>
+                Version {ranking.version}.
+              </p>
             </>
           )}
         </div>
       </div>
 
       <div className="two-col">
-        <form className="card stack" onSubmit={addTerm}>
-          <h2 style={{ margin: 0 }}>Add a category, interest or goal</h2>
-          <label>
-            Type
-            <select value={term.kind} onChange={(event) => setTerm({ ...term, kind: event.target.value })}>
-              <option value="category">Category</option>
-              <option value="interest">Interest</option>
-              <option value="development_goal">Development goal</option>
-              <option value="regulation_goal">Regulation goal</option>
-              <option value="language">Language</option>
-            </select>
-          </label>
-          <label>
-            Label
-            <input
-              value={term.label}
-              onChange={(event) => setTerm({ ...term, label: event.target.value, key: event.target.value.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "") })}
-              placeholder="Creativity"
-            />
-          </label>
-          <p className="muted" style={{ margin: 0 }}>Key: {term.key || "—"}</p>
-          <button className="btn primary" disabled={term.key.length < 2 || !term.label}>
-            Add
-          </button>
-        </form>
-
         <form className="card stack" onSubmit={runPreview}>
           <h2 style={{ margin: 0 }}>What would a child see?</h2>
+          <p className="muted" style={{ margin: 0 }}>
+            Try an age and some interests to see the recommendations a parent would get right now.
+          </p>
           <label>
-            Age: {previewAge}
-            <input type="range" min={0} max={6} step={0.5} value={previewAge} onChange={(event) => setPreviewAge(Number(event.target.value))} />
+            Age band
+            <select value={previewBand} onChange={(event) => setPreviewBand(event.target.value)}>
+              {taxonomy?.age_group.map((band) => (
+                <option key={band.key} value={band.key}>
+                  {band.label}
+                </option>
+              ))}
+            </select>
           </label>
           <div className="chips">
             {taxonomy?.interest.map((interest) => {
@@ -216,7 +277,7 @@ export default function ConfigurationPage() {
               );
             })}
           </div>
-          <button className="btn primary">Preview</button>
+          <button className="btn primary">Show recommendations</button>
           {preview &&
             (preview.items.length === 0 ? (
               <p className="muted">Nothing published fits this child yet.</p>
@@ -229,6 +290,34 @@ export default function ConfigurationPage() {
                 ))}
               </ol>
             ))}
+        </form>
+
+        <form className="card stack" onSubmit={addTerm}>
+          <h2 style={{ margin: 0 }}>Add a word to the shared list</h2>
+          <p className="muted" style={{ margin: 0 }}>
+            Parents choose from these words in onboarding, and you tag content with the same ones. Add one only if it&apos;s missing.
+          </p>
+          <label>
+            Type
+            <select value={term.kind} onChange={(event) => setTerm({ ...term, kind: event.target.value })}>
+              <option value="category">Category</option>
+              <option value="interest">Interest</option>
+              <option value="development_goal">Development goal</option>
+              <option value="regulation_goal">Regulation goal</option>
+              <option value="language">Language</option>
+            </select>
+          </label>
+          <label>
+            Name
+            <input
+              value={term.label}
+              onChange={(event) => setTerm({ ...term, label: event.target.value, key: event.target.value.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "") })}
+              placeholder="e.g. Dinosaurs"
+            />
+          </label>
+          <button className="btn primary" disabled={term.key.length < 2 || !term.label}>
+            Add
+          </button>
         </form>
       </div>
     </div>

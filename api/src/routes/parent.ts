@@ -1,5 +1,6 @@
-// Parent app API: onboarding (child profiles), recommendations, the parent-approved library and
-// URL submissions. Scoped to the signed-in parent; only admin-approved content is ever playable.
+// Parent app API: onboarding (parent and child profiles), recommendations, the parent-approved
+// library and URL submissions. Scoped to the signed-in parent; only admin-approved content is ever
+// playable. Onboarding fields: docs/recommendation/parent-onboarding.md.
 import { Router } from "express";
 import { z } from "zod";
 import { defineRoute } from "../http/route";
@@ -11,6 +12,9 @@ import {
   childSchema,
   libraryBody,
   libraryItemSchema,
+  meSchema,
+  mePatchBody,
+  onboardingBody,
   recommendationSchema,
   recommendationsQuery,
   submissionBody,
@@ -23,13 +27,40 @@ const roles: Array<"parent" | "admin"> = ["parent", "admin"];
 
 defineRoute(
   parentRouter,
+  {
+    method: "post",
+    path: "/onboarding",
+    summary: "Screen 1 in one call: the parent's name and language, and each child's nickname and age band (1–6); the rest starts from age-based defaults",
+    tag: "Onboarding",
+    roles,
+    body: onboardingBody,
+    response: meSchema,
+    status: 201,
+  },
+  async ({ user, body }) => parents.onboard(user, body),
+);
+
+defineRoute(
+  parentRouter,
+  { method: "get", path: "/me", summary: "The parent's profile and children; 404 NOT_ONBOARDED means show onboarding", tag: "Onboarding", roles, response: meSchema },
+  async ({ user }) => parents.getMe(user),
+);
+
+defineRoute(
+  parentRouter,
+  { method: "patch", path: "/me", summary: "Change the parent's name or language", tag: "Onboarding", roles, body: mePatchBody, response: meSchema },
+  async ({ user, body }) => parents.updateMe(user, body),
+);
+
+defineRoute(
+  parentRouter,
   { method: "get", path: "/children", summary: "The signed-in parent's children", tag: "Children", roles, response: z.object({ items: z.array(childSchema) }) },
   async ({ user }) => parents.listChildren(user),
 );
 
 defineRoute(
   parentRouter,
-  { method: "post", path: "/children", summary: "Create a child profile (onboarding). Use keys from GET /taxonomy.", tag: "Children", roles, body: childBody, response: childSchema, status: 201 },
+  { method: "post", path: "/children", summary: "Add a child: nickname and age band (up to 6 per family); keys from GET /taxonomy", tag: "Children", roles, body: childBody, response: childSchema, status: 201 },
   async ({ user, body }) => parents.createChild(user, body),
 );
 
@@ -41,7 +72,16 @@ defineRoute(
 
 defineRoute(
   parentRouter,
-  { method: "patch", path: "/children/:id", summary: "Update onboarding preferences", tag: "Children", roles, params: childParams, body: childPatchBody, response: childSchema },
+  {
+    method: "patch",
+    path: "/children/:id",
+    summary: "Customize: interests, content mix, regulation goals, session length, breaks, languages or a new age band",
+    tag: "Children",
+    roles,
+    params: childParams,
+    body: childPatchBody,
+    response: childSchema,
+  },
   async ({ user, params, body }) => parents.updateChild(user, params.id, body),
 );
 

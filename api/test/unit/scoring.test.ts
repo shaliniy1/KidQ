@@ -98,6 +98,15 @@ describe("computeKidqScore", () => {
     expect(result.lowConfidence).toEqual(["CONTENT_LANGUAGE", "PACING", "VISUAL_COMFORT", "AUDIO_COMFORT"]);
   });
 
+  it("scores a picture book on its three applicable components", () => {
+    const result = computeKidqScore([assessment("MODEL", { CONTENT_LANGUAGE: 90, PACING: 80, VISUAL_COMFORT: 70 })], config, "STORYBOOK");
+    expect(result.components.map((c) => c.label)).toEqual(["Content & language", "Reading pace", "Illustrations"]);
+    // (0.40×90 + 0.25×80 + 0.20×70) / 0.85 — audio doesn't apply, so it's neither weighted nor missing.
+    expect(result.score).toBe(82.4);
+    expect(result.confidence).toBe(0.8);
+    expect(result.missing).toEqual([]);
+  });
+
   it("returns no score when nothing was measured", () => {
     const result = computeKidqScore([], config);
     expect(result.score).toBeNull();

@@ -1,7 +1,7 @@
 // Admin Content Studio actions (plan: "Admin control model"). Automation only prepares items;
 // every visibility change here is an explicit, recorded admin decision.
 import type { PoolClient } from "pg";
-import { pacificDay } from "../ai/scoring-agent";
+import { nextPacificReset, pacificDay, scoringModels } from "../ai/scoring-agent";
 import { env } from "../config/env";
 import { getPool, withTransaction } from "../db/pool";
 import { ageBandsFor } from "../domain/age";
@@ -292,6 +292,28 @@ export async function reanalyze(id: string) {
   return { queued: true };
 }
 
+/**
+ * Sends every item the AI hasn't reviewed yet to the scoring agent, shortest first so more fit in a
+ * free-tier day. Items a keyword rule flagged are included (force), so the admin gets the AI's
+ * evidence too; rejected items are skipped.
+ */
+export async function queueAiScoring() {
+  if (!env.geminiApiKey) throw new ApiError(409, "AI_DISABLED", "AI scoring is off: set GEMINI_API_KEY on the API and restart it.");
+  const pool = getPool();
+  const { rows } = await pool.query<{ id: string }>(
+    `SELECT ci.id FROM content_items ci
+     WHERE ci.current_status <> 'REJECTED' AND ci.analysis_status NOT IN ('QUEUED', 'ANALYSING')
+       AND NOT EXISTS (SELECT 1 FROM assessments a WHERE a.content_item_id = ci.id AND a.assessor_type = 'MODEL')
+     ORDER BY ci.duration_seconds NULLS LAST, ci.created_at`,
+  );
+  // One statement per job, so created_at keeps the shortest-first order for the worker.
+  for (const { id } of rows) {
+    await pool.query("UPDATE content_items SET analysis_status = 'QUEUED', updated_at = now() WHERE id = $1", [id]);
+    await enqueueJob(pool, { type: "ANALYZE", aggregateType: "content_item", aggregateId: id, payload: { force: true }, dedupeKey: `analyze:${id}` });
+  }
+  return { queued: rows.length };
+}
+
 /** A player report only queues a re-check; content is hidden only if YouTube confirms it's gone. */
 export async function reportPlaybackError(id: string, code: number) {
   const pool = getPool();
@@ -308,7 +330,8 @@ export async function queueRescoreAll() {
 
 export async function dashboard() {
   const pool = getPool();
-  const [states, sources, flagged, queue, ai] = await Promise.all([
+  const models = scoringModels();
+  const [states, sources, flagged, queue, coverage, usage] = await Promise.all([
     pool.query("SELECT studio_state, count(*)::int AS n FROM content_records_v GROUP BY studio_state"),
     pool.query("SELECT source, count(*)::int AS n FROM content_records_v GROUP BY source"),
     pool.query("SELECT count(*)::int AS n FROM content_items WHERE has_critical_flag"),
@@ -316,22 +339,46 @@ export async function dashboard() {
       "SELECT event_type, status, count(*)::int AS n FROM outbox_events WHERE status IN ('PENDING', 'PROCESSING', 'FAILED') GROUP BY event_type, status",
     ),
     pool.query(
-      "SELECT COALESCE(SUM(youtube_video_seconds), 0)::int AS youtube_seconds, COALESCE(SUM(requests), 0)::int AS requests FROM ai_usage_daily WHERE day = $1",
-      [pacificDay()],
+      `SELECT
+         count(*) FILTER (WHERE ai.reviewed)::int AS scored,
+         count(*) FILTER (WHERE ci.analysis_status IN ('QUEUED', 'ANALYSING'))::int AS queued,
+         count(*) FILTER (WHERE NOT ai.tried AND ci.analysis_status NOT IN ('QUEUED', 'ANALYSING') AND ci.current_status <> 'REJECTED')::int AS unscored,
+         count(*) FILTER (WHERE ai.tried AND NOT ai.reviewed AND ci.analysis_status NOT IN ('QUEUED', 'ANALYSING'))::int AS could_not_review
+       FROM content_items ci
+       CROSS JOIN LATERAL (
+         SELECT count(*) > 0 AS tried, COALESCE(bool_or(a.audiovisual_inspected), false) AS reviewed
+         FROM assessments a WHERE a.content_item_id = ci.id AND a.assessor_type = 'MODEL'
+       ) ai`,
     ),
+    pool.query("SELECT model, youtube_video_seconds, file_video_seconds, requests, quota_exhausted_at IS NOT NULL AS paused FROM ai_usage_daily WHERE day = $1", [
+      pacificDay(),
+    ]),
   ]);
-  const byState = Object.fromEntries(states.rows.map((row) => [row.studio_state, row.n]));
+  const ai = coverage.rows[0];
+  const usageByModel = new Map(usage.rows.map((row) => [row.model as string, row]));
+  const total = (field: string) => usage.rows.reduce((sum, row) => sum + Number(row[field] ?? 0), 0);
+  const chain = models.map((model) => ({ model, requests: Number(usageByModel.get(model)?.requests ?? 0), paused: usageByModel.get(model)?.paused === true }));
   return {
     total: states.rows.reduce((sum, row) => sum + row.n, 0),
-    by_state: byState,
+    by_state: Object.fromEntries(states.rows.map((row) => [row.studio_state, row.n])),
     by_source: Object.fromEntries(sources.rows.map((row) => [row.source, row.n])),
     flagged: flagged.rows[0].n,
     queue: queue.rows,
-    ai_today: {
-      youtube_video_seconds: ai.rows[0].youtube_seconds,
-      daily_cap_seconds: env.aiDailyVideoSecondsCap,
-      requests: ai.rows[0].requests,
+    ai: {
       enabled: Boolean(env.geminiApiKey),
+      model: models[0],
+      models: chain,
+      paused_until: chain.every((entry) => entry.paused) ? nextPacificReset().toISOString() : null,
+      scored: ai.scored,
+      queued: ai.queued,
+      unscored: ai.unscored,
+      could_not_review: ai.could_not_review,
+      today: {
+        requests: total("requests"),
+        youtube_video_seconds: total("youtube_video_seconds"),
+        file_video_seconds: total("file_video_seconds"),
+        youtube_daily_cap_seconds: env.aiDailyVideoSecondsCap,
+      },
     },
   };
 }

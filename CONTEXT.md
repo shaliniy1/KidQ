@@ -53,8 +53,12 @@ A key from the shared vocabulary — category, interest, development goal, regul
 _Avoid_: tag string, label
 
 **Child Profile**:
-A parent's onboarding answers for one child (age, languages, interests, goals, preferences); the input to recommendations.
+A parent's onboarding answers for one child: a nickname and an age band, plus any "Customize" choices (interests, content mix, regulation goals, session length and breaks, languages). Anything not chosen follows from the child's age. The input to recommendations.
 _Avoid_: user profile, account
+
+**Parent Profile**:
+The signed-in parent's name and chosen language, created at onboarding. Their child profiles belong to it.
+_Avoid_: account, user
 
 **Recommendation**:
 An admin-approved content item ranked for one child profile, with the reasons it matched.

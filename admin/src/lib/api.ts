@@ -23,6 +23,7 @@ api.use(authenticate);
 type ContentPage = paths["/content-items"]["get"]["responses"][200]["content"]["application/json"];
 export type AdminContent = ContentPage["items"][number];
 export type ContentScore = NonNullable<AdminContent["content_score"]>;
+export type Dashboard = paths["/dashboard"]["get"]["responses"][200]["content"]["application/json"];
 
 export class ApiFailure extends Error {
   constructor(
@@ -53,15 +54,39 @@ export function blockersOf(error: unknown): string[] {
   return error instanceof ApiFailure ? (((error.details as { blockers?: string[] } | null)?.blockers ?? []) as string[]) : [];
 }
 
+/** Keep API and infrastructure wording out of the everyday admin experience. */
+export function friendlyError(error: unknown, fallback = "Something went wrong. Please try again.") {
+  if (!(error instanceof Error)) return fallback;
+  if (error.message === "Failed to fetch" || /network|fetch/i.test(error.message)) {
+    return "KidQ could not connect right now. Check your connection and try again.";
+  }
+  if (error instanceof ApiFailure) {
+    if (error.status === 401) return "Your session has ended. Please sign in again.";
+    if (error.status >= 500) return "KidQ could not complete that action. Please try again.";
+  }
+  return error.message || fallback;
+}
+
+export type SimpleStatus = "published" | "draft" | "review" | "changes";
+
+export function simpleStatus(item: Pick<AdminContent, "studio_state" | "current_status">): { key: SimpleStatus; label: string } {
+  if (item.current_status === "APPROVED") return { key: "published", label: "Published" };
+  if (item.current_status === "REJECTED" || ["NEEDS_ATTENTION", "FAILED"].includes(item.studio_state)) {
+    return { key: "changes", label: "Needs changes" };
+  }
+  if (item.studio_state === "PENDING_ANALYSIS") return { key: "draft", label: "Draft" };
+  return { key: "review", label: "Under review" };
+}
+
 export const BLOCKER_LABELS: Record<string, string> = {
-  CRITICAL_FLAG: "Safety flag to resolve",
-  MISSING_COMPONENTS: "Scores missing",
-  LOW_AI_CONFIDENCE: "AI unsure — check scores",
-  MISSING_AGE: "Age not set",
-  MISSING_CATEGORY: "Category not set",
-  MISSING_GOAL: "Goal not set",
-  NOT_PLAYABLE: "Can't be played",
-  NOT_SCORED: "Not scored yet",
+  CRITICAL_FLAG: "Complete the safety check",
+  MISSING_COMPONENTS: "Complete the content review",
+  LOW_AI_CONFIDENCE: "Check the suggested details",
+  MISSING_AGE: "Choose an age group",
+  MISSING_CATEGORY: "Choose a category",
+  MISSING_GOAL: "Add a learning goal",
+  NOT_PLAYABLE: "Check that the content plays",
+  NOT_SCORED: "Complete the content review",
 };
 
 export const STATE_LABELS: Record<string, string> = {

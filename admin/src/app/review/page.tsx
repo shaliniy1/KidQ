@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { BulkBar } from "@/components/BulkBar";
 import { ContentTable } from "@/components/ContentTable";
-import { api, unwrap, type AdminContent } from "@/lib/api";
+import { api, friendlyError, unwrap, type AdminContent } from "@/lib/api";
 
 export default function ReviewQueuePage() {
   const [items, setItems] = useState<AdminContent[]>([]);
@@ -17,7 +17,7 @@ export default function ReviewQueuePage() {
       setItems(page.items);
       setTotal(page.total);
     } catch (failure) {
-      setError(failure instanceof Error ? failure.message : "Could not load the review queue.");
+      setError(friendlyError(failure, "The review list could not be loaded. Please try again."));
     }
   }, []);
 
@@ -27,14 +27,14 @@ export default function ReviewQueuePage() {
 
   const ready = items.filter((item) => item.studio_state === "READY_TO_APPROVE").map((item) => item.id);
   return (
-    <div>
-      <h1>Review queue</h1>
-      <p className="muted">
-        {total} item(s) waiting for a decision. Parent requests come first. Nothing reaches families until you publish it.
-      </p>
-      <div className="toolbar">
+    <div className="stack">
+      <div className="page-heading">
+        <div>
+          <h1>Review content</h1>
+          <p className="muted">{total} {total === 1 ? "item needs" : "items need"} your attention.</p>
+        </div>
         <button className="btn small" disabled={ready.length === 0} onClick={() => setSelected(new Set(ready))}>
-          Select all ready to approve ({ready.length})
+          Select ready to publish ({ready.length})
         </button>
       </div>
       <BulkBar
@@ -44,7 +44,7 @@ export default function ReviewQueuePage() {
           void load();
         }}
       />
-      {error && <p className="error">{error}</p>}
+      {error && <div className="notice-error">{error}<button className="link-button" onClick={() => void load()}>Try again</button></div>}
       <ContentTable
         items={items}
         selected={selected}

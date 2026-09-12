@@ -2,6 +2,7 @@
 // ("Desired ingestion API"); everything here requires the admin role.
 import { Router } from "express";
 import { z } from "zod";
+import type { SourceSystemId } from "../connectors/types";
 import { getPool, withTransaction } from "../db/pool";
 import { actorName } from "../http/auth";
 import { notFound } from "../http/errors";
@@ -10,8 +11,10 @@ import {
   adminContentSchema,
   bulkClassificationBody,
   bulkDecisionBody,
+  bulkReanalyzeBody,
   bulkResultSchema,
   classificationBody,
+  dashboardSchema,
   decisionBody,
   editorialBody,
   expertReviewBody,
@@ -27,10 +30,11 @@ import {
   rankingConfigBody,
   recommendationSchema,
   scoringConfigBody,
+  storySchema,
   taxonomyBody,
 } from "../http/schemas";
 import { getActiveRankingConfig, getActiveScoringConfig, saveRankingConfig, saveScoringConfig } from "../repositories/config";
-import { getAdminDetail, listAdminContent, listReviewQueue } from "../repositories/content";
+import { getAdminDetail, getStory, listAdminContent, listReviewQueue } from "../repositories/content";
 import { upsertTaxonomyTerm } from "../repositories/taxonomy";
 import * as admin from "../services/admin";
 import { createIngestionRun, getIngestionRun } from "../services/ingestion";
@@ -50,6 +54,7 @@ const adminDetailSchema = z.object({
   rights: z.record(z.string(), z.unknown()),
   transcript_status: z.string().nullable(),
   raw_metadata: z.unknown(),
+  story: z.union([storySchema, z.null()]),
 });
 const queued = z.object({ queued: z.boolean() });
 
@@ -66,7 +71,7 @@ defineRoute(
   async ({ body, user }) => {
     const pool = getPool();
     const runId = await createIngestionRun(pool, {
-      sourceSystemId: body.source as "youtube" | "nasa_images" | "wikimedia_commons",
+      sourceSystemId: body.source as SourceSystemId,
       query: body.mode === "urls" ? { mode: "urls", urls: body.urls, hints: body.hints } : { mode: "search", queries: body.queries },
       requestedBy: actorName(user),
     });
@@ -159,8 +164,14 @@ defineRoute(
 
 defineRoute(
   adminRouter,
-  { method: "post", path: "/content-items/:id/reanalyze", summary: "Queue the rule checks and AI scoring again (ignores the cache)", tag: "Scoring", roles, params: idParams, response: queued, status: 202 },
+  { method: "post", path: "/content-items/:id/reanalyze", summary: "Queue AI scoring again, ignoring the AI cache (rule checks re-run only if the source metadata changed)", tag: "Scoring", roles, params: idParams, response: queued, status: 202 },
   async ({ params }) => admin.reanalyze(params.id),
+);
+
+defineRoute(
+  adminRouter,
+  { method: "post", path: "/content-items/bulk-reanalyze", summary: "Queue AI scoring for every item the AI hasn't reviewed yet (shortest first)", tag: "Scoring", roles, body: bulkReanalyzeBody, response: z.object({ queued: z.number().int() }), status: 202 },
+  async () => admin.queueAiScoring(),
 );
 
 defineRoute(
@@ -171,7 +182,17 @@ defineRoute(
 
 defineRoute(
   adminRouter,
-  { method: "get", path: "/dashboard", summary: "Counts by state and source, flags, queue and AI usage today", tag: "Content", roles, response: z.record(z.string(), z.unknown()) },
+  { method: "get", path: "/content-items/:id/story", summary: "A picture book's pages and credits for the KidQ reader (parents: published books only)", tag: "Content", roles: ["admin", "parent"], params: idParams, response: storySchema },
+  async ({ params, user }) => {
+    const story = await getStory(getPool(), params.id, { approvedOnly: user.role !== "admin" });
+    if (!story) throw notFound("Story");
+    return story;
+  },
+);
+
+defineRoute(
+  adminRouter,
+  { method: "get", path: "/dashboard", summary: "Counts by state and source, flags, the job queue, and AI scoring coverage and usage", tag: "Content", roles, response: dashboardSchema },
   async () => admin.dashboard(),
 );
 

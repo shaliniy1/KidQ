@@ -10,11 +10,13 @@ KidQ does not reproduce YouTube, copy third-party media libraries, or automatica
 
 ## Audience and taxonomy
 
-Every item must target children aged 0–6 and use one or more of these age bands:
+Every item must target children aged 0–6. Items store a minimum and maximum age, from which these bands — the same ones parents pick in onboarding ([parent onboarding](../recommendation/parent-onboarding.md)) — are derived:
 
 - 0–2 years
-- 2–4 years
-- 4–6 years
+- 2–3 years
+- 3–4 years
+- 4–5 years
+- 5–6 years
 
 Every item must have exactly one primary content type:
 
@@ -23,21 +25,22 @@ Every item must have exactly one primary content type:
 - `STORYBOOK`: a narrated, illustrated, read-aloud, or digital story
 - `INTERACTIVE_CONTENT`: a simple age-appropriate game, puzzle, matching exercise, or learning interaction
 
-Supported categories include:
+Categories are the parent onboarding categories (architecture doc §9), so parents choose from exactly what admins tag:
 
-- Animated Videos
-- Storybooks / Read-Alouds
-- Creative Crafts
-- Drawing & Painting
+- Animation
+- Stories (story videos, animated or told)
+- Storybooks (picture books read in the KidQ reader)
+- Crafts
+- Painting
 - Science
 - Maths
-- Baby Learning
-- General Knowledge
-- Games / Play-Along
-- Yoga & Movement
-- Animals / Nature / Guppy Videos
-- Trusted Educators
+- Yoga
 - Activities
+- Educational
+- Music / Rhymes
+- Knowledge / General Learning
+
+Earlier categories were folded in: Animals / Nature → Knowledge / General Learning; Baby Learning and Trusted Educators → Educational; Games / Play-Along → Activities.
 
 ### Discovery topics
 
@@ -118,7 +121,7 @@ The machine-readable source inventory is [`config/content-sources.json`](../../c
 | Wikimedia Commons | MediaWiki Action API | Metadata, creator, license, attribution, media URLs | Item-level license controls reuse | Recommended |
 | Openverse | Official API | Aggregated open-media metadata and source landing URL | Verify the original item license | Conditional |
 | Internet Archive | Official search and metadata APIs | Metadata, file inventory, item license | Require explicit item-level reuse rights | Conditional |
-| StoryWeaver | Confirmed official method to be determined | Metadata and source URL initially | No copied story text or media until rights are confirmed | `PENDING_LICENSE_REVIEW` |
+| StoryWeaver | Public web API (books-search, story reader); undocumented, so confirm with StoryWeaver before prod | Metadata, attribution, story text per page, illustration URLs | Only books whose story and every illustration are CC BY, CC BY-SA or CC0; illustrations stay at the source | Enabled for QA ([details](./storyweaver.md)) |
 | KidQ | Internal authoring | Original activities and owned media | Store as KidQ-owned content | Recommended |
 
 ### Universal connector rules
@@ -287,20 +290,15 @@ Do not infer a transcript by stripping all page text. Extract only content expli
 
 ## StoryWeaver connector
 
-StoryWeaver is a required KidQ source, but its connector remains `PENDING_LICENSE_REVIEW` until the current official access method, rate limits, license fields, attribution obligations, and text/media reuse rights are confirmed.
+StoryWeaver is a required KidQ source for picture books. Its license review is recorded in [`storyweaver.md`](./storyweaver.md) (2026-09-12), and on that basis the connector is **enabled for QA**:
 
-Until that review is complete, KidQ may store only:
+- It stores a book only when the book's attribution page releases the story and every illustration under CC BY, CC BY-SA or CC0, and records that as the rights assertion.
+- It stores each page's text and the book's full attribution. Illustrations stay on StoryWeaver's servers; KidQ downloads no PDFs, ePubs, audio or video.
+- ReadAlong audio and StoryWeaver videos stay out (often CC BY-NC-ND).
 
-- external story ID when available
-- title
-- author and illustrator
-- language
-- reading level
-- source URL
-- displayed license and attribution metadata
-- fetch timestamp and provenance
+Two checklist answers are still open and must be closed before prod: StoryWeaver's confirmation that KidQ may use its undocumented API, and a review of its Terms of Use.
 
-KidQ must not copy story text, illustrations, downloadable files, or generated transcripts merely because a story is publicly readable. Enable richer ingestion only after recording a rights assertion that permits each storage or reuse operation.
+KidQ must not copy story text, illustrations, downloadable files, or generated transcripts merely because a story is publicly readable. Every storage or reuse operation needs a rights assertion that permits it.
 
 ### StoryWeaver license-review checklist
 
@@ -319,7 +317,7 @@ Before enabling automated StoryWeaver ingestion, record answers and evidence for
 - How must withdrawn or relicensed stories be handled?
 - What rate limits and contact details govern the integration?
 
-Until every applicable answer is supported by evidence, keep the connector disabled and all discovered records in `MANUAL_REVIEW_REQUIRED`.
+The answers and evidence are in [`storyweaver.md`](./storyweaver.md). Until its open items are closed, StoryWeaver runs in QA only, and like all content every book starts in `MANUAL_REVIEW_REQUIRED`.
 
 ## Transcript retrieval
 
@@ -638,6 +636,7 @@ Metadata and transcripts cannot verify pacing, flashing, visual clutter or audio
 
 - **YouTube**: the model watches the public YouTube URL directly. KidQ still downloads nothing.
 - **NASA and Wikimedia**: for items whose rights assertion permits a copy, the file goes to a temporary Files API upload that is deleted right after scoring.
+- **StoryWeaver picture books**: the model reads each page's text and sees each illustration (a small rendition, sent inline and not kept). A book has no soundtrack, so it's scored on three components.
 
 Its output is a MODEL assessment with `audiovisual_inspected=true`. It can recommend rejection but never approval. Component scores, weights, the free-tier guard and the admin gate are specified in [`docs/recommendation/README.md`](../recommendation/README.md). OpenAI moderation remains an optional second safety opinion.
 

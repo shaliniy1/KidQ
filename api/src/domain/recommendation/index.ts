@@ -5,12 +5,13 @@
 export interface ChildProfileInput {
   ageYears: number;
   languages: string[];
-  contentTypes: string[];
   interests: string[];
   developmentGoals: string[];
   regulationGoals: string[];
+  /** CHOSEN shows only preferredCategories; SURPRISE is an age-appropriate mix. */
+  contentMix: "SURPRISE" | "CHOSEN";
   preferredCategories: string[];
-  dailyMinutes: number | null;
+  sessionMinutes: number | null;
 }
 
 export interface CandidateInput {
@@ -64,11 +65,6 @@ export interface RankedRecommendation {
 
 const MAX_AGE = 6;
 
-export function childAgeYears(birthYear: number, birthMonth: number, now = new Date()): number {
-  const months = (now.getUTCFullYear() - birthYear) * 12 + (now.getUTCMonth() + 1 - birthMonth);
-  return Math.max(0, Math.floor((months / 12) * 10) / 10);
-}
-
 /** Admin approval, safety, a score and complete tags are all required before anything is recommended. */
 export function isEligible(candidate: CandidateInput): boolean {
   return (
@@ -91,13 +87,15 @@ function passesHardFilters(candidate: CandidateInput, profile: ChildProfileInput
   if (candidate.language && profile.languages.length > 0) {
     if (!profile.languages.map(baseLanguage).includes(baseLanguage(candidate.language))) return false;
   }
-  if (profile.contentTypes.length > 0 && !profile.contentTypes.includes(candidate.contentType)) return false;
+  // "Let me choose categories": only the parent's chosen categories.
+  if (profile.contentMix === "CHOSEN" && !(candidate.category && profile.preferredCategories.includes(candidate.category))) return false;
   return true;
 }
 
-function durationFit(durationSeconds: number | null, dailyMinutes: number | null): number {
-  if (!durationSeconds || !dailyMinutes) return 0.5;
-  const budget = dailyMinutes * 60;
+/** An item that fits inside one session scores 1; longer ones score less. */
+function durationFit(durationSeconds: number | null, sessionMinutes: number | null): number {
+  if (!durationSeconds || !sessionMinutes) return 0.5;
+  const budget = sessionMinutes * 60;
   return durationSeconds <= budget ? 1 : Math.max(0, 1 - (durationSeconds - budget) / budget);
 }
 
@@ -141,7 +139,7 @@ function scoreCandidate(candidate: CandidateInput, profile: ChildProfileInput, c
     w.relevance * relevance +
     w.score * ((candidate.kidqScore ?? 0) / 100) +
     w.expert * expert +
-    w.preference * durationFit(candidate.durationSeconds, profile.dailyMinutes);
+    w.preference * durationFit(candidate.durationSeconds, profile.sessionMinutes);
   return { relevance, anyMatch, matched, finalScore };
 }
 

@@ -18,7 +18,8 @@ import {
 
 export type PlayerSource =
   | { provider: "youtube"; video_id: string; embed_url?: string; params: Record<string, number> }
-  | { provider: "html5"; media_url: string; mime_type: string | null };
+  | { provider: "html5"; media_url: string; mime_type: string | null }
+  | { provider: "story"; page_count: number };
 
 export interface KidQPlayerProps {
   player: PlayerSource | null;
@@ -209,12 +210,12 @@ export const KidQPlayer = forwardRef<KidQPlayerHandle, KidQPlayerProps>(function
     event.preventDefault();
   };
 
-  if (!player) {
+  if (!player || player.provider === "story") {
     return (
       <div className={className} style={styles.frame}>
         <div style={styles.cover}>
           <p style={styles.coverTitle}>{title}</p>
-          <p style={styles.coverText}>This video isn&apos;t available to play.</p>
+          <p style={styles.coverText}>{player ? "This is a picture book: open it in the KidQ story reader." : "This video isn't available to play."}</p>
         </div>
       </div>
     );
@@ -300,6 +301,8 @@ export const KidQPlayer = forwardRef<KidQPlayerHandle, KidQPlayerProps>(function
   );
 });
 
+export { KidQStoryReader, type KidQStoryReaderProps, type StoryPage } from "./story-reader";
+
 const PLAYER_CSS = `
 .kidq-player iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
 .kidq-player [data-control]:focus-visible{outline:4px solid #f5a524;outline-offset:3px}
@@ -309,7 +312,8 @@ const PLAYER_CSS = `
 const styles: Record<string, CSSProperties> = {
   root: { display: "grid", gap: 10, width: "100%" },
   frame: { position: "relative", width: "100%", aspectRatio: "16 / 9", background: "#1b2420", borderRadius: 16, overflow: "hidden" },
-  media: { position: "absolute", inset: 0, width: "100%", height: "100%", border: 0, background: "#1b2420" },
+  // contain, never cover: portrait and square videos show whole, letterboxed.
+  media: { position: "absolute", inset: 0, width: "100%", height: "100%", border: 0, background: "#1b2420", objectFit: "contain" },
   shield: { position: "absolute", inset: 0, background: "transparent", border: 0, cursor: "pointer" },
   cover: {
     position: "absolute",
@@ -322,7 +326,9 @@ const styles: Record<string, CSSProperties> = {
     textAlign: "center",
     color: "#fffdf8",
     background: "#24352f",
-    backgroundSize: "cover",
+    // The poster shows whole (square book covers, portrait clips); the tint layer fills the frame.
+    backgroundSize: "100% 100%, contain",
+    backgroundRepeat: "no-repeat",
     backgroundPosition: "center",
   },
   coverTitle: { margin: 0, fontSize: 20, fontWeight: 700, maxWidth: "36ch", lineHeight: 1.3 },

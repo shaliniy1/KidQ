@@ -33,11 +33,13 @@ Every error has the same shape: `{ "error": { "code": "NOT_READY", "message": "�
 
 Every list returns the same `ContentCard`. Render it; don't recompute anything in it.
 
-- `content_score` — how KidQ evaluated the item: `score` (0–100 or null), `confidence`, the four-part `breakdown` (label, score, weight, AI/ADMIN source, evidence, mm:ss timestamps), `reason`, `missing`, `safety_flags`, `evaluated_by`, `reviewed_at`.
-  - **Parents** see the score, four bars, the reason and "reviewed by KidQ".
+- `content_score` — how KidQ evaluated the item: `score` (0–100 or null), `confidence`, the `breakdown` (label, score, weight, AI/ADMIN source, evidence, mm:ss timestamps), `reason`, `missing`, `safety_flags`, `evaluated_by`, `reviewed_at`.
+  - The breakdown has four parts for videos and three for picture books (no audio). Render whatever parts arrive, with their labels.
+  - **Parents** see the score, the bars, the reason and "reviewed by KidQ".
   - **Admins** also see the evidence and timestamps.
 - `player` — how to play the item:
   - `{ provider: "youtube", video_id, embed_url, params }` or `{ provider: "html5", media_url, mime_type }`
+  - `{ provider: "story", page_count }` — a picture book: load its pages with `GET /content-items/:id/story` and show them in `KidQStoryReader`
   - `null` means **not playable**, e.g. a parent submission still awaiting review
 - `attribution` — show `text` on screen whenever `required` is true (CC BY and similar).
 - `thumbnails` — every size, so TVs load large images and phones small ones.
@@ -51,33 +53,40 @@ Every list returns the same `ContentCard`. Render it; don't recompute anything i
 | Content Library | `GET /content-items?state=&age_group=&category=&source=&flagged=&min_score=&q=&sort=&limit=&offset=` |
 | Review queue | `GET /review-queue` (parent requests first) |
 | Add content | `POST /ingestion-runs` (`mode: "urls"` or `"search"`) → poll `GET /ingestion-runs/:id` |
-| Content detail | `GET /content-items/:id`: card, README canonical `record`, assessments with criteria, decisions, edits, expert reviews |
+| Content detail | `GET /content-items/:id`: card, README canonical `record`, assessments with criteria, decisions, edits, expert reviews, and `story` (pages and credits) for picture books |
 | Edit text | `PATCH /content-items/:id` |
 | Sliders / rubric | `POST /content-items/:id/assessments` (HUMAN — outranks the AI) |
 | Tags | `PATCH /content-items/:id/classification`, `POST /content-items/bulk-classification` |
 | Publish | `POST /content-items/:id/publication-decisions` (`APPROVED`, `REJECTED`, or `MANUAL_REVIEW_REQUIRED` to unpublish); `POST /publication-decisions/bulk` |
 | Expert review | `POST /content-items/:id/expert-reviews` (show "per public sources" unless `verified`) |
 | Re-run AI | `POST /content-items/:id/reanalyze` |
+| Score everything the AI hasn't reviewed | `POST /content-items/bulk-reanalyze` with `{ "scope": "UNSCORED" }`; progress in `GET /dashboard` → `ai` |
 | Preview for a child | `POST /recommendations/preview` |
 | Configuration | `GET/PUT /config/scoring`, `GET/PUT /config/ranking`, `POST /taxonomy` |
 
 ## Parent / child app flows
 
-1. **Onboarding**: `GET /taxonomy` for the options, then `POST /children` (age via birth year and month, languages, interests, content types, preferred categories, development and regulation goals, daily minutes).
+1. **Onboarding** ([fields and defaults](../recommendation/parent-onboarding.md)):
+   - `GET /me` → `404 NOT_ONBOARDED` means show onboarding.
+   - Screen 1: `POST /onboarding` with `{ parent_name, language, children: [{ nickname, age_band }] }` (1–6 children). `language` is the parent's pick; pre-select the device language when KidQ has it (`GET /taxonomy` → `language`), otherwise `en`.
+   - "Customize for {child}": `PATCH /children/:id` with any of `interests`, `content_mix` + `preferred_categories`, `regulation_goals`, `session_minutes`, `break_type`, `languages`. Everything left out keeps its age-based default; development goals are never asked.
+   - Every chip's options come from `GET /taxonomy` — the keys admins tag content with. Regulation goals carry the parent wording in `meta.parent_label`.
+   - `POST /children` adds a child later.
 2. **Recommendations**: `GET /children/:id/recommendations?limit=20&offset=0`. Each item has `why` (plain-language reasons) and `card`.
 3. **Add / Not now**: `POST /children/:id/library` with `{ content_item_id, state: "ADDED" | "DISMISSED" }`. Remove with `DELETE /children/:id/library/:contentItemId`.
-4. **Child library**: `GET /children/:id/library`. Play only entries where `awaiting_review` is false and `card.player` is non-null.
+4. **Child library**: `GET /children/:id/library`. Play only entries where `awaiting_review` is false and `card.player` is non-null. For a picture book (`provider: "story"`), load `GET /content-items/:id/story` — it returns 404 until the book is published.
 5. **Parent-added links**: `POST /children/:id/submissions` with `{ url }`, then poll `GET /children/:id/submissions`. `assessment` moves PENDING → SCORED → APPROVED. "Keep" is `POST /children/:id/library`, which makes the entry REQUESTED until an admin approves it.
 
 ## KidQ Player rules
 
-Use `packages/kidq-player` when it lands; until then, follow these rules exactly.
+Use `packages/kidq-player` (`KidQPlayer` for video, `KidQStoryReader` for picture books); it follows these rules.
 
 - **YouTube**: IFrame Player API on `youtube-nocookie.com` with the returned `params` (`controls=0`, `disablekb=1`, `fs=0`, `iv_load_policy=3`, `rel=0`, `playsinline=1`, no autoplay).
   - Draw KidQ's own play, pause and volume controls.
   - Cover the frame with a transparent overlay so the YouTube title and logo can't be clicked.
   - Show a KidQ card on pause and at the end, over YouTube's suggestions.
 - **HTML5** (NASA, Wikimedia): a plain `<video>` with the same KidQ controls. Show the attribution line.
+- **Picture books**: one page at a time with big page buttons (arrow keys and TV Back turn pages), illustrations loaded from the source, and the book's full credits after the last page — their license requires it.
 - **Never show** YouTube descriptions or links to children. Show the KidQ title and `kidq_summary` instead.
 - **Playback errors**: on YouTube error 100 / 101 / 150 / 153, call `POST /content-items/:id/playback-errors` with `{ code }`. The API re-checks with YouTube before hiding anything.
 - **Known limits**: YouTube can't be fully white-labelled. Ads chosen by the video owner may still play, and "Made for Kids" videos get non-personalised ads only.
@@ -97,5 +106,5 @@ npm install
 cp api/.env.example api/.env          # AUTH_MODE=dev, local Postgres
 createdb kidq && npm run db:migrate -w api
 npm run dev                            # web :3000, admin :3001, api :4000 (worker in-process)
-npm run seed:discover -w api -- --drain   # needs YOUTUBE_DATA_API_KEY (+ GEMINI_API_KEY for AI scores)
+npm run seed:discover -w api -- --drain   # YouTube needs YOUTUBE_DATA_API_KEY; GEMINI_API_KEY adds AI scores
 ```

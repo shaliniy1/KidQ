@@ -29,14 +29,14 @@ export default function LoginPage() {
     <main className="login">
       <form className="card login-card" onSubmit={submit}>
         <div className="brand">
-          <span className="brand-mark">Q</span>KidQ Admin
+          <span className="brand-mark">Q</span>KidQ
         </div>
         <label>
           Email
           <input type="email" required autoComplete="username" value={email} onChange={(event) => setEmail(event.target.value)} />
         </label>
         {usingDevLogin ? (
-          <p className="muted">Local sign-in: Supabase isn&apos;t configured, so the API must run with AUTH_MODE=dev.</p>
+          <p className="muted">Use your admin email to continue.</p>
         ) : (
           <label>
             Password
@@ -44,7 +44,7 @@ export default function LoginPage() {
           </label>
         )}
         {error && <p className="error">{error}</p>}
-        <button className="btn primary" disabled={busy}>
+        <button className="btn primary login-button" disabled={busy}>
           {busy ? "Signing in…" : "Sign in"}
         </button>
       </form>

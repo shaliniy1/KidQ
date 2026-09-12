@@ -2,7 +2,7 @@
 // Every connector turns an official API response into NormalizedRecords; the shared
 // ingestion service handles runs, idempotent upserts, retries and error recording.
 
-export type SourceSystemId = "youtube" | "nasa_images" | "wikimedia_commons";
+export type SourceSystemId = "youtube" | "nasa_images" | "wikimedia_commons" | "storyweaver";
 
 /** Longer videos are dropped before storage: open-ended compilations don't fit KidQ sessions. */
 export const MAX_VIDEO_SECONDS = 60 * 60;
@@ -22,6 +22,21 @@ export interface RightsEvidence {
   allowsCommercialUse: boolean | null;
   evidenceUrl: string | null;
   evidenceText: string;
+}
+
+/** One page of a picture book as the KidQ reader shows it; illustrations stay on the source's servers. */
+export interface StoryPage {
+  page: number;
+  text: string;
+  image_url: string | null;
+  /** A smaller rendition, for phones and for the AI reviewer. */
+  image_small_url: string | null;
+}
+
+export interface StoryContent {
+  pages: StoryPage[];
+  /** The source's full attribution: story, illustrations, translation, publisher and license. */
+  credits: string | null;
 }
 
 /** Topic, category and age hints from the discovery plan; suggestions only, never approval. */
@@ -52,11 +67,13 @@ export interface NormalizedRecord {
   madeForKids: boolean | null;
   embeddable: boolean | null;
   tags: string[];
-  contentType: "VIDEO";
+  contentType: "VIDEO" | "STORYBOOK";
   rights: RightsEvidence;
   /** The original API response for this item, kept for audit and reprocessing. */
   rawMetadata: unknown;
   hints: DiscoveryHints;
+  /** Picture books only: the pages KidQ stores (allowed by the item's open license). */
+  story?: StoryContent;
 }
 
 export interface DiscoveryQuery {

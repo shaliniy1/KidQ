@@ -10,14 +10,12 @@ const toNumber = (value: unknown) => (value === null || value === undefined ? nu
 
 export async function rescoreItem(db: Db, contentItemId: string, config?: ScoringConfig): Promise<KidqScoreResult> {
   const scoring = config ?? (await getActiveScoringConfig(db));
-  const result = computeKidqScore(await loadAssessments(db, contentItemId), scoring);
-
   const item = (
     await db.query(
-      `SELECT ci.age_min, ci.age_max, ci.category, ci.development_goals, ci.regulation_goals,
-         COALESCE(sr.available, false) AS available, sr.embeddable, ra.allows_embedding
+      `SELECT ci.content_type, ci.age_min, ci.age_max, ci.category, ci.development_goals, ci.regulation_goals,
+         COALESCE(sr.available, false) AS available, sr.embeddable, COALESCE(sr.has_story, false) AS has_story, ra.allows_embedding
        FROM content_items ci
-       LEFT JOIN LATERAL (SELECT id, available, embeddable FROM source_records
+       LEFT JOIN LATERAL (SELECT id, available, embeddable, story IS NOT NULL AS has_story FROM source_records
                           WHERE content_item_id = ci.id ORDER BY fetched_at DESC LIMIT 1) sr ON true
        LEFT JOIN LATERAL (SELECT allows_embedding FROM rights_assertions
                           WHERE source_record_id = sr.id ORDER BY checked_at DESC LIMIT 1) ra ON true
@@ -26,6 +24,7 @@ export async function rescoreItem(db: Db, contentItemId: string, config?: Scorin
     )
   ).rows[0];
   if (!item) throw new Error(`Content item ${contentItemId} not found`);
+  const result = computeKidqScore(await loadAssessments(db, contentItemId), scoring, item.content_type);
 
   const blockers = publishBlockers(
     result,
@@ -37,7 +36,8 @@ export async function rescoreItem(db: Db, contentItemId: string, config?: Scorin
       regulationGoals: item.regulation_goals,
     },
     {
-      available: item.available,
+      // A picture book can be read once its pages are stored.
+      available: item.available && (item.content_type !== "STORYBOOK" || item.has_story),
       // Unknown embedding rights mean "not playable" (README rights model).
       embeddable: item.embeddable === false || item.allows_embedding !== true ? false : item.embeddable,
     },

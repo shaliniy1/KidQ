@@ -6,13 +6,14 @@ import crypto from "node:crypto";
 import { z } from "zod";
 import { env } from "../config/env";
 import { HttpError } from "../connectors/http";
+import type { StoryContent } from "../connectors/types";
 import type { Db } from "../db/pool";
 import type { SuggestedClassification } from "../domain/analysis/rules";
 import { CRITICAL_KEYS, RUBRIC, RUBRIC_VERSION } from "../domain/rubric";
-import { COMPONENTS, type ComponentInput, type CriterionInput } from "../domain/scoring";
+import { COMPONENTS, componentsFor, type Component, type ComponentInput, type CriterionInput } from "../domain/scoring";
 import type { NewAssessment } from "../repositories/assessments";
 import { keysOf, type Taxonomy } from "../repositories/taxonomy";
-import { deleteMediaFile, generateJson, uploadMediaFile, type GeminiPart } from "./gemini";
+import { deleteMediaFile, GeminiQuotaError, generateJson, inlineImage, uploadMediaFile, type GeminiPart } from "./gemini";
 
 export interface AgentTarget {
   contentItemId: string;
@@ -27,6 +28,9 @@ export interface AgentTarget {
   creator: string | null;
   durationSeconds: number | null;
   metadataHash: string;
+  contentType: string;
+  /** Picture books: the stored pages the AI reads, with each illustration fetched inline. */
+  story: StoryContent | null;
 }
 
 export type AgentOutcome =
@@ -35,11 +39,13 @@ export type AgentOutcome =
   | { kind: "DISABLED" }
   | { kind: "UNAVAILABLE"; reason: string }
   | { kind: "INVALID_OUTPUT"; reason: string }
-  | { kind: "QUOTA_EXHAUSTED"; retryAt: Date };
+  | { kind: "DEFERRED"; retryAt: Date; reason: string };
 
 const PACIFIC = "America/Los_Angeles";
 const ASSUMED_SECONDS = 600;
 const MAX_FILE_SECONDS = 20 * 60;
+const DAILY_QUOTA_REASON = "Every Gemini model's free daily limit is used up; AI scoring resumes after midnight Pacific.";
+const OVERLOAD_WAIT_MS = 2 * 60_000;
 
 /** Gemini's free-tier daily limits reset at midnight Pacific time. */
 export function pacificDay(now = new Date()): string {
@@ -72,26 +78,44 @@ export function agentCacheKey(target: AgentTarget, model: string): string {
   return crypto.createHash("sha256").update([target.metadataHash, RUBRIC_VERSION, env.aiPromptVersion, model].join("|")).digest("hex");
 }
 
+const VIDEO_INTRO = [
+  "You review videos for KidQ, a calm learning library for children aged 0–6.",
+  "Watch the entire video, visuals and audio, then return JSON matching the response schema.",
+  "Each evidence string is one factual sentence about what you observed, with mm:ss timestamps for the moments that drove it.",
+];
+const STORY_INTRO = [
+  "You review picture books for KidQ, a calm learning library for children aged 0–6; parents read them aloud and early readers read them alone.",
+  "Read every page and look at every illustration, then return JSON matching the response schema.",
+  'Each evidence string is one factual sentence that names the pages it refers to (for example "p. 4"); leave timestamps empty.',
+];
+const VIDEO_COMPONENT_GUIDE = [
+  "- CONTENT_LANGUAGE: safety and suitability of themes, language and behaviour.",
+  "- PACING: calm, deliberate pacing. Consider cuts per minute, average shot length, rapid transitions and fast-moving sequences.",
+  "- VISUAL_COMFORT: stable brightness, restrained saturation, no flashing or strobing, uncluttered scenes, limited motion.",
+  "- AUDIO_COMFORT: even loudness, no sudden peaks or jarring sounds, calm narration and music.",
+];
+const STORY_COMPONENT_GUIDE = [
+  "- CONTENT_LANGUAGE: safety and suitability of the story's themes, language and behaviour.",
+  "- PACING (reading pace): how easy the story is to follow at this age: words per page, sentence length, vocabulary and repetition.",
+  "- VISUAL_COMFORT (illustrations): calm, clear illustrations: restrained colours, uncluttered pages, nothing frightening.",
+];
+
 export function buildPrompt(target: AgentTarget, taxonomy: Taxonomy): string {
+  const story = target.contentType === "STORYBOOK";
   const criteria = RUBRIC.map((c) => `- ${c.key} [${c.group === "FILTER_OUT" ? "FAIL if present" : "PASS if present"}]: ${c.description}`);
   return [
-    "You review videos for KidQ, a calm learning library for children aged 0–6.",
-    "Watch the entire video, visuals and audio, then return JSON matching the response schema.",
-    "Each evidence string is one factual sentence about what you observed, with mm:ss timestamps for the moments that drove it.",
+    ...(story ? STORY_INTRO : VIDEO_INTRO),
     "Never guess: use UNKNOWN for a criterion you could not judge, and lower self_confidence when unsure.",
     "",
     "Score each component 0–100, where higher is better for a young child:",
-    "- CONTENT_LANGUAGE: safety and suitability of themes, language and behaviour.",
-    "- PACING: calm, deliberate pacing. Consider cuts per minute, average shot length, rapid transitions and fast-moving sequences.",
-    "- VISUAL_COMFORT: stable brightness, restrained saturation, no flashing or strobing, uncluttered scenes, limited motion.",
-    "- AUDIO_COMFORT: even loudness, no sudden peaks or jarring sounds, calm narration and music.",
+    ...(story ? STORY_COMPONENT_GUIDE : VIDEO_COMPONENT_GUIDE),
     "",
     "Report every critical safety problem through its criterion: sexual or explicit content → mature_themes;",
     "graphic or strong violence → physical_violence; behaviour a child could copy and get hurt → dangerous_behaviour;",
     "severe abusive language or bullying → verbal_or_emotional_aggression; disturbing or highly frightening content → frightening_imagery;",
     "hateful stereotypes → discrimination_or_stereotypes.",
     "",
-    "Return a result for every rubric criterion:",
+    story ? "Return a result for every rubric criterion (UNKNOWN for criteria about sound, motion or video editing):" : "Return a result for every rubric criterion:",
     ...criteria,
     "",
     "Suggest tags using only these keys.",
@@ -99,19 +123,19 @@ export function buildPrompt(target: AgentTarget, taxonomy: Taxonomy): string {
     `interests: ${keysOf(taxonomy, "interest").join(", ")}`,
     `development_goals: ${keysOf(taxonomy, "development_goal").join(", ")}`,
     `regulation_goals: ${keysOf(taxonomy, "regulation_goal").join(", ")}`,
-    "language: ISO 639-1 code of the spoken language, or null if there is no speech.",
+    story ? "language: ISO 639-1 code of the story's language." : "language: ISO 639-1 code of the spoken language, or null if there is no speech.",
     "age_min / age_max: youngest and oldest suitable age between 0 and 6 (KidQ groups: 0–2, 2–4, 4–6).",
     "kidq_summary: at most two sentences for parents. learning_objective: one sentence, or null.",
     "",
-    "Source metadata (may be incomplete; the video itself is the evidence):",
+    `Source metadata (may be incomplete; the ${story ? "book" : "video"} itself is the evidence):`,
     `title: ${target.title}`,
     `creator: ${target.creator ?? "unknown"}`,
-    `duration_seconds: ${target.durationSeconds ?? "unknown"}`,
+    story ? `pages: ${target.story?.pages.length ?? 0}` : `duration_seconds: ${target.durationSeconds ?? "unknown"}`,
     `description: ${(target.description ?? "").slice(0, 500)}`,
   ].join("\n");
 }
 
-function responseSchema(taxonomy: Taxonomy) {
+function responseSchema(taxonomy: Taxonomy, components: readonly Component[]) {
   const strings = (values?: string[]) => ({ type: "ARRAY", items: values?.length ? { type: "STRING", enum: values } : { type: "STRING" } });
   const component = {
     type: "OBJECT",
@@ -121,7 +145,7 @@ function responseSchema(taxonomy: Taxonomy) {
   return {
     type: "OBJECT",
     properties: {
-      components: { type: "OBJECT", properties: Object.fromEntries(COMPONENTS.map((c) => [c, component])), required: [...COMPONENTS] },
+      components: { type: "OBJECT", properties: Object.fromEntries(components.map((c) => [c, component])), required: [...components] },
       criteria: {
         type: "ARRAY",
         items: {
@@ -167,7 +191,7 @@ export const agentOutputSchema = z.object({
     CONTENT_LANGUAGE: componentOutput,
     PACING: componentOutput,
     VISUAL_COMFORT: componentOutput,
-    AUDIO_COMFORT: componentOutput,
+    AUDIO_COMFORT: componentOutput.optional(),
   }),
   criteria: z.array(z.object({ key: z.string(), result: z.enum(["PASS", "FAIL", "UNKNOWN"]), evidence: z.string(), timestamps })),
   classification: z.object({
@@ -190,9 +214,10 @@ function firstTwoSentences(text: string): string {
 }
 
 /** Validated model output → our assessment shapes. Unknown keys are dropped; skipped criteria stay UNKNOWN. */
-export function normalizeAgentOutput(output: AgentOutput, taxonomy: Taxonomy) {
-  const scores: ComponentInput[] = COMPONENTS.map((component) => {
+export function normalizeAgentOutput(output: AgentOutput, taxonomy: Taxonomy, components: readonly Component[] = COMPONENTS) {
+  const scores: ComponentInput[] = components.map((component) => {
     const value = output.components[component];
+    if (!value) return { component, value: null, status: "UNAVAILABLE", selfConfidence: null, evidence: "Not returned by the AI reviewer.", timestamps: [] };
     return {
       component,
       value: Math.round(value.score),
@@ -249,6 +274,20 @@ async function youtubeSecondsUsedToday(db: Db): Promise<number> {
   return rows[0].used;
 }
 
+/** True once Gemini has refused a request today because the daily quota is used up. */
+async function dailyQuotaUsedUp(db: Db, model: string): Promise<boolean> {
+  const { rowCount } = await db.query("SELECT 1 FROM ai_usage_daily WHERE day = $1 AND model = $2 AND quota_exhausted_at IS NOT NULL", [pacificDay(), model]);
+  return (rowCount ?? 0) > 0;
+}
+
+async function markDailyQuotaUsedUp(db: Db, model: string) {
+  await db.query(
+    `INSERT INTO ai_usage_daily (day, model, quota_exhausted_at) VALUES ($1, $2, now())
+     ON CONFLICT (day, model) DO UPDATE SET quota_exhausted_at = now()`,
+    [pacificDay(), model],
+  );
+}
+
 async function recordUsage(
   db: Db,
   model: string,
@@ -268,6 +307,82 @@ async function recordUsage(
   );
 }
 
+/** The scoring model, then its fallbacks (AI_FALLBACK_MODELS), without repeats. */
+export function scoringModels(): string[] {
+  return [...new Set([env.aiScoringModel, ...env.aiFallbackModels])];
+}
+
+interface ScoringRequest {
+  target: AgentTarget;
+  taxonomy: Taxonomy;
+  parts: GeminiPart[];
+  schema: object;
+  components: readonly Component[];
+  /** Video seconds each call counts against the day's allowance. */
+  usage: { youtubeSeconds: number; fileSeconds: number };
+}
+
+/** One model's turn: a structured call, plus one retry if the output doesn't validate. */
+async function scoreWith(db: Db, model: string, request: ScoringRequest): Promise<AgentOutcome> {
+  const { target } = request;
+  let problem = "";
+  for (let attempt = 1; attempt <= 2; attempt += 1) {
+    const response = await generateJson(model, request.parts, request.schema);
+    const inputTokens = response.usage.promptTokenCount ?? 0;
+    const outputTokens = response.usage.candidatesTokenCount ?? 0;
+    const costUsd = (inputTokens * env.aiInputUsdPerMTok + outputTokens * env.aiOutputUsdPerMTok) / 1_000_000;
+    await recordUsage(db, model, { ...request.usage, inputTokens, outputTokens, costUsd });
+
+    const parsed = parseOutput(response.text);
+    if (!parsed.ok) {
+      problem = parsed.problem;
+      continue; // one retry, then the item goes to the admin
+    }
+    const { scores, criteria, classification } = normalizeAgentOutput(parsed.data, request.taxonomy, request.components);
+    const critical = criteria.some((c) => CRITICAL_KEYS.includes(c.key) && c.result === "FAIL");
+    return {
+      kind: "SCORED",
+      classification,
+      assessment: {
+        contentItemId: target.contentItemId,
+        assessorType: "MODEL",
+        assessorName: "kidq-gemini-scoring-agent",
+        modelName: model,
+        modelSnapshot: response.modelVersion,
+        promptVersion: env.aiPromptVersion,
+        rubricVersion: RUBRIC_VERSION,
+        inputHash: target.metadataHash,
+        inputTokens,
+        cachedInputTokens: response.usage.cachedContentTokenCount ?? null,
+        outputTokens,
+        estimatedCostUsd: costUsd,
+        result: critical ? "REJECTED" : "MANUAL_REVIEW_REQUIRED",
+        summary: classification.kidqSummary ?? "AI review completed.",
+        audiovisualInspected: true,
+        scores,
+        criteria,
+        classification,
+        output: parsed.data,
+        cacheKey: agentCacheKey(target, model),
+      },
+    };
+  }
+  return { kind: "INVALID_OUTPUT", reason: problem };
+}
+
+const MAX_STORY_IMAGES = 24;
+
+/** A picture book in reading order: each page's text, then its illustration (small rendition, inline). */
+async function storyParts(story: StoryContent): Promise<GeminiPart[]> {
+  const parts: GeminiPart[] = [];
+  for (const page of story.pages) {
+    parts.push({ text: `Page ${page.page}: ${page.text || "(no text on this page)"}` });
+    const image = page.image_small_url ?? page.image_url;
+    if (image && page.page <= MAX_STORY_IMAGES) parts.push(await inlineImage(image));
+  }
+  return parts;
+}
+
 export async function runScoringAgent(
   db: Db,
   target: AgentTarget,
@@ -275,78 +390,76 @@ export async function runScoringAgent(
   options: { force?: boolean; hasCached: (cacheKey: string) => Promise<boolean> },
 ): Promise<AgentOutcome> {
   if (!env.geminiApiKey) return { kind: "DISABLED" };
-  const model = env.aiScoringModel;
-  const cacheKey = agentCacheKey(target, model);
-  if (!options.force && (await options.hasCached(cacheKey))) return { kind: "CACHED" };
-
-  const isYouTube = target.sourceSystemId === "youtube";
-  const seconds = target.durationSeconds ?? ASSUMED_SECONDS;
-  if (isYouTube) {
-    if ((await youtubeSecondsUsedToday(db)) + seconds > env.aiDailyVideoSecondsCap) {
-      return { kind: "QUOTA_EXHAUSTED", retryAt: nextPacificReset() };
-    }
-  } else if (!target.allowsMediaCopy || !target.mediaUrl) {
-    return { kind: "UNAVAILABLE", reason: "Media rights do not allow sending a copy to the AI reviewer." };
-  } else if (seconds > MAX_FILE_SECONDS) {
-    return { kind: "UNAVAILABLE", reason: "Video is longer than the 20-minute AI limit for uploaded files." };
+  const chain = scoringModels();
+  if (!options.force) {
+    for (const model of chain) if (await options.hasCached(agentCacheKey(target, model))) return { kind: "CACHED" };
   }
 
+  // Permanent reasons first, so those items reach the admin now rather than after a quota wait.
+  const isYouTube = target.sourceSystemId === "youtube";
+  const isStory = target.contentType === "STORYBOOK";
+  const seconds = target.durationSeconds ?? ASSUMED_SECONDS;
+  if (isStory) {
+    if (!target.allowsMediaCopy || !target.story?.pages.length) {
+      return { kind: "UNAVAILABLE", reason: "Story rights do not allow sending the pages to the AI reviewer." };
+    }
+  } else if (!isYouTube && (!target.allowsMediaCopy || !target.mediaUrl)) {
+    return { kind: "UNAVAILABLE", reason: "Media rights do not allow sending a copy to the AI reviewer." };
+  } else if (!isYouTube && seconds > MAX_FILE_SECONDS) {
+    return { kind: "UNAVAILABLE", reason: "Video is longer than the 20-minute AI limit for uploaded files." };
+  }
+  const available: string[] = [];
+  for (const model of chain) if (!(await dailyQuotaUsedUp(db, model))) available.push(model);
+  if (available.length === 0) return { kind: "DEFERRED", retryAt: nextPacificReset(), reason: DAILY_QUOTA_REASON };
+  if (isYouTube && (await youtubeSecondsUsedToday(db)) + seconds > env.aiDailyVideoSecondsCap) {
+    return { kind: "DEFERRED", retryAt: nextPacificReset(), reason: "Today's free YouTube video allowance is used up; AI scoring resumes after midnight Pacific." };
+  }
+
+  const components = componentsFor(target.contentType);
   let uploadedName: string | null = null;
   try {
-    let video: GeminiPart;
-    if (isYouTube) {
-      video = { file_data: { file_uri: `https://www.youtube.com/watch?v=${target.externalId}` } };
+    let parts: GeminiPart[];
+    if (isStory) {
+      parts = [{ text: buildPrompt(target, taxonomy) }, ...(await storyParts(target.story as StoryContent))];
     } else {
-      const file = await uploadMediaFile(target.mediaUrl as string, target.mediaMimeType ?? "video/mp4");
-      uploadedName = file.name;
-      video = { file_data: { file_uri: file.uri, mime_type: file.mimeType } };
-    }
-    const parts: GeminiPart[] = [video, { text: buildPrompt(target, taxonomy) }];
-    const schema = responseSchema(taxonomy);
-
-    let problem = "";
-    for (let attempt = 1; attempt <= 2; attempt += 1) {
-      const response = await generateJson(model, parts, schema);
-      const inputTokens = response.usage.promptTokenCount ?? 0;
-      const outputTokens = response.usage.candidatesTokenCount ?? 0;
-      const costUsd = (inputTokens * env.aiInputUsdPerMTok + outputTokens * env.aiOutputUsdPerMTok) / 1_000_000;
-      await recordUsage(db, model, { youtubeSeconds: isYouTube ? seconds : 0, fileSeconds: isYouTube ? 0 : seconds, inputTokens, outputTokens, costUsd });
-
-      const parsed = parseOutput(response.text);
-      if (!parsed.ok) {
-        problem = parsed.problem;
-        continue; // one retry, then the item goes to the admin
+      let video: GeminiPart;
+      if (isYouTube) {
+        video = { file_data: { file_uri: `https://www.youtube.com/watch?v=${target.externalId}` } };
+      } else {
+        const file = await uploadMediaFile(target.mediaUrl as string, target.mediaMimeType ?? "video/mp4");
+        uploadedName = file.name;
+        video = { file_data: { file_uri: file.uri, mime_type: file.mimeType } };
       }
-      const { scores, criteria, classification } = normalizeAgentOutput(parsed.data, taxonomy);
-      const critical = criteria.some((c) => CRITICAL_KEYS.includes(c.key) && c.result === "FAIL");
-      return {
-        kind: "SCORED",
-        classification,
-        assessment: {
-          contentItemId: target.contentItemId,
-          assessorType: "MODEL",
-          assessorName: "kidq-gemini-scoring-agent",
-          modelName: model,
-          modelSnapshot: response.modelVersion,
-          promptVersion: env.aiPromptVersion,
-          rubricVersion: RUBRIC_VERSION,
-          inputHash: target.metadataHash,
-          inputTokens,
-          cachedInputTokens: response.usage.cachedContentTokenCount ?? null,
-          outputTokens,
-          estimatedCostUsd: costUsd,
-          result: critical ? "REJECTED" : "MANUAL_REVIEW_REQUIRED",
-          summary: classification.kidqSummary ?? "AI review completed.",
-          audiovisualInspected: true,
-          scores,
-          criteria,
-          classification,
-          output: parsed.data,
-          cacheKey,
-        },
-      };
+      parts = [video, { text: buildPrompt(target, taxonomy) }];
     }
-    return { kind: "INVALID_OUTPUT", reason: problem };
+    const request: ScoringRequest = {
+      target,
+      taxonomy,
+      parts,
+      schema: responseSchema(taxonomy, components),
+      components,
+      usage: { youtubeSeconds: isYouTube ? seconds : 0, fileSeconds: isYouTube || isStory ? 0 : seconds },
+    };
+
+    // Each model with quota left gets a turn; one that runs out or is overloaded hands over to the next.
+    let busyForMs = 0;
+    for (const model of available) {
+      try {
+        return await scoreWith(db, model, request);
+      } catch (error) {
+        if (error instanceof GeminiQuotaError && error.daily) {
+          await markDailyQuotaUsedUp(db, model);
+        } else if (error instanceof GeminiQuotaError || (error instanceof HttpError && error.status === 503)) {
+          busyForMs = Math.max(busyForMs, error instanceof GeminiQuotaError ? error.retryAfterMs : OVERLOAD_WAIT_MS);
+        } else {
+          throw error;
+        }
+      }
+    }
+    if (busyForMs > 0) {
+      return { kind: "DEFERRED", retryAt: new Date(Date.now() + busyForMs), reason: "Gemini is overloaded or at its per-minute limit; retrying in a few minutes." };
+    }
+    return { kind: "DEFERRED", retryAt: nextPacificReset(), reason: DAILY_QUOTA_REASON };
   } catch (error) {
     // Private, unlisted, region-blocked or oversized media: permanent for this video.
     if (error instanceof HttpError && !error.retryable && [0, 400, 403, 404, 413, 422].includes(error.status)) {
