@@ -304,7 +304,7 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
-                    state?: "PENDING_ANALYSIS" | "ANALYSING" | "READY_TO_APPROVE" | "NEEDS_ATTENTION" | "ANALYSIS_INCOMPLETE" | "FAILED" | "APPROVED" | "REJECTED";
+                    state?: "PENDING_ANALYSIS" | "READY_TO_APPROVE" | "NEEDS_ATTENTION" | "APPROVED" | "REJECTED";
                     age_group?: "0_2" | "2_3" | "3_4" | "4_5" | "5_6";
                     category?: string;
                     source?: "youtube" | "nasa_images" | "wikimedia_commons" | "storyweaver";
@@ -501,9 +501,6 @@ export interface paths {
                             revisions: {
                                 [key: string]: unknown;
                             }[];
-                            expert_reviews: {
-                                [key: string]: unknown;
-                            }[];
                             rights: {
                                 [key: string]: unknown;
                             };
@@ -596,9 +593,6 @@ export interface paths {
                                 [key: string]: unknown;
                             }[];
                             revisions: {
-                                [key: string]: unknown;
-                            }[];
-                            expert_reviews: {
                                 [key: string]: unknown;
                             }[];
                             rights: {
@@ -725,9 +719,6 @@ export interface paths {
                             revisions: {
                                 [key: string]: unknown;
                             }[];
-                            expert_reviews: {
-                                [key: string]: unknown;
-                            }[];
                             rights: {
                                 [key: string]: unknown;
                             };
@@ -843,9 +834,6 @@ export interface paths {
                                 [key: string]: unknown;
                             }[];
                             revisions: {
-                                [key: string]: unknown;
-                            }[];
-                            expert_reviews: {
                                 [key: string]: unknown;
                             }[];
                             rights: {
@@ -1053,9 +1041,6 @@ export interface paths {
                             revisions: {
                                 [key: string]: unknown;
                             }[];
-                            expert_reviews: {
-                                [key: string]: unknown;
-                            }[];
                             rights: {
                                 [key: string]: unknown;
                             };
@@ -1151,127 +1136,6 @@ export interface paths {
                                 blockers: string[];
                                 message: string | null;
                             }[];
-                        };
-                    };
-                };
-                /** @description Validation failed */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-                /** @description Not signed in */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-                /** @description Wrong role */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-                /** @description Not found */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/content-items/{id}/expert-reviews": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Add an expert review (shown as 'per public sources' unless verified) */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    id: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: {
-                content: {
-                    "application/json": {
-                        reviewer_name: string;
-                        reviewer_type: string;
-                        credentials?: string | null;
-                        /** @enum {string} */
-                        recommendation: "RECOMMEND" | "NOT_RECOMMEND";
-                        recommended_age_min?: number | null;
-                        recommended_age_max?: number | null;
-                        comments?: string | null;
-                        /**
-                         * Format: uri
-                         * @description Where the review was published; leave out for a KidQ panel review
-                         */
-                        source_url?: string | null;
-                        /**
-                         * @description KidQ has checked the reviewer's credentials; only verified reviews count as KidQ experts
-                         * @default false
-                         */
-                        verified?: boolean;
-                    };
-                };
-            };
-            responses: {
-                /** @description Success */
-                201: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            content: components["schemas"]["AdminContent"];
-                            /** @description README canonical content record (all required keys) */
-                            record: {
-                                [key: string]: unknown;
-                            };
-                            assessments: {
-                                [key: string]: unknown;
-                            }[];
-                            decisions: {
-                                [key: string]: unknown;
-                            }[];
-                            revisions: {
-                                [key: string]: unknown;
-                            }[];
-                            expert_reviews: {
-                                [key: string]: unknown;
-                            }[];
-                            rights: {
-                                [key: string]: unknown;
-                            };
-                            transcript_status: string | null;
-                            raw_metadata?: unknown;
-                            story: components["schemas"]["Story"] | null;
                         };
                     };
                 };
@@ -2110,7 +1974,6 @@ export interface paths {
                             score: number;
                             /** @default 0 */
                             learning?: number;
-                            expert: number;
                             /** @description Fit: the child's age near the middle of the item's range, and the item inside one session */
                             preference: number;
                         };
@@ -2123,7 +1986,6 @@ export interface paths {
                         max_per_creator_in_top: number;
                         top_window: number;
                         dismiss_cooldown_days: number;
-                        expert_neutral: number;
                     };
                 };
             };
@@ -3554,15 +3416,6 @@ export interface components {
                 value: number | null;
                 areas: string[];
             };
-            expert_review: {
-                recommend: number;
-                total: number;
-                /** @description Reviews from reviewers KidQ has verified */
-                verified: number;
-                verified_recommend: number;
-                /** @description Ready to show, e.g. "Recommended by 3 KidQ experts"; unverified reviews are called public reviews */
-                label: string;
-            } | null;
             player: components["schemas"]["Player"];
             attribution: {
                 text: string | null;
@@ -3573,7 +3426,7 @@ export interface components {
         };
         AdminContent: components["schemas"]["ContentCard"] & {
             /** @enum {string} */
-            studio_state: "PENDING_ANALYSIS" | "ANALYSING" | "READY_TO_APPROVE" | "NEEDS_ATTENTION" | "ANALYSIS_INCOMPLETE" | "FAILED" | "APPROVED" | "REJECTED";
+            studio_state: "PENDING_ANALYSIS" | "READY_TO_APPROVE" | "NEEDS_ATTENTION" | "APPROVED" | "REJECTED";
             analysis_status: string;
             /** @enum {string} */
             current_status: "APPROVED" | "REJECTED" | "MANUAL_REVIEW_REQUIRED";

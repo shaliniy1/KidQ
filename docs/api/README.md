@@ -39,7 +39,6 @@ Every list returns the same `ContentCard`. Render it; don't recompute anything i
   - **Parents** see the score, the bars, the reason and "reviewed by KidQ".
   - **Admins** also see the evidence and timestamps.
 - `learning` — what the child can learn or do, apart from the score: `value` (0–100 or null) and `areas` ("Thinking", "Language", "Feelings & friends", "Doing").
-- `expert_review` — null until someone reviews the item. Show `label` as it is, e.g. "Recommended by 3 KidQ experts". Unverified reviews come through as "public reviews" and are never called experts.
 - `category` is the primary category; `categories` lists every category the item fits (at most three), primary first.
 - `player` — how to play the item:
   - `{ provider: "youtube", video_id, embed_url, params }` or `{ provider: "html5", media_url, mime_type }`
@@ -49,6 +48,18 @@ Every list returns the same `ContentCard`. Render it; don't recompute anything i
 - `thumbnails` — every size, so TVs load large images and phones small ones.
 - `age.groups` — derived groups, one or more of `0_2`, `2_3`, `3_4`, `4_5`, `5_6`.
 
+## Content statuses
+
+Admin screens show `studio_state`, one of five. Show one tile or filter per state, so a tile's count always matches its list.
+
+| `studio_state` | Label | What the admin does |
+|---|---|---|
+| `PENDING_ANALYSIS` | Draft | Nothing yet: rule checks and the AI review are queued or running |
+| `READY_TO_APPROVE` | Ready to publish | Publish (single or bulk) |
+| `NEEDS_ATTENTION` | Needs changes | Fix what `publish_blockers` lists, or publish over KidQ's checks with a reason |
+| `APPROVED` | Published | Unpublish if needed |
+| `REJECTED` | Rejected | Restore if KidQ checks got it wrong |
+
 ## Admin app flows
 
 | Screen | Calls |
@@ -57,12 +68,11 @@ Every list returns the same `ContentCard`. Render it; don't recompute anything i
 | Content Library | `GET /content-items?state=&age_group=&category=&source=&flagged=&min_score=&q=&sort=&limit=&offset=` (`category` matches any of an item's categories) |
 | Review queue | `GET /review-queue` (parent requests first) |
 | Add content | `POST /ingestion-runs` (`mode: "urls"` or `"search"`) → poll `GET /ingestion-runs/:id` |
-| Content detail | `GET /content-items/:id`: card, README canonical `record`, assessments with criteria, decisions, edits, expert reviews, and `story` (pages and credits) for picture books |
+| Content detail | `GET /content-items/:id`: card, README canonical `record`, assessments with criteria, decisions, edits, and `story` (pages and credits) for picture books |
 | Edit text | `PATCH /content-items/:id` |
 | Sliders / rubric | `POST /content-items/:id/assessments` (HUMAN — outranks the AI) |
 | Tags | `PATCH /content-items/:id/classification`, `POST /content-items/bulk-classification` |
 | Publish | `POST /content-items/:id/publication-decisions` (`APPROVED`, `REJECTED`, or `MANUAL_REVIEW_REQUIRED` to unpublish); `POST /publication-decisions/bulk`. Publishing over KidQ's checks needs `override_critical_flag: true` and a reason of 15+ characters; the 422 error code is `CRITICAL_FLAG` or `KIDQ_CHECKS` |
-| Expert review | `POST /content-items/:id/expert-reviews`. A KidQ panel review needs no `source_url`; set `verified` only once KidQ has checked the reviewer's credentials. Parents see `expert_review.label` |
 | Re-run AI | `POST /content-items/:id/reanalyze` |
 | Score everything the AI hasn't reviewed | `POST /content-items/bulk-reanalyze` with `{ "scope": "UNSCORED" }`; progress in `GET /dashboard` → `ai` |
 | Preview for a child | `POST /recommendations/preview` |

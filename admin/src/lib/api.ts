@@ -70,12 +70,18 @@ export function friendlyError(error: unknown, fallback = "Something went wrong. 
 export type SimpleStatus = "published" | "draft" | "review" | "changes";
 
 export function simpleStatus(item: Pick<AdminContent, "studio_state" | "current_status">): { key: SimpleStatus; label: string } {
-  if (item.current_status === "APPROVED") return { key: "published", label: "Published" };
-  if (item.current_status === "REJECTED" || ["NEEDS_ATTENTION", "FAILED"].includes(item.studio_state)) {
-    return { key: "changes", label: "Needs changes" };
+  switch (item.studio_state) {
+    case "APPROVED":
+      return { key: "published", label: "Published" };
+    case "REJECTED":
+      return { key: "changes", label: "Rejected" };
+    case "NEEDS_ATTENTION":
+      return { key: "changes", label: "Needs changes" };
+    case "PENDING_ANALYSIS":
+      return { key: "draft", label: "Draft" };
+    default:
+      return { key: "review", label: "Ready to publish" };
   }
-  if (item.studio_state === "PENDING_ANALYSIS") return { key: "draft", label: "Draft" };
-  return { key: "review", label: "Under review" };
 }
 
 export const BLOCKER_LABELS: Record<string, string> = {
@@ -90,12 +96,9 @@ export const BLOCKER_LABELS: Record<string, string> = {
 };
 
 export const STATE_LABELS: Record<string, string> = {
-  PENDING_ANALYSIS: "Pending analysis",
-  ANALYSING: "Analysing",
-  READY_TO_APPROVE: "Ready to approve",
-  NEEDS_ATTENTION: "Needs attention",
-  ANALYSIS_INCOMPLETE: "Analysis incomplete",
-  FAILED: "Failed",
-  APPROVED: "Approved",
+  PENDING_ANALYSIS: "Draft",
+  READY_TO_APPROVE: "Ready to publish",
+  NEEDS_ATTENTION: "Needs changes",
+  APPROVED: "Published",
   REJECTED: "Rejected",
 };

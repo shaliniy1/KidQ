@@ -499,38 +499,6 @@
             ],
             "description": "What the child can learn or do, kept separate from the KidQ score: 25 points per area (Thinking, Language, Feelings & friends, Doing)"
           },
-          "expert_review": {
-            "type": [
-              "object",
-              "null"
-            ],
-            "properties": {
-              "recommend": {
-                "type": "number"
-              },
-              "total": {
-                "type": "number"
-              },
-              "verified": {
-                "type": "number",
-                "description": "Reviews from reviewers KidQ has verified"
-              },
-              "verified_recommend": {
-                "type": "number"
-              },
-              "label": {
-                "type": "string",
-                "description": "Ready to show, e.g. \"Recommended by 3 KidQ experts\"; unverified reviews are called public reviews"
-              }
-            },
-            "required": [
-              "recommend",
-              "total",
-              "verified",
-              "verified_recommend",
-              "label"
-            ]
-          },
           "player": {
             "$ref": "#/components/schemas/Player"
           },
@@ -589,7 +557,6 @@
           "regulation_goals",
           "content_score",
           "learning",
-          "expert_review",
           "player",
           "attribution"
         ]
@@ -606,11 +573,8 @@
                 "type": "string",
                 "enum": [
                   "PENDING_ANALYSIS",
-                  "ANALYSING",
                   "READY_TO_APPROVE",
                   "NEEDS_ATTENTION",
-                  "ANALYSIS_INCOMPLETE",
-                  "FAILED",
                   "APPROVED",
                   "REJECTED"
                 ]
@@ -1473,11 +1437,8 @@
               "type": "string",
               "enum": [
                 "PENDING_ANALYSIS",
-                "ANALYSING",
                 "READY_TO_APPROVE",
                 "NEEDS_ATTENTION",
-                "ANALYSIS_INCOMPLETE",
-                "FAILED",
                 "APPROVED",
                 "REJECTED"
               ]
@@ -1847,13 +1808,6 @@
                         "additionalProperties": {}
                       }
                     },
-                    "expert_reviews": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "additionalProperties": {}
-                      }
-                    },
                     "rights": {
                       "type": "object",
                       "additionalProperties": {}
@@ -1882,7 +1836,6 @@
                     "assessments",
                     "decisions",
                     "revisions",
-                    "expert_reviews",
                     "rights",
                     "transcript_status",
                     "story"
@@ -2028,13 +1981,6 @@
                         "additionalProperties": {}
                       }
                     },
-                    "expert_reviews": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "additionalProperties": {}
-                      }
-                    },
                     "rights": {
                       "type": "object",
                       "additionalProperties": {}
@@ -2063,7 +2009,6 @@
                     "assessments",
                     "decisions",
                     "revisions",
-                    "expert_reviews",
                     "rights",
                     "transcript_status",
                     "story"
@@ -2343,13 +2288,6 @@
                         "additionalProperties": {}
                       }
                     },
-                    "expert_reviews": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "additionalProperties": {}
-                      }
-                    },
                     "rights": {
                       "type": "object",
                       "additionalProperties": {}
@@ -2378,7 +2316,6 @@
                     "assessments",
                     "decisions",
                     "revisions",
-                    "expert_reviews",
                     "rights",
                     "transcript_status",
                     "story"
@@ -2580,13 +2517,6 @@
                         "additionalProperties": {}
                       }
                     },
-                    "expert_reviews": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "additionalProperties": {}
-                      }
-                    },
                     "rights": {
                       "type": "object",
                       "additionalProperties": {}
@@ -2615,7 +2545,6 @@
                     "assessments",
                     "decisions",
                     "revisions",
-                    "expert_reviews",
                     "rights",
                     "transcript_status",
                     "story"
@@ -2971,13 +2900,6 @@
                         "additionalProperties": {}
                       }
                     },
-                    "expert_reviews": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "additionalProperties": {}
-                      }
-                    },
                     "rights": {
                       "type": "object",
                       "additionalProperties": {}
@@ -3006,7 +2928,6 @@
                     "assessments",
                     "decisions",
                     "revisions",
-                    "expert_reviews",
                     "rights",
                     "transcript_status",
                     "story"
@@ -3151,228 +3072,6 @@
                   },
                   "required": [
                     "results"
-                  ]
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Validation failed",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Not signed in",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Wrong role",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/content-items/{id}/expert-reviews": {
-      "post": {
-        "summary": "Add an expert review (shown as 'per public sources' unless verified)",
-        "tags": [
-          "Scoring"
-        ],
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            },
-            "required": true,
-            "name": "id",
-            "in": "path"
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "reviewer_name": {
-                    "type": "string",
-                    "minLength": 1,
-                    "maxLength": 120
-                  },
-                  "reviewer_type": {
-                    "type": "string",
-                    "minLength": 1,
-                    "maxLength": 80
-                  },
-                  "credentials": {
-                    "type": [
-                      "string",
-                      "null"
-                    ],
-                    "maxLength": 200
-                  },
-                  "recommendation": {
-                    "type": "string",
-                    "enum": [
-                      "RECOMMEND",
-                      "NOT_RECOMMEND"
-                    ]
-                  },
-                  "recommended_age_min": {
-                    "type": [
-                      "number",
-                      "null"
-                    ],
-                    "minimum": 0,
-                    "maximum": 6
-                  },
-                  "recommended_age_max": {
-                    "type": [
-                      "number",
-                      "null"
-                    ],
-                    "minimum": 0,
-                    "maximum": 6
-                  },
-                  "comments": {
-                    "type": [
-                      "string",
-                      "null"
-                    ],
-                    "maxLength": 2000
-                  },
-                  "source_url": {
-                    "type": [
-                      "string",
-                      "null"
-                    ],
-                    "format": "uri",
-                    "description": "Where the review was published; leave out for a KidQ panel review"
-                  },
-                  "verified": {
-                    "type": "boolean",
-                    "default": false,
-                    "description": "KidQ has checked the reviewer's credentials; only verified reviews count as KidQ experts"
-                  }
-                },
-                "required": [
-                  "reviewer_name",
-                  "reviewer_type",
-                  "recommendation"
-                ]
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Success",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "content": {
-                      "$ref": "#/components/schemas/AdminContent"
-                    },
-                    "record": {
-                      "type": "object",
-                      "additionalProperties": {},
-                      "description": "README canonical content record (all required keys)"
-                    },
-                    "assessments": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "additionalProperties": {}
-                      }
-                    },
-                    "decisions": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "additionalProperties": {}
-                      }
-                    },
-                    "revisions": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "additionalProperties": {}
-                      }
-                    },
-                    "expert_reviews": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "additionalProperties": {}
-                      }
-                    },
-                    "rights": {
-                      "type": "object",
-                      "additionalProperties": {}
-                    },
-                    "transcript_status": {
-                      "type": [
-                        "string",
-                        "null"
-                      ]
-                    },
-                    "raw_metadata": {},
-                    "story": {
-                      "anyOf": [
-                        {
-                          "$ref": "#/components/schemas/Story"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ]
-                    }
-                  },
-                  "required": [
-                    "content",
-                    "record",
-                    "assessments",
-                    "decisions",
-                    "revisions",
-                    "expert_reviews",
-                    "rights",
-                    "transcript_status",
-                    "story"
                   ]
                 }
               }
@@ -4577,11 +4276,6 @@
                         "maximum": 1,
                         "default": 0
                       },
-                      "expert": {
-                        "type": "number",
-                        "minimum": 0,
-                        "maximum": 1
-                      },
                       "preference": {
                         "type": "number",
                         "minimum": 0,
@@ -4592,7 +4286,6 @@
                     "required": [
                       "relevance",
                       "score",
-                      "expert",
                       "preference"
                     ]
                   },
@@ -4641,11 +4334,6 @@
                     "type": "integer",
                     "minimum": 0,
                     "maximum": 365
-                  },
-                  "expert_neutral": {
-                    "type": "number",
-                    "minimum": 0,
-                    "maximum": 1
                   }
                 },
                 "required": [
@@ -4653,8 +4341,7 @@
                   "relevance_weights",
                   "max_per_creator_in_top",
                   "top_window",
-                  "dismiss_cooldown_days",
-                  "expert_neutral"
+                  "dismiss_cooldown_days"
                 ]
               }
             }

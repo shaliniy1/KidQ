@@ -23,21 +23,13 @@ export default function DashboardPage() {
     return error ? <div className="notice-error">{error}<button className="link-button" onClick={() => void load()}>Try again</button></div> : <p className="muted">Loading content…</p>;
   }
 
+  const tile = (label: string, state: string, tone: string) => ({ label, count: data.by_state[state] ?? 0, href: `/content?state=${state}`, tone });
   const summaries = [
-    { label: "Draft", count: data.by_state.PENDING_ANALYSIS ?? 0, href: "/content?state=PENDING_ANALYSIS", tone: "draft" },
-    {
-      label: "Under review",
-      count: (data.by_state.READY_TO_APPROVE ?? 0) + (data.by_state.ANALYSING ?? 0) + (data.by_state.ANALYSIS_INCOMPLETE ?? 0),
-      href: "/review",
-      tone: "review",
-    },
-    {
-      label: "Needs changes",
-      count: (data.by_state.NEEDS_ATTENTION ?? 0) + (data.by_state.FAILED ?? 0) + (data.by_state.REJECTED ?? 0),
-      href: "/content?state=NEEDS_ATTENTION",
-      tone: "changes",
-    },
-    { label: "Published", count: data.by_state.APPROVED ?? 0, href: "/content?state=APPROVED", tone: "published" },
+    tile("Draft", "PENDING_ANALYSIS", "draft"),
+    tile("Ready to publish", "READY_TO_APPROVE", "review"),
+    tile("Needs changes", "NEEDS_ATTENTION", "changes"),
+    tile("Published", "APPROVED", "published"),
+    tile("Rejected", "REJECTED", "changes"),
   ];
 
   return (

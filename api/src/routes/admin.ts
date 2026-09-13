@@ -17,7 +17,6 @@ import {
   dashboardSchema,
   decisionBody,
   editorialBody,
-  expertReviewBody,
   humanAssessmentBody,
   idParams,
   ingestionRunBody,
@@ -50,7 +49,6 @@ const adminDetailSchema = z.object({
   assessments: z.array(z.record(z.string(), z.unknown())),
   decisions: z.array(z.record(z.string(), z.unknown())),
   revisions: z.array(z.record(z.string(), z.unknown())),
-  expert_reviews: z.array(z.record(z.string(), z.unknown())),
   rights: z.record(z.string(), z.unknown()),
   transcript_status: z.string().nullable(),
   raw_metadata: z.unknown(),
@@ -158,12 +156,6 @@ defineRoute(
 
 defineRoute(
   adminRouter,
-  { method: "post", path: "/content-items/:id/expert-reviews", summary: "Add an expert review (shown as 'per public sources' unless verified)", tag: "Scoring", roles, params: idParams, body: expertReviewBody, response: adminDetailSchema, status: 201 },
-  async ({ params, body, user }) => admin.addExpertReview(user, params.id, body),
-);
-
-defineRoute(
-  adminRouter,
   { method: "post", path: "/content-items/:id/reanalyze", summary: "Queue AI scoring again, ignoring the AI cache (rule checks re-run only if the source metadata changed)", tag: "Scoring", roles, params: idParams, response: queued, status: 202 },
   async ({ params }) => admin.reanalyze(params.id),
 );
@@ -249,7 +241,6 @@ defineRoute(
             maxPerCreatorInTop: body.max_per_creator_in_top,
             topWindow: body.top_window,
             dismissCooldownDays: body.dismiss_cooldown_days,
-            expertNeutral: body.expert_neutral,
           },
         },
         actorName(user),

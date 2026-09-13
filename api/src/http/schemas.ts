@@ -14,16 +14,8 @@ const sum = (values: number[]) => values.reduce((total, value) => total + value,
 const sumsToOne = (record: Record<string, number>) => Math.abs(sum(Object.values(record)) - 1) < 0.001;
 
 export const CONTENT_TYPES = ["VIDEO", "ACTIVITY", "STORYBOOK", "INTERACTIVE_CONTENT"] as const;
-export const STUDIO_STATES = [
-  "PENDING_ANALYSIS",
-  "ANALYSING",
-  "READY_TO_APPROVE",
-  "NEEDS_ATTENTION",
-  "ANALYSIS_INCOMPLETE",
-  "FAILED",
-  "APPROVED",
-  "REJECTED",
-] as const;
+// What the admin sees (docs/recommendation/README.md "Admin gate"). analysis_status and current_status stay internal.
+export const STUDIO_STATES = ["PENDING_ANALYSIS", "READY_TO_APPROVE", "NEEDS_ATTENTION", "APPROVED", "REJECTED"] as const;
 export const DECISIONS = ["APPROVED", "REJECTED", "MANUAL_REVIEW_REQUIRED"] as const;
 const RUBRIC_KEYS = RUBRIC.map((criterion) => criterion.key) as [string, ...string[]];
 
@@ -110,15 +102,6 @@ export const contentCardSchema = registry.register(
     learning: z
       .object({ value: z.number().nullable(), areas: z.array(z.string()) })
       .describe("What the child can learn or do, kept separate from the KidQ score: 25 points per area (Thinking, Language, Feelings & friends, Doing)"),
-    expert_review: z
-      .object({
-        recommend: z.number(),
-        total: z.number(),
-        verified: z.number().describe("Reviews from reviewers KidQ has verified"),
-        verified_recommend: z.number(),
-        label: z.string().describe('Ready to show, e.g. "Recommended by 3 KidQ experts"; unverified reviews are called public reviews'),
-      })
-      .nullable(),
     player: playerSchema,
     attribution: z.object({
       text: nullableString,
@@ -303,18 +286,6 @@ export const dashboardSchema = z.object({
   }),
 });
 
-export const expertReviewBody = z.object({
-  reviewer_name: z.string().min(1).max(120),
-  reviewer_type: z.string().min(1).max(80),
-  credentials: z.string().max(200).nullable().optional(),
-  recommendation: z.enum(["RECOMMEND", "NOT_RECOMMEND"]),
-  recommended_age_min: z.number().min(0).max(6).nullable().optional(),
-  recommended_age_max: z.number().min(0).max(6).nullable().optional(),
-  comments: z.string().max(2000).nullable().optional(),
-  source_url: z.url().nullable().optional().describe("Where the review was published; leave out for a KidQ panel review"),
-  verified: z.boolean().default(false).describe("KidQ has checked the reviewer's credentials; only verified reviews count as KidQ experts"),
-});
-
 export const scoringConfigBody = z.object({
   weights: z
     .object({ CONTENT_LANGUAGE: z.number().min(0).max(1), PACING: z.number().min(0).max(1), VISUAL_COMFORT: z.number().min(0).max(1), AUDIO_COMFORT: z.number().min(0).max(1) })
@@ -329,7 +300,6 @@ export const rankingConfigBody = z.object({
       relevance: z.number().min(0).max(1),
       score: z.number().min(0).max(1),
       learning: z.number().min(0).max(1).default(0),
-      expert: z.number().min(0).max(1),
       preference: z.number().min(0).max(1).describe("Fit: the child's age near the middle of the item's range, and the item inside one session"),
     })
     .refine(sumsToOne, "Weights must add up to 1"),
@@ -339,7 +309,6 @@ export const rankingConfigBody = z.object({
   max_per_creator_in_top: z.number().int().min(1).max(20),
   top_window: z.number().int().min(5).max(100),
   dismiss_cooldown_days: z.number().int().min(0).max(365),
-  expert_neutral: z.number().min(0).max(1),
 });
 
 export const taxonomyBody = z.object({

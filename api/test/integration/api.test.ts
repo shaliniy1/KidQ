@@ -167,28 +167,23 @@ describe("API", () => {
     expect(reviews.n).toBe(2);
   });
 
-  it("gives a child with only an age a mixed feed, and shows parents the KidQ expert line", async () => {
+  it("gives a child with only an age a mixed feed", async () => {
     const counting = await importVideo("AAAAAAAAAAA");
     const moreCounting = await importVideo("BBBBBBBBBBB", [agentOutput()], "Counting to ten");
-    const song = await importVideo("GGGGGGGGGGG", [agentOutput({ classification: { category: "music_rhymes" } })], "Slow lullaby");
+    // A slightly lower score, so the two counting videos lead and variety has to split them.
+    const song = await importVideo("GGGGGGGGGGG", [agentOutput({ scores: [90, 78, 89, 87], classification: { category: "music_rhymes" } })], "Slow lullaby");
     for (const id of [counting, moreCounting, song]) await publish(id, { decision: "APPROVED", reason: "Calm and clear." }).expect(201);
-    await request(app)
-      .post(`/content-items/${counting}/expert-reviews`)
-      .set("Authorization", ADMIN)
-      .send({ reviewer_name: "Asha Rao", reviewer_type: "Early-years educator", recommendation: "RECOMMEND", verified: true })
-      .expect(201);
 
     // Screen 1 only: a nickname and an age band, nothing else.
     const onboarded = await request(app).post("/onboarding").set("Authorization", PARENT_A).send({ parent_name: "Priya", children: [{ nickname: "Mia", age_band: "3_4" }] });
     expect(onboarded.status).toBe(201);
     const feed = (await request(app).get(`/children/${onboarded.body.children[0].id}/recommendations`).set("Authorization", PARENT_A)).body.items;
-    expect(feed.map((item: { card: { id: string } }) => item.card.id)).toEqual([counting, song, moreCounting]);
+    expect(feed.map((item: { card: { category: string } }) => item.card.category)).toEqual(["maths", "music_rhymes", "maths"]);
 
     const [first] = feed;
-    expect(first.card.expert_review).toMatchObject({ verified: 1, verified_recommend: 1, label: "Recommended by 1 KidQ expert" });
-    expect(first.why).toContain("Recommended by 1 KidQ expert");
     expect(first.card.learning).toEqual({ value: 25, areas: ["Thinking"] });
     expect(first.card.categories).toEqual(["maths"]);
+    expect(first.card).not.toHaveProperty("expert_review");
   });
 
   it("serves a picture book's pages to admins, and to parents only once it's published", async () => {

@@ -57,7 +57,7 @@ The AI model call that watches a video and proposes component scores, rubric res
 _Avoid_: AI reviewer decision
 
 **Studio State**:
-The admin-facing state derived from the analysis status and the current publication status, such as Ready to approve or Needs attention.
+What an admin sees for an item, derived from its analysis and publication status: Draft, Ready to publish, Needs changes, Published or Rejected.
 _Avoid_: content status
 
 **Taxonomy Term**:

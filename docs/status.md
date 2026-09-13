@@ -15,10 +15,9 @@ When something below changes, update it; delete any line that is no longer true.
   - AI backlog scoring: the dashboard's "Score N items with AI" (`POST /content-items/bulk-reanalyze`). Scoring pauses when Gemini's daily quota runs out and resumes after midnight Pacific, so no item fails for quota.
   - parent onboarding (P2 revision): `POST /onboarding`, `GET`/`PATCH /me`, and child profiles with an age band, age-based defaults and the Customize blocks
   - one vocabulary for onboarding and admin tagging: 5 age bands and the 12 onboarding categories, each with a definition. An item fits up to three categories, and picture books always have Storybooks first.
-  - recommendations (`RANK_V2`):
-    - ranking inputs: learning value, age fit, and expert reviews weighed against a neutral prior;
+  - recommendations (`RANK_V3`; expert reviews removed 2026-09-13):
+    - ranking inputs: relevance, KidQ score, learning value, and fit (age and session length);
     - category variety, which also makes the default feed for a child whose parent gave only an age;
-    - the expert line on every card;
     - plus the parent library and parent URL submissions.
   - calibration report (`npm run eval:scoring -w api`) and the re-curation script (`npm run recurate -w api`)
   - OpenAPI contract at `/openapi.json` and `/docs`
