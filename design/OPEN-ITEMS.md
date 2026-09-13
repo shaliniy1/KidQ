@@ -80,30 +80,66 @@ only one can be built.
 
 ## Ours — design and porting
 
-### [ ] 10. TV remote focus states
+### [ ] 10. Document the game colours in brand.md
+The find-a-colour game uses blue `#6FA8DC` and green `#5FA88A`, neither of which
+appears in `brand.md`. Red was the `heart` coral token until it moved to
+`#C2543F`, a splash balloon stop. Either add a "game content colours" row to
+`brand.md` section 2, or move the fills onto documented tokens. Blue and green
+also sit at 2.31:1 and 2.57:1 against the sky; they don't have to clear 3:1
+(graphical-object exception) but going deeper would help low-vision children.
+
+### [ ] 11. Move the "Playtime!" pill out of the eyebrow slot
+On the breathing and find screens the pill sits directly above the `<h1>` with
+no other job, which is the eyebrow pattern a design standard in use here bans
+outright. `brand.md` classes it with the time and cast pills, i.e. a status
+pill, so the fix is to move it into the time-pill slot on those two screens
+rather than delete it. The seam screen's use is fine — there it is a mode badge
+above the sun. Also drift: CSS has 14px / padding 4×16, brand locks 13px / 3×14.
+
+### [ ] 12. Heading structure on the watching and cast screens
+`#screen-watching` and `#screen-cast` have no `<h1>` at all, only `<h4>`s, and
+`#screen-choice` puts an `<h4>` before its `<h1>`. Ten `<h1>`s across the
+document is fine — inactive screens are `visibility:hidden` and leave the
+accessibility tree, so exactly one is live at a time. The defect is the missing
+and out-of-order levels, plus `<h4>` being chosen for its size. "Aarav's watch
+time" should be the `h1`, the video title `h2`, styled by class not by level.
+
+### [ ] 13. Spoken instruction on the activity breaks
+"Find 3 red things!" is written for a child aged 0–6 who cannot read it. The
+swatches carry the instruction visually, which leaves a child who is also
+low-vision or colour-blind with no instruction at all. A one-line spoken cue
+would do more here than any contrast change.
+
+### [ ] 14. Consider non-colour break rounds
+About 1 in 12 boys has red-green colour vision deficiency, mostly undiagnosed
+before age 5. The game has no fail state, so it is unfair rather than punishing
+— but "find 3 round things", "3 soft things", "3 things bigger than you" are
+colour-blind-safe, richer, and need no swatch at all.
+
+### [ ] 15. TV remote focus states
 The integration guide requires every control focusable and arrow-key operable,
 with no hover-only UI. The prototype is pointer-and-hover first. Partly solved
 already: the player handles TV Back keys (Tizen `10009`, webOS `461`).
 
-### [ ] 11. Port the prototype into `web/`
+### [ ] 16. Port the prototype into `web/`
 Vanilla HTML/CSS/JS with one closure-scoped state machine → React components
 under the App Router. Layout is driven by container queries on `#app` at three
 tiers, with one element inventory at every size.
 
-### [ ] 12. Three more activity breaks
+### [ ] 17. Three more activity breaks
 Designed but not built: stand like a tree, count to 10 with eyes closed, follow
 me with your eyes. The cadence and rotation already support more entries with no
 other change.
 
-### [ ] 13. Decide: resume or restart a half-watched video
+### [ ] 18. Decide: resume or restart a half-watched video
 Returning to a partly watched video currently restarts it at 0:00. Resuming
 where the child left off is the alternative. Deferred once already.
 
-### [ ] 14. Confirm the session strip with the group
+### [ ] 19. Confirm the session strip with the group
 The strip lets a child switch video mid-session, which supersedes the group's
 earlier "no switching before completion". Already flagged, and easy to revert.
 
-### [ ] 15. Sync the phone mockups
+### [ ] 20. Sync the phone mockups
 `kidq-mockups-v1.html` still shows the pre-round-3 design — "The End" card, "Up
 next" instead of the session strip, the old arc colour. Only worth doing if
 those frames are still referenced.
