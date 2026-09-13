@@ -112,10 +112,12 @@ half-breaths would talk over the quiet. Voice prefers `en-IN`. `showScreen`
 hushes, so a line never carries into the next screen, and the breaks still work
 with speech unavailable.
 
-**Still open inside this:** `speechSynthesis` is a prototype stand-in. Device
-voices vary wildly in warmth and accent and this brand is deliberately calm, so
-shipping should use **recorded voice in Indian English**. That also fixes what
-the API can't: a consistent voice for every child on every device.
+**Settled: the device voice ships in the MVP.** No assets to record, nothing
+extra to host, and it speaks whatever copy a break carries, including a colour
+name chosen at runtime. Accepted trade: warmth and accent vary by device and are
+outside our control, and some platforms fetch voices over the network. Recorded
+voice in Indian English is a **post-MVP upgrade, not a blocker** — it would give
+every child the same voice on every device.
 
 ### [ ] 21. No way to turn the voice off
 Speech plays automatically with no preference to disable it, and there is no
