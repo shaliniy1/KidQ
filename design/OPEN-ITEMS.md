@@ -104,11 +104,30 @@ accessibility tree, so exactly one is live at a time. The defect is the missing
 and out-of-order levels, plus `<h4>` being chosen for its size. "Aarav's watch
 time" should be the `h1`, the video title `h2`, styled by class not by level.
 
-### [ ] 13. Spoken instruction on the activity breaks
-"Find 3 red things!" is written for a child aged 0–6 who cannot read it. The
-swatches carry the instruction visually, which leaves a child who is also
-low-vision or colour-blind with no instruction at all. A one-line spoken cue
-would do more here than any contrast change.
+### [x] 13. Spoken instruction on the activity breaks
+Done in the prototype. Find speaks its full instruction on entry including the
+colour, and "You found them!" on the tap; breathing speaks only its opening
+line, because the sun's swell and shrink guides the rest and narrating six
+half-breaths would talk over the quiet. Voice prefers `en-IN`. `showScreen`
+hushes, so a line never carries into the next screen, and the breaks still work
+with speech unavailable.
+
+**Still open inside this:** `speechSynthesis` is a prototype stand-in. Device
+voices vary wildly in warmth and accent and this brand is deliberately calm, so
+shipping should use **recorded voice in Indian English**. That also fixes what
+the API can't: a consistent voice for every child on every device.
+
+### [ ] 21. No way to turn the voice off
+Speech plays automatically with no preference to disable it, and there is no
+sound control anywhere in child mode (the jingle and chime have the same gap).
+`break_type` already exists as a per-child setting, so an audio preference has a
+natural home on the parent side.
+
+### [ ] 22. No way to hear the instruction again
+Deliberate for now: a replay control would be a second tap target on a screen
+whose rule is one action, and repeating unprompted would be nagging, which
+`brand.md` section 6 rules out. But a child who misses the line has no recourse.
+Worth revisiting with recorded voice, when a replay could be cheaper to place.
 
 ### [ ] 14. Consider non-colour break rounds
 About 1 in 12 boys has red-green colour vision deficiency, mostly undiagnosed
