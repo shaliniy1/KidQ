@@ -431,6 +431,45 @@ export const submissionSchema = z.object({
   card: z.union([contentCardSchema, z.null()]),
 });
 
+// ── Sessions (docs/recommendation/parent-experience.md §2–5) ──────────────────
+export const sessionParams = z.object({ id: z.uuid() });
+export const sessionItemParams = z.object({ id: z.uuid(), itemId: z.uuid() });
+export const sessionStartBody = z.object({
+  minutes: z.number().int().min(15).max(180).describe("15, 30, 45, 60 or 90; any other length snaps to 30-minute blocks"),
+});
+export const sessionItemBody = z.object({
+  outcome: z.enum(["COMPLETED", "SKIPPED", "EXITED"]),
+  watched_seconds: z.number().int().min(0).max(86_400).optional(),
+});
+export const sessionEndBody = z.object({ outcome: z.enum(["COMPLETED", "EXITED"]).describe("COMPLETED: the wind-down finished. EXITED: the child left early; there's no resume") });
+export const sessionSchema = registry.register(
+  "Session",
+  z.object({
+    id: z.uuid(),
+    child_id: z.uuid(),
+    minutes: z.number(),
+    started_at: z.string(),
+    ended_at: nullableString,
+    outcome: z.enum(["COMPLETED", "EXITED"]).nullable(),
+    short_by_minutes: z.number().describe("How far the child's library fell short of the chosen time; 0 when it filled it"),
+    slots: z.array(
+      z.object({
+        slot: z.number(),
+        break_after: z.enum(["MOVEMENT", "QUIET", "WIND_DOWN"]).describe("The break after this slot; the last is always WIND_DOWN"),
+        items: z.array(
+          z.object({
+            id: z.uuid(),
+            position: z.number(),
+            outcome: z.enum(["COMPLETED", "SKIPPED", "EXITED"]).nullable(),
+            watched_seconds: z.number().nullable(),
+            card: contentCardSchema,
+          }),
+        ),
+      }),
+    ),
+  }),
+);
+
 // Admin preview: the same fields as a child profile, applied to an imaginary child.
 export const previewBody = childPreferences.partial().extend({
   age_band: ageBand,

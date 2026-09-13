@@ -201,14 +201,14 @@ export function recommend(
   candidates: CandidateInput[],
   config: RankingConfig,
   excludedIds: Set<string>,
-  options: { limit?: number; offset?: number } = {},
+  options: { limit?: number; offset?: number; /** false ranks items the parent already chose, without the age, language and category filters. */ hardFilters?: boolean } = {},
 ): RankedRecommendation[] {
   const limit = options.limit ?? 20;
   const offset = options.offset ?? 0;
   const child = { ...profile, ageYears: Math.min(profile.ageYears, MAX_AGE) };
 
   const scored = candidates
-    .filter((candidate) => isEligible(candidate) && !excludedIds.has(candidate.id) && passesHardFilters(candidate, child))
+    .filter((candidate) => isEligible(candidate) && !excludedIds.has(candidate.id) && (options.hardFilters === false || passesHardFilters(candidate, child)))
     .map((candidate) => ({ ...candidate, result: scoreCandidate(candidate, child, config) }));
 
   type Scored = (typeof scored)[number];

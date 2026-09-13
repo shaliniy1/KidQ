@@ -91,6 +91,12 @@ Admin screens show `studio_state`, one of five. Show one tile or filter per stat
 3. **Add / Not now**: `POST /children/:id/library` with `{ content_item_id, state: "ADDED" | "DISMISSED" }`. Remove with `DELETE /children/:id/library/:contentItemId`.
 4. **Child library**: `GET /children/:id/library`. Play only entries where `awaiting_review` is false and `card.player` is non-null. For a picture book (`provider: "story"`), load `GET /content-items/:id/story` — it returns 404 until the book is published.
 5. **Parent-added links**: `POST /children/:id/submissions` with `{ url }`, then poll `GET /children/:id/submissions`. `assessment` moves PENDING → SCORED → APPROVED. "Keep" is `POST /children/:id/library`, which makes the entry REQUESTED until an admin approves it.
+6. **Start a Session** ([spec §2–5](../recommendation/parent-experience.md)):
+   - `POST /children/:id/sessions` with `{ minutes }` (15, 30, 45, 60 or 90; other lengths snap to 30-minute blocks) returns the session, already started. Its `slots` are ~15 minutes of whole videos from the child's library, each with its `break_after` (`MOVEMENT`, `QUIET`, or `WIND_DOWN` for the last). A preset is saved as the child's next default.
+   - `short_by_minutes` > 0 means the library couldn't fill the time; tell the parent afterwards and suggest adding videos.
+   - After each video: `PATCH /sessions/:id/items/:itemId` with `{ outcome: "COMPLETED" | "SKIPPED" | "EXITED", watched_seconds }`.
+   - `POST /sessions/:id/end` with `{ outcome: "COMPLETED" | "EXITED" }`. There's no resume; a new session starts fresh.
+   - Handoff log: `GET /children/:id/sessions` (the last 20, newest first).
 
 ## KidQ Player rules
 

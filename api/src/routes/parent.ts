@@ -17,10 +17,17 @@ import {
   onboardingBody,
   recommendationSchema,
   recommendationsQuery,
+  sessionEndBody,
+  sessionItemBody,
+  sessionItemParams,
+  sessionParams,
+  sessionSchema,
+  sessionStartBody,
   submissionBody,
   submissionSchema,
 } from "../http/schemas";
 import * as parents from "../services/parents";
+import * as sessions from "../services/sessions";
 
 export const parentRouter = Router();
 const roles: Array<"parent" | "admin"> = ["parent", "admin"];
@@ -166,4 +173,38 @@ defineRoute(
   parentRouter,
   { method: "get", path: "/children/:id/submissions", summary: "This child's submitted links and their review status", tag: "Submissions", roles, params: childParams, response: z.object({ items: z.array(submissionSchema) }) },
   async ({ user, params }) => parents.listSubmissions(user, params.id),
+);
+
+defineRoute(
+  parentRouter,
+  {
+    method: "post",
+    path: "/children/:id/sessions",
+    summary: "Start a Session: builds the slot-by-slot queue from the child's library for the chosen minutes and starts it at once",
+    tag: "Sessions",
+    roles,
+    params: childParams,
+    body: sessionStartBody,
+    response: sessionSchema,
+    status: 201,
+  },
+  async ({ user, params, body }) => sessions.startSession(user, params.id, body.minutes),
+);
+
+defineRoute(
+  parentRouter,
+  { method: "get", path: "/children/:id/sessions", summary: "The handoff log: this child's recent sessions, what was watched and how each ended", tag: "Sessions", roles, params: childParams, response: z.object({ items: z.array(sessionSchema) }) },
+  async ({ user, params }) => sessions.listSessions(user, params.id),
+);
+
+defineRoute(
+  parentRouter,
+  { method: "patch", path: "/sessions/:id/items/:itemId", summary: "Record how one video went: COMPLETED, SKIPPED or EXITED", tag: "Sessions", roles, params: sessionItemParams, body: sessionItemBody, response: sessionSchema },
+  async ({ user, params, body }) => sessions.recordItemOutcome(user, params.id, params.itemId, body),
+);
+
+defineRoute(
+  parentRouter,
+  { method: "post", path: "/sessions/:id/end", summary: "End the session: COMPLETED after the wind-down, or EXITED early", tag: "Sessions", roles, params: sessionParams, body: sessionEndBody, response: sessionSchema },
+  async ({ user, params, body }) => sessions.endSession(user, params.id, body.outcome),
 );

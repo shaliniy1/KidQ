@@ -64,7 +64,7 @@ const CHILD_COLUMNS = [
   "break_type",
 ] as const;
 
-function toChild(row: Row) {
+export function toChild(row: Row) {
   const ageYears = ageFromBand(row.age_band, new Date(row.age_band_set_on));
   const band = bandForAge(ageYears);
   const custom = row.development_goals_custom === true;
@@ -194,7 +194,7 @@ async function assertRoomFor(db: Db, parentUserId: string, adding: number) {
   }
 }
 
-async function childRow(user: AuthUser, childId: string): Promise<Row> {
+export async function childRow(user: AuthUser, childId: string): Promise<Row> {
   const row = (await getPool().query("SELECT * FROM child_profiles WHERE id = $1 AND parent_user_id = $2", [childId, user.id])).rows[0];
   // Another family's child looks exactly like a missing one.
   if (!row) throw notFound("Child");
@@ -327,7 +327,7 @@ async function rankFor(db: Db, profile: ChildProfileInput, excluded: Set<string>
   };
 }
 
-function profileOf(child: Pick<Child, "age_years" | "languages" | "interests" | "development_goals" | "regulation_goals" | "content_mix" | "preferred_categories"> & { session_minutes: number }): ChildProfileInput {
+export function profileOf(child: Pick<Child, "age_years" | "languages" | "interests" | "development_goals" | "regulation_goals" | "content_mix" | "preferred_categories"> & { session_minutes: number }): ChildProfileInput {
   return {
     ageYears: child.age_years,
     languages: child.languages,
