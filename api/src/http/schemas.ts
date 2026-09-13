@@ -3,6 +3,7 @@
 import { z } from "zod";
 import { SOURCE_SYSTEM_IDS } from "../connectors";
 import { AGE_BAND_KEYS } from "../domain/age";
+import { DEVICE_TYPES, PARTS, PERIODS, RECOMMENDATION_SOURCES, isTimeZone } from "../domain/analytics";
 import { BREAK_TYPES, CONTENT_MIXES, MAX_CHILDREN } from "../domain/onboarding";
 import { RUBRIC } from "../domain/rubric";
 import { COMPONENTS } from "../domain/scoring";
@@ -383,20 +384,23 @@ export const childSchema = registry.register(
   }),
 );
 
+const timezone = z.string().max(64).refine(isTimeZone, "Unknown time zone").describe("IANA time zone from the browser, e.g. Asia/Kolkata: it decides the child's \"today\" in analytics");
+
 export const onboardingBody = z.object({
   parent_name: z.string().trim().min(1).max(80),
+  timezone: timezone.optional(),
   language: languageKey.default("en").describe("The parent's pick, pre-selected from the device language when KidQ has it; children start with it"),
   children: z.array(z.object({ nickname, age_band: ageBand })).min(1).max(MAX_CHILDREN),
 });
 export type OnboardingBody = z.infer<typeof onboardingBody>;
 
 export const meSchema = z.object({
-  parent: z.object({ name: z.string(), language: z.string(), created_at: z.string(), updated_at: z.string() }),
+  parent: z.object({ name: z.string(), language: z.string(), timezone: z.string(), created_at: z.string(), updated_at: z.string() }),
   children: z.array(childSchema),
 });
 
 export const mePatchBody = z
-  .object({ name: z.string().trim().min(1).max(80).optional(), language: languageKey.optional() })
+  .object({ name: z.string().trim().min(1).max(80).optional(), language: languageKey.optional(), timezone: timezone.optional() })
   .refine((body) => Object.keys(body).length > 0, "Nothing to change");
 export type MePatchBody = z.infer<typeof mePatchBody>;
 
@@ -467,6 +471,72 @@ export const sessionSchema = registry.register(
         ),
       }),
     ),
+  }),
+);
+
+// ── Analytics (docs/api/README.md "Analytics") ────────────────────────────────
+const eventBase = {
+  client_event_id: z.uuid().describe("Made by the app; resending the same event is a no-op"),
+  occurred_at: z.iso.datetime({ offset: true }),
+  session_id: z.uuid().optional(),
+};
+const playFields = { play_id: z.uuid().describe("One playback, from start to exit; a replay is a new play") };
+const seconds = z.number().min(0).max(86_400);
+const activeSeconds = { active_seconds: seconds.describe("Time actually playing and on screen since this play's previous event: never paused, buffering or a hidden tab") };
+const positionFields = { position_seconds: seconds, progress_percent: z.number().min(0).max(100) };
+const contentId = { content_id: z.uuid() };
+const recommendationSource = z.enum(RECOMMENDATION_SOURCES);
+const listPosition = z.number().int().min(0).max(1000);
+const video = (name: string, fields: z.ZodRawShape) => z.strictObject({ event_name: z.literal(name), ...eventBase, ...contentId, ...playFields, ...fields });
+
+export const analyticsEventBody = z.discriminatedUnion("event_name", [
+  video("video_started", { recommendation_source: recommendationSource.optional() }),
+  video("video_progress", { ...positionFields, ...activeSeconds }).describe("Sent at 25, 50, 75 and 90%"),
+  video("video_paused", { ...positionFields, ...activeSeconds }),
+  video("video_resumed", { position_seconds: seconds, pause_duration_seconds: seconds }),
+  video("video_completed", { ...positionFields, ...activeSeconds }).describe("Once per play, at 90% or more"),
+  video("video_exited", { ...positionFields, ...activeSeconds }),
+  video("video_replayed", {}).describe("Sent with the new play's video_started; times watched is counted by the API"),
+  z.strictObject({ event_name: z.literal("content_clicked"), ...eventBase, ...contentId, position: listPosition, recommendation_source: recommendationSource }),
+  z.strictObject({ event_name: z.literal("recommendation_clicked"), ...eventBase, ...contentId, position: listPosition, recommendation_reason: z.string().max(160) }),
+  z.strictObject({ event_name: z.literal("session_started"), ...eventBase, session_id: z.uuid(), device_type: z.enum(DEVICE_TYPES) }),
+  z.strictObject({ event_name: z.literal("session_ended"), ...eventBase, session_id: z.uuid() }),
+  z.strictObject({ event_name: z.literal("activity_started"), ...eventBase, activity_id: z.uuid(), ...playFields }),
+  z.strictObject({ event_name: z.literal("activity_completed"), ...eventBase, activity_id: z.uuid(), ...playFields, ...activeSeconds }),
+]);
+export type AnalyticsEventBody = z.infer<typeof analyticsEventBody>;
+export const analyticsEventsBody = z.object({ events: z.array(analyticsEventBody).min(1).max(50) });
+export const analyticsEventsResult = z.object({
+  accepted: z.number(),
+  duplicates: z.number().describe("Already recorded; not counted again"),
+  ignored: z.number().describe("Unknown item, another child's play, or older than 7 days"),
+});
+export const analyticsQuery = z.object({ period: z.enum(PERIODS).default("7d") });
+const count = z.number().int();
+export const parentAnalyticsSchema = registry.register(
+  "ParentAnalytics",
+  z.object({
+    child_id: z.uuid(),
+    period: z.enum(PERIODS),
+    timezone: z.string(),
+    range: z.object({ start: z.string(), end: z.string() }).describe("Local days, inclusive"),
+    has_data: z.boolean(),
+    overview: z.object({
+      screen_minutes: count.describe("Videos actually playing on screen"),
+      videos_watched: count,
+      activities_completed: count,
+      vs_previous: z.object({ minutes_diff: count.describe("Negative is less"), compared_with: z.string() }).nullable().describe("Only when both periods have screen time"),
+    }),
+    daily: z.array(z.object({ date: z.string(), minutes: count })),
+    categories: z.array(z.object({ key: z.string(), label: z.string(), minutes: count, percent: count })).describe("Videos and activities; past the top five is \"other\""),
+    engaged: z
+      .array(z.object({ key: z.string(), label: z.string(), minutes: count, videos: count, activities: count, average_completion: count }))
+      .describe("Up to three, from watch time, completion, repeats and variety; a category needs two plays"),
+    top_content: z.array(z.object({ card: contentCardSchema, minutes: count, completion: count, times_watched: count })),
+    completion: z.object({ started: count, completed: count.describe("90% or more"), partly_watched: count.describe("25–90%"), stopped_early: count.describe("Under 25%") }),
+    pattern: z.array(z.object({ part: z.enum(PARTS.map((part) => part.key) as [string, ...string[]]), label: z.string(), hours: z.string(), minutes: count })),
+    split: z.object({ video_minutes: count, activity_minutes: count, video_percent: count, activity_percent: count }),
+    insights: z.array(z.string()).describe("At most two factual sentences, only once there's enough to go on"),
   }),
 );
 

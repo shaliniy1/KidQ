@@ -2305,6 +2305,8 @@ export interface paths {
                 content: {
                     "application/json": {
                         parent_name: string;
+                        /** @description IANA time zone from the browser, e.g. Asia/Kolkata: it decides the child's "today" in analytics */
+                        timezone?: string;
                         /**
                          * @description The parent's pick, pre-selected from the device language when KidQ has it; children start with it
                          * @default en
@@ -2333,6 +2335,7 @@ export interface paths {
                             parent: {
                                 name: string;
                                 language: string;
+                                timezone: string;
                                 created_at: string;
                                 updated_at: string;
                             };
@@ -2411,6 +2414,7 @@ export interface paths {
                             parent: {
                                 name: string;
                                 language: string;
+                                timezone: string;
                                 created_at: string;
                                 updated_at: string;
                             };
@@ -2474,6 +2478,8 @@ export interface paths {
                     "application/json": {
                         name?: string;
                         language?: string;
+                        /** @description IANA time zone from the browser, e.g. Asia/Kolkata: it decides the child's "today" in analytics */
+                        timezone?: string;
                     };
                 };
             };
@@ -2488,6 +2494,7 @@ export interface paths {
                             parent: {
                                 name: string;
                                 language: string;
+                                timezone: string;
                                 created_at: string;
                                 updated_at: string;
                             };
@@ -3653,6 +3660,420 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/children/{id}/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Record viewing events (up to 50 per batch); a resent event is not counted twice */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        events: ({
+                            /** @enum {string} */
+                            event_name: "video_started";
+                            /**
+                             * Format: uuid
+                             * @description Made by the app; resending the same event is a no-op
+                             */
+                            client_event_id: string;
+                            /** Format: date-time */
+                            occurred_at: string;
+                            /** Format: uuid */
+                            session_id?: string;
+                            /** Format: uuid */
+                            content_id: string;
+                            /**
+                             * Format: uuid
+                             * @description One playback, from start to exit; a replay is a new play
+                             */
+                            play_id: string;
+                            /** @enum {string} */
+                            recommendation_source?: "PARENT_PLAYLIST" | "KIDQ_RECOMMENDATION" | "CATEGORY_BROWSE" | "CONTINUE_WATCHING" | "RECENTLY_WATCHED";
+                        } | {
+                            /** @enum {string} */
+                            event_name: "video_progress";
+                            /**
+                             * Format: uuid
+                             * @description Made by the app; resending the same event is a no-op
+                             */
+                            client_event_id: string;
+                            /** Format: date-time */
+                            occurred_at: string;
+                            /** Format: uuid */
+                            session_id?: string;
+                            /** Format: uuid */
+                            content_id: string;
+                            /**
+                             * Format: uuid
+                             * @description One playback, from start to exit; a replay is a new play
+                             */
+                            play_id: string;
+                            position_seconds: number;
+                            progress_percent: number;
+                            /** @description Time actually playing and on screen since this play's previous event: never paused, buffering or a hidden tab */
+                            active_seconds: number;
+                        } | {
+                            /** @enum {string} */
+                            event_name: "video_paused";
+                            /**
+                             * Format: uuid
+                             * @description Made by the app; resending the same event is a no-op
+                             */
+                            client_event_id: string;
+                            /** Format: date-time */
+                            occurred_at: string;
+                            /** Format: uuid */
+                            session_id?: string;
+                            /** Format: uuid */
+                            content_id: string;
+                            /**
+                             * Format: uuid
+                             * @description One playback, from start to exit; a replay is a new play
+                             */
+                            play_id: string;
+                            position_seconds: number;
+                            progress_percent: number;
+                            /** @description Time actually playing and on screen since this play's previous event: never paused, buffering or a hidden tab */
+                            active_seconds: number;
+                        } | {
+                            /** @enum {string} */
+                            event_name: "video_resumed";
+                            /**
+                             * Format: uuid
+                             * @description Made by the app; resending the same event is a no-op
+                             */
+                            client_event_id: string;
+                            /** Format: date-time */
+                            occurred_at: string;
+                            /** Format: uuid */
+                            session_id?: string;
+                            /** Format: uuid */
+                            content_id: string;
+                            /**
+                             * Format: uuid
+                             * @description One playback, from start to exit; a replay is a new play
+                             */
+                            play_id: string;
+                            position_seconds: number;
+                            pause_duration_seconds: number;
+                        } | {
+                            /** @enum {string} */
+                            event_name: "video_completed";
+                            /**
+                             * Format: uuid
+                             * @description Made by the app; resending the same event is a no-op
+                             */
+                            client_event_id: string;
+                            /** Format: date-time */
+                            occurred_at: string;
+                            /** Format: uuid */
+                            session_id?: string;
+                            /** Format: uuid */
+                            content_id: string;
+                            /**
+                             * Format: uuid
+                             * @description One playback, from start to exit; a replay is a new play
+                             */
+                            play_id: string;
+                            position_seconds: number;
+                            progress_percent: number;
+                            /** @description Time actually playing and on screen since this play's previous event: never paused, buffering or a hidden tab */
+                            active_seconds: number;
+                        } | {
+                            /** @enum {string} */
+                            event_name: "video_exited";
+                            /**
+                             * Format: uuid
+                             * @description Made by the app; resending the same event is a no-op
+                             */
+                            client_event_id: string;
+                            /** Format: date-time */
+                            occurred_at: string;
+                            /** Format: uuid */
+                            session_id?: string;
+                            /** Format: uuid */
+                            content_id: string;
+                            /**
+                             * Format: uuid
+                             * @description One playback, from start to exit; a replay is a new play
+                             */
+                            play_id: string;
+                            position_seconds: number;
+                            progress_percent: number;
+                            /** @description Time actually playing and on screen since this play's previous event: never paused, buffering or a hidden tab */
+                            active_seconds: number;
+                        } | {
+                            /** @enum {string} */
+                            event_name: "video_replayed";
+                            /**
+                             * Format: uuid
+                             * @description Made by the app; resending the same event is a no-op
+                             */
+                            client_event_id: string;
+                            /** Format: date-time */
+                            occurred_at: string;
+                            /** Format: uuid */
+                            session_id?: string;
+                            /** Format: uuid */
+                            content_id: string;
+                            /**
+                             * Format: uuid
+                             * @description One playback, from start to exit; a replay is a new play
+                             */
+                            play_id: string;
+                        } | {
+                            /** @enum {string} */
+                            event_name: "content_clicked";
+                            /**
+                             * Format: uuid
+                             * @description Made by the app; resending the same event is a no-op
+                             */
+                            client_event_id: string;
+                            /** Format: date-time */
+                            occurred_at: string;
+                            /** Format: uuid */
+                            session_id?: string;
+                            /** Format: uuid */
+                            content_id: string;
+                            position: number;
+                            /** @enum {string} */
+                            recommendation_source: "PARENT_PLAYLIST" | "KIDQ_RECOMMENDATION" | "CATEGORY_BROWSE" | "CONTINUE_WATCHING" | "RECENTLY_WATCHED";
+                        } | {
+                            /** @enum {string} */
+                            event_name: "recommendation_clicked";
+                            /**
+                             * Format: uuid
+                             * @description Made by the app; resending the same event is a no-op
+                             */
+                            client_event_id: string;
+                            /** Format: date-time */
+                            occurred_at: string;
+                            /** Format: uuid */
+                            session_id?: string;
+                            /** Format: uuid */
+                            content_id: string;
+                            position: number;
+                            recommendation_reason: string;
+                        } | {
+                            /** @enum {string} */
+                            event_name: "session_started";
+                            /**
+                             * Format: uuid
+                             * @description Made by the app; resending the same event is a no-op
+                             */
+                            client_event_id: string;
+                            /** Format: date-time */
+                            occurred_at: string;
+                            /** Format: uuid */
+                            session_id: string;
+                            /** @enum {string} */
+                            device_type: "PHONE" | "TABLET" | "TV" | "DESKTOP";
+                        } | {
+                            /** @enum {string} */
+                            event_name: "session_ended";
+                            /**
+                             * Format: uuid
+                             * @description Made by the app; resending the same event is a no-op
+                             */
+                            client_event_id: string;
+                            /** Format: date-time */
+                            occurred_at: string;
+                            /** Format: uuid */
+                            session_id: string;
+                        } | {
+                            /** @enum {string} */
+                            event_name: "activity_started";
+                            /**
+                             * Format: uuid
+                             * @description Made by the app; resending the same event is a no-op
+                             */
+                            client_event_id: string;
+                            /** Format: date-time */
+                            occurred_at: string;
+                            /** Format: uuid */
+                            session_id?: string;
+                            /** Format: uuid */
+                            activity_id: string;
+                            /**
+                             * Format: uuid
+                             * @description One playback, from start to exit; a replay is a new play
+                             */
+                            play_id: string;
+                        } | {
+                            /** @enum {string} */
+                            event_name: "activity_completed";
+                            /**
+                             * Format: uuid
+                             * @description Made by the app; resending the same event is a no-op
+                             */
+                            client_event_id: string;
+                            /** Format: date-time */
+                            occurred_at: string;
+                            /** Format: uuid */
+                            session_id?: string;
+                            /** Format: uuid */
+                            activity_id: string;
+                            /**
+                             * Format: uuid
+                             * @description One playback, from start to exit; a replay is a new play
+                             */
+                            play_id: string;
+                            /** @description Time actually playing and on screen since this play's previous event: never paused, buffering or a hidden tab */
+                            active_seconds: number;
+                        })[];
+                    };
+                };
+            };
+            responses: {
+                /** @description Success */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            accepted: number;
+                            /** @description Already recorded; not counted again */
+                            duplicates: number;
+                            /** @description Unknown item, another child's play, or older than 7 days */
+                            ignored: number;
+                        };
+                    };
+                };
+                /** @description Validation failed */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not signed in */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Wrong role */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/children/{id}/analytics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The Parent Analytics page: screen time, categories, most watched, completion and a few factual insights */
+        get: {
+            parameters: {
+                query?: {
+                    period?: "today" | "7d" | "30d";
+                };
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Success */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ParentAnalytics"];
+                    };
+                };
+                /** @description Validation failed */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not signed in */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Wrong role */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/ready": {
         parameters: {
             query?: never;
@@ -3918,6 +4339,81 @@ export interface components {
                     card: components["schemas"]["ContentCard"];
                 }[];
             }[];
+        };
+        ParentAnalytics: {
+            /** Format: uuid */
+            child_id: string;
+            /** @enum {string} */
+            period: "today" | "7d" | "30d";
+            timezone: string;
+            /** @description Local days, inclusive */
+            range: {
+                start: string;
+                end: string;
+            };
+            has_data: boolean;
+            overview: {
+                /** @description Videos actually playing on screen */
+                screen_minutes: number;
+                videos_watched: number;
+                activities_completed: number;
+                /** @description Only when both periods have screen time */
+                vs_previous: {
+                    /** @description Negative is less */
+                    minutes_diff: number;
+                    compared_with: string;
+                } | null;
+            };
+            daily: {
+                date: string;
+                minutes: number;
+            }[];
+            /** @description Videos and activities; past the top five is "other" */
+            categories: {
+                key: string;
+                label: string;
+                minutes: number;
+                percent: number;
+            }[];
+            /** @description Up to three, from watch time, completion, repeats and variety; a category needs two plays */
+            engaged: {
+                key: string;
+                label: string;
+                minutes: number;
+                videos: number;
+                activities: number;
+                average_completion: number;
+            }[];
+            top_content: {
+                card: components["schemas"]["ContentCard"];
+                minutes: number;
+                completion: number;
+                times_watched: number;
+            }[];
+            completion: {
+                started: number;
+                /** @description 90% or more */
+                completed: number;
+                /** @description 25–90% */
+                partly_watched: number;
+                /** @description Under 25% */
+                stopped_early: number;
+            };
+            pattern: {
+                /** @enum {string} */
+                part: "MORNING" | "AFTERNOON" | "EVENING" | "OTHER";
+                label: string;
+                hours: string;
+                minutes: number;
+            }[];
+            split: {
+                video_minutes: number;
+                activity_minutes: number;
+                video_percent: number;
+                activity_percent: number;
+            };
+            /** @description At most two factual sentences, only once there's enough to go on */
+            insights: string[];
         };
     };
     responses: never;

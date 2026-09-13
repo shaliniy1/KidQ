@@ -8,7 +8,8 @@ The parent-experience spec as Shalini shared it on 2026-09-13, below, with **Kid
 - **Login** (§0, §9): Google Sign-In through Supabase Auth, not Firebase.
 - **No expert reviews** anywhere (§2 rule 2, §9): removed from KidQ.
 - **AI scoring**: every item is scored once and keeps its score.
-- **Build order**: sessions and the watch log; consent, mascot colour, settings and per-child blocking; My Videos, 👍/👎 and notifications; analytics and the pool monitor (`GET /content-pool`, built); voice.
+- **Analytics (§6)**: built as the Parent Analytics page: screen time counts only active playback, sections follow Shalini's 2026-09-13 brief, and insights are factual sentences only (`docs/api/README.md` "Analytics").
+- **Build order**: sessions and the watch log (built); consent, mascot colour, settings and per-child blocking; My Videos, 👍/👎 and notifications; analytics and the pool monitor (`GET /content-pool`, built); voice.
 
 ---
 

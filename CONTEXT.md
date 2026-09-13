@@ -79,3 +79,11 @@ _Avoid_: feed item, suggestion
 **Library Item**:
 A parent's choice about a content item for one child: added, requested (awaiting admin approval), dismissed or removed. Only added, approved items are playable.
 _Avoid_: favourite, playlist entry
+
+**Play**:
+One playback of one video or activity by one child, from start to exit; watching again is a new play. Analytics count times watched, completion and screen time per play.
+_Avoid_: view, session
+
+**Screen Time**:
+Minutes a video was actually playing on screen: never paused, buffering, in a hidden tab or idle. Activity time is reported apart from it.
+_Avoid_: session length, time in app

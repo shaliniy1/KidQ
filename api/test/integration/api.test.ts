@@ -231,6 +231,57 @@ describe("API", () => {
     expect((await request(app).patch(`/sessions/${session.id}/items/${first.id}`).set("Authorization", PARENT_B).send({ outcome: "SKIPPED" })).status).toBe(404);
   });
 
+  it("records viewing once, caps screen time, and shows it only to the child's parent", async () => {
+    const videoId = await importVideo("AAAAAAAAAAA");
+    await publish(videoId, { decision: "APPROVED", reason: "Calm and clear." }).expect(201);
+    await request(app)
+      .post("/onboarding")
+      .set("Authorization", PARENT_A)
+      .send({ parent_name: "Asha", timezone: "Asia/Kolkata", children: [{ nickname: "Mia", age_band: "3_4" }] })
+      .expect(201);
+    const me = (await request(app).get("/me").set("Authorization", PARENT_A)).body;
+    expect(me.parent.timezone).toBe("Asia/Kolkata");
+    const childId = me.children[0].id as string;
+
+    const t0 = Date.now() - 10 * 60 * 1000;
+    const at = (seconds: number) => new Date(t0 + seconds * 1000).toISOString();
+    const [first, second] = [crypto.randomUUID(), crypto.randomUUID()];
+    const progress = { event_name: "video_progress", client_event_id: crypto.randomUUID(), occurred_at: at(100), content_id: videoId, play_id: first, position_seconds: 100, progress_percent: 50, active_seconds: 100 };
+    const send = (events: unknown[], auth = PARENT_A) => request(app).post(`/children/${childId}/events`).set("Authorization", auth).send({ events });
+
+    expect(
+      (
+        await send([
+          { event_name: "video_started", client_event_id: crypto.randomUUID(), occurred_at: at(0), content_id: videoId, play_id: first, recommendation_source: "PARENT_PLAYLIST" },
+          progress,
+          { event_name: "video_completed", client_event_id: crypto.randomUUID(), occurred_at: at(185), content_id: videoId, play_id: first, position_seconds: 185, progress_percent: 92, active_seconds: 85 },
+        ])
+      ).body,
+    ).toEqual({ accepted: 3, duplicates: 0, ignored: 0 });
+    // A resent event, then a replay whose app claims 500 s in the 10 s since it started.
+    expect(
+      (
+        await send([
+          progress,
+          { event_name: "video_started", client_event_id: crypto.randomUUID(), occurred_at: at(200), content_id: videoId, play_id: second },
+          { event_name: "video_exited", client_event_id: crypto.randomUUID(), occurred_at: at(210), content_id: videoId, play_id: second, position_seconds: 10, progress_percent: 5, active_seconds: 500 },
+        ])
+      ).body,
+    ).toEqual({ accepted: 2, duplicates: 1, ignored: 0 });
+
+    const page = (await request(app).get(`/children/${childId}/analytics?period=7d`).set("Authorization", PARENT_A).expect(200)).body;
+    const day = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(new Date(t0));
+    // 100 + 85 counted for the first play; the replay's 500 s is capped to 10 s + 5 s slack.
+    expect(page.overview).toMatchObject({ screen_minutes: 3, videos_watched: 1 });
+    expect(page.daily.find((entry: { date: string }) => entry.date === day).minutes).toBe(3);
+    expect(page.completion).toEqual({ started: 2, completed: 1, partly_watched: 0, stopped_early: 1 });
+    expect(page.top_content[0]).toMatchObject({ card: { id: videoId, player: null }, times_watched: 2 });
+    expect(page.timezone).toBe("Asia/Kolkata");
+
+    expect((await request(app).get(`/children/${childId}/analytics`).set("Authorization", PARENT_B)).status).toBe(404);
+    expect((await send([progress], PARENT_B)).status).toBe(404);
+  });
+
   it("gives a child with only an age a mixed feed", async () => {
     const counting = await importVideo("AAAAAAAAAAA");
     const moreCounting = await importVideo("BBBBBBBBBBB", [agentOutput()], "Counting to ten");

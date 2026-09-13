@@ -17,6 +17,10 @@ import {
   onboardingBody,
   recommendationSchema,
   recommendationsQuery,
+  analyticsEventsBody,
+  analyticsEventsResult,
+  analyticsQuery,
+  parentAnalyticsSchema,
   sessionEndBody,
   sessionItemBody,
   sessionItemParams,
@@ -27,6 +31,7 @@ import {
   submissionSchema,
 } from "../http/schemas";
 import * as parents from "../services/parents";
+import * as analytics from "../services/analytics";
 import * as sessions from "../services/sessions";
 
 export const parentRouter = Router();
@@ -207,4 +212,34 @@ defineRoute(
   parentRouter,
   { method: "post", path: "/sessions/:id/end", summary: "End the session: COMPLETED after the wind-down, or EXITED early", tag: "Sessions", roles, params: sessionParams, body: sessionEndBody, response: sessionSchema },
   async ({ user, params, body }) => sessions.endSession(user, params.id, body.outcome),
+);
+
+defineRoute(
+  parentRouter,
+  {
+    method: "post",
+    path: "/children/:id/events",
+    summary: "Record viewing events (up to 50 per batch); a resent event is not counted twice",
+    tag: "Analytics",
+    roles,
+    params: childParams,
+    body: analyticsEventsBody,
+    response: analyticsEventsResult,
+  },
+  async ({ user, params, body }) => analytics.recordEvents(user, params.id, body.events),
+);
+
+defineRoute(
+  parentRouter,
+  {
+    method: "get",
+    path: "/children/:id/analytics",
+    summary: "The Parent Analytics page: screen time, categories, most watched, completion and a few factual insights",
+    tag: "Analytics",
+    roles,
+    params: childParams,
+    query: analyticsQuery,
+    response: parentAnalyticsSchema,
+  },
+  async ({ user, params, query }) => analytics.getAnalytics(user, params.id, query.period),
 );
