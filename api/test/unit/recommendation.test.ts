@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ageFit, recommend, type CandidateInput, type ChildProfileInput, type RankingConfig } from "../../src/domain/recommendation";
+import { ageFit, eligibilityProblems, recommend, type CandidateInput, type ChildProfileInput, type RankingConfig } from "../../src/domain/recommendation";
 
 const config: RankingConfig = {
   version: "RANK_V3",
@@ -65,6 +65,11 @@ describe("recommend", () => {
       candidate({ language: "hi" }),
     ];
     expect(ids(profile, [good, ...rejected])).toEqual([good.id]);
+  });
+
+  it("says why a published item can't be recommended", () => {
+    expect(eligibilityProblems(candidate())).toEqual([]);
+    expect(eligibilityProblems(candidate({ playable: false, kidqScore: null, developmentGoals: [], regulationGoals: [] }))).toEqual(["NOT_PLAYABLE", "NOT_SCORED", "NO_GOAL"]);
   });
 
   it("shows only the chosen categories when the parent picks them, and a mix otherwise", () => {

@@ -286,6 +286,22 @@ export const dashboardSchema = z.object({
   }),
 });
 
+export const contentPoolSchema = z.object({
+  published: z.number(),
+  eligible: z.number().describe("Published items that pass every check and can be recommended"),
+  thin_below: z.number(),
+  bands: z.array(
+    z.object({
+      age_band: z.string(),
+      total: z.number(),
+      categories: z.array(z.object({ category: z.string(), count: z.number(), thin: z.boolean() })),
+    }),
+  ),
+  not_reaching_parents: z
+    .array(z.object({ id: z.uuid(), title: z.string(), problems: z.array(z.string()) }))
+    .describe("Published but never recommended: NOT_PLAYABLE, SAFETY_FLAG, NOT_SCORED, NO_AGE, NO_CATEGORY or NO_GOAL"),
+});
+
 export const scoringConfigBody = z.object({
   weights: z
     .object({ CONTENT_LANGUAGE: z.number().min(0).max(1), PACING: z.number().min(0).max(1), VISUAL_COMFORT: z.number().min(0).max(1), AUDIO_COMFORT: z.number().min(0).max(1) })

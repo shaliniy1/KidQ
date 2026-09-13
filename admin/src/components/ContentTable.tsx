@@ -21,7 +21,6 @@ export function ContentTable({ items, selected, onToggle, onToggleAll }: Props) 
     const remainder = seconds % 60;
     return `${minutes}:${String(remainder).padStart(2, "0")}`;
   };
-  const typeLabel = (value: string) => value === "STORYBOOK" ? "Storybook" : value === "VIDEO" ? "Video" : value.replaceAll("_", " ").toLowerCase();
   return (
     <div className="table-wrap">
       <table>
@@ -31,7 +30,6 @@ export function ContentTable({ items, selected, onToggle, onToggleAll }: Props) 
               <input type="checkbox" aria-label="Select all on this page" checked={allSelected} onChange={(event) => onToggleAll(items.map((item) => item.id), event.target.checked)} />
             </th>
             <th>Content</th>
-            <th className="type-col">Type</th>
             <th className="category-col">Category</th>
             <th className="age-col">Age group</th>
             <th className="duration-col">Duration</th>
@@ -57,12 +55,11 @@ export function ContentTable({ items, selected, onToggle, onToggleAll }: Props) 
                       {item.parent_requests > 0 ? ` · ${item.parent_requests} parent request(s)` : ""}
                     </div>
                     <div className="compact-meta">
-                      {typeLabel(item.content_type)} · {item.category ? labelFor(taxonomy, "category", item.category) : "No category"} · {item.age.groups.length ? `Age ${item.age.groups.map((group) => group.replace("_", "–")).join(", ")}` : "Age not set"} · {duration(item.duration_seconds)}
+                      {item.category ? labelFor(taxonomy, "category", item.category) : "No category"} · {item.age.groups.length ? `Age ${item.age.groups.map((group) => group.replace("_", "–")).join(", ")}` : "Age not set"} · {duration(item.duration_seconds)}
                     </div>
                   </div>
                 </div>
               </td>
-              <td className="type-col"><span className="content-type">{typeLabel(item.content_type)}</span></td>
               <td className="category-col">{item.category ? labelFor(taxonomy, "category", item.category) : <span className="muted">Not set</span>}</td>
               <td className="age-col">{item.age.groups.length ? item.age.groups.map((group) => group.replace("_", "–")).join(", ") : <span className="muted">Not set</span>}</td>
               <td className="duration-col">{duration(item.duration_seconds)}</td>

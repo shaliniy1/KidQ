@@ -66,6 +66,7 @@ Admin screens show `studio_state`, one of five. Show one tile or filter per stat
 |---|---|
 | Dashboard | `GET /dashboard` |
 | Content Library | `GET /content-items?state=&age_group=&category=&source=&flagged=&min_score=&q=&sort=&limit=&offset=` (`category` matches any of an item's categories) |
+| Content pool | `GET /content-pool`: published items that can reach parents, per age band and category (fewer than 3 is flagged thin), and published items that can't be recommended, with the reason |
 | Review queue | `GET /review-queue` (parent requests first) |
 | Add content | `POST /ingestion-runs` (`mode: "urls"` or `"search"`) → poll `GET /ingestion-runs/:id` |
 | Content detail | `GET /content-items/:id`: card, README canonical `record`, assessments with criteria, decisions, edits, and `story` (pages and credits) for picture books |

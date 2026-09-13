@@ -1,20 +1,22 @@
 // Admin Content Studio actions (plan: "Admin control model"). Automation only prepares items;
 // every visibility change here is an explicit, recorded admin decision.
 import type { PoolClient } from "pg";
-import { nextPacificReset, pacificDay, PROMPT_VERSION, scoringModels } from "../ai/scoring-agent";
+import { nextPacificReset, pacificDay, scoringModels } from "../ai/scoring-agent";
 import { env } from "../config/env";
 import { getPool, withTransaction } from "../db/pool";
-import { ageBandsFor } from "../domain/age";
+import { AGE_GROUPS, ageBandsFor } from "../domain/age";
+import { eligibilityProblems } from "../domain/recommendation";
 import { RUBRIC_VERSION } from "../domain/rubric";
 import { COMPONENTS, JUDGEMENT_BLOCKERS, type Component, type ComponentInput, type SafetyFlag } from "../domain/scoring";
 import { actorName, type AuthUser } from "../http/auth";
 import { ApiError, notFound } from "../http/errors";
 import type { ClassificationBody, EditorialBody } from "../http/schemas";
-import { insertAssessment } from "../repositories/assessments";
-import { getAdminDetail } from "../repositories/content";
+import { insertAssessment, KEPT_PROMPT_ATTEMPT_SQL } from "../repositories/assessments";
+import { getAdminDetail, listApprovedCardRows } from "../repositories/content";
 import { recordDecision, type Decision } from "../repositories/decisions";
 import { enqueueJob, NIL_UUID } from "../repositories/jobs";
 import { keysOf, listTaxonomy, type TaxonomyKind } from "../repositories/taxonomy";
+import { toCandidate } from "./parents";
 import { rescoreItem } from "./scoring";
 
 const PLAYBACK_UNAVAILABLE_CODES = [100, 101, 150, 153];
@@ -295,7 +297,7 @@ export async function reanalyze(id: string) {
 }
 
 /**
- * Sends every item the AI hasn't reviewed with the current prompt to the scoring agent, shortest first so more fit in a
+ * Sends every item the AI hasn't scored yet (with prompt v2 or later) to the scoring agent, shortest first so more fit in a
  * free-tier day. Items a keyword rule flagged are included (force), so the admin gets the AI's
  * evidence too; rejected items are skipped.
  */
@@ -305,9 +307,8 @@ export async function queueAiScoring() {
   const { rows } = await pool.query<{ id: string }>(
     `SELECT ci.id FROM content_items ci
      WHERE ci.current_status <> 'REJECTED' AND ci.analysis_status NOT IN ('QUEUED', 'ANALYSING')
-       AND NOT EXISTS (SELECT 1 FROM assessments a WHERE a.content_item_id = ci.id AND a.assessor_type = 'MODEL' AND a.prompt_version = $1)
+       AND NOT EXISTS (SELECT 1 FROM assessments a WHERE a.content_item_id = ci.id AND ${KEPT_PROMPT_ATTEMPT_SQL})
      ORDER BY ci.duration_seconds NULLS LAST, ci.created_at`,
-    [PROMPT_VERSION],
   );
   // One statement per job, so created_at keeps the shortest-first order for the worker.
   for (const { id } of rows) {
@@ -350,9 +351,8 @@ export async function dashboard() {
        FROM content_items ci
        CROSS JOIN LATERAL (
          SELECT count(*) > 0 AS tried, COALESCE(bool_or(a.audiovisual_inspected), false) AS reviewed
-         FROM assessments a WHERE a.content_item_id = ci.id AND a.assessor_type = 'MODEL' AND a.prompt_version = $1
+         FROM assessments a WHERE a.content_item_id = ci.id AND ${KEPT_PROMPT_ATTEMPT_SQL}
        ) ai`,
-      [PROMPT_VERSION],
     ),
     pool.query("SELECT model, youtube_video_seconds, file_video_seconds, requests, quota_exhausted_at IS NOT NULL AS paused FROM ai_usage_daily WHERE day = $1", [
       pacificDay(),
@@ -384,5 +384,48 @@ export async function dashboard() {
         youtube_daily_cap_seconds: env.aiDailyVideoSecondsCap,
       },
     },
+  };
+}
+
+// A band × category pair with fewer published items than this is flagged thin (spec §9 pool monitor).
+const THIN_BELOW = 3;
+
+/**
+ * What parents can actually be shown: published items that pass every eligibility check, counted per
+ * age band and category, plus the published items that can't be recommended and why.
+ */
+export async function contentPool() {
+  const db = getPool();
+  const [rows, taxonomy] = await Promise.all([listApprovedCardRows(db), listTaxonomy(db)]);
+  const categories = keysOf(taxonomy, "category");
+  const perPair = new Map<string, number>();
+  const perBand = new Map<string, number>();
+  const notReaching: Array<{ id: string; title: string; problems: string[] }> = [];
+  for (const row of rows) {
+    const candidate = toCandidate(row);
+    const problems = eligibilityProblems(candidate);
+    if (problems.length) {
+      notReaching.push({ id: candidate.id, title: row.title as string, problems });
+      continue;
+    }
+    const fits = candidate.categories.length ? candidate.categories : [candidate.category as string];
+    for (const band of ageBandsFor(candidate.ageMin, candidate.ageMax)) {
+      perBand.set(band, (perBand.get(band) ?? 0) + 1);
+      for (const category of fits) perPair.set(`${band}|${category}`, (perPair.get(`${band}|${category}`) ?? 0) + 1);
+    }
+  }
+  return {
+    published: rows.length,
+    eligible: rows.length - notReaching.length,
+    thin_below: THIN_BELOW,
+    bands: AGE_GROUPS.map((group) => ({
+      age_band: group.key,
+      total: perBand.get(group.key) ?? 0,
+      categories: categories.map((category) => {
+        const count = perPair.get(`${group.key}|${category}`) ?? 0;
+        return { category, count, thin: count < THIN_BELOW };
+      }),
+    })),
+    not_reaching_parents: notReaching,
   };
 }

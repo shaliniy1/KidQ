@@ -7,7 +7,7 @@ import { ageBandsFor } from "../domain/age";
 import { analyzeWithRules, type SuggestedClassification } from "../domain/analysis/rules";
 import { RUBRIC_VERSION } from "../domain/rubric";
 import { COMPONENTS } from "../domain/scoring";
-import { hasModelAssessment, insertAssessment, recordedRuleResult } from "../repositories/assessments";
+import { hasKeptAiScore, hasModelAssessment, insertAssessment, recordedRuleResult } from "../repositories/assessments";
 import { listTaxonomy } from "../repositories/taxonomy";
 import { applyKidqChecks, rescoreItem } from "./scoring";
 
@@ -140,6 +140,13 @@ export async function analyzeItem(contentItemId: string, options: { hints?: Disc
 
     // A rejected item isn't worth the free daily AI quota; an admin's "Re-analyze" (force) still reviews it.
     if (rejected && !options.force) {
+      await setStatus(contentItemId, "ASSESSED");
+      return { status: "ASSESSED" };
+    }
+
+    // Every item is scored by the AI once and keeps that score, even when its source changes or a new
+    // prompt ships; only an admin's "Re-analyze" (force) scores it again.
+    if (!options.force && (await hasKeptAiScore(pool, contentItemId))) {
       await setStatus(contentItemId, "ASSESSED");
       return { status: "ASSESSED" };
     }

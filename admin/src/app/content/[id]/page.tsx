@@ -75,7 +75,7 @@ export default function ContentDetailPage() {
       </div>
       <h1 style={{ marginBottom: 0 }}>{content.title}</h1>
       <p className="muted" style={{ marginTop: 0 }}>
-        {content.creator ?? "Unknown creator"} · {content.content_type === "STORYBOOK" ? "Storybook" : "Video"} · <a href={detail.record.source_url} target="_blank" rel="noreferrer">View original</a>
+        {content.creator ?? "Unknown creator"} · <a href={detail.record.source_url} target="_blank" rel="noreferrer">View original</a>
       </p>
       {notice && <p className="muted">✓ {notice}</p>}
       {error && <p className="error">{error}</p>}
@@ -377,21 +377,11 @@ function Tags({ content, taxonomy, act, id }: { content: AdminContent; taxonomy:
   const [development, setDevelopment] = useState(content.development_goals);
   const [regulation, setRegulation] = useState(content.regulation_goals);
   const [language, setLanguage] = useState(content.language ?? "");
-  const [contentType, setContentType] = useState(content.content_type);
   if (!taxonomy) return null;
   const groupKey = taxonomy.age_group.find((term) => term.meta.min === ageMin && term.meta.max === ageMax)?.key ?? "";
   return (
     <div className="card stack">
       <h2 style={{ margin: 0 }}>Content details</h2>
-      <label>
-        Content type
-        <select value={contentType} onChange={(event) => setContentType(event.target.value as typeof contentType)}>
-          <option value="VIDEO">Video</option>
-          <option value="STORYBOOK">Storybook</option>
-          <option value="ACTIVITY">Activity</option>
-          <option value="INTERACTIVE_CONTENT">Interactive content</option>
-        </select>
-      </label>
       <label>
         Age group
         <select
@@ -445,7 +435,6 @@ function Tags({ content, taxonomy, act, id }: { content: AdminContent; taxonomy:
                   development_goals: development,
                   regulation_goals: regulation,
                   language: language || null,
-                  content_type: contentType,
                 },
               }),
             ),

@@ -14,6 +14,7 @@ import {
   bulkReanalyzeBody,
   bulkResultSchema,
   classificationBody,
+  contentPoolSchema,
   dashboardSchema,
   decisionBody,
   editorialBody,
@@ -246,6 +247,12 @@ defineRoute(
         actorName(user),
       ),
     ),
+);
+
+defineRoute(
+  adminRouter,
+  { method: "get", path: "/content-pool", summary: "What parents can be shown: published items per age band and category, thin spots, and published items that can't be recommended", tag: "Content", roles, response: contentPoolSchema },
+  async () => admin.contentPool(),
 );
 
 defineRoute(

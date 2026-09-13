@@ -276,7 +276,7 @@ export async function updateChild(user: AuthUser, childId: string, patch: ChildP
 }
 
 // ── Recommendations ───────────────────────────────────────────────────────────
-function toCandidate(row: Row): CandidateInput {
+export function toCandidate(row: Row): CandidateInput {
   return {
     id: row.id,
     approved: row.current_status === "APPROVED",
