@@ -2,7 +2,6 @@
 // player), the admin list/queue, and the admin detail with the README canonical record.
 import type { Db } from "../db/pool";
 import { AGE_GROUPS, ageBandsFor } from "../domain/age";
-import { expertLabel } from "../domain/experts";
 import { LEARNING_AREA_LABELS, RUBRIC, type LearningArea } from "../domain/rubric";
 import { resolvedCriteria, type AssessorType, type ComponentResult, type SafetyFlag } from "../domain/scoring";
 import type { ListContentQuery } from "../http/schemas";
@@ -13,16 +12,11 @@ export const YOUTUBE_PLAYER_PARAMS = { controls: 0, disablekb: 1, fs: 0, iv_load
 
 const CARD_SELECT = `
   SELECT v.*, ks.components AS score_detail, ks.reason AS score_reason, ks.missing AS score_missing,
-    er.recommend AS expert_recommend, er.total AS expert_total, er.verified AS expert_verified, er.verified_recommend AS expert_verified_recommend,
     (SELECT count(*)::int FROM library_items li WHERE li.content_item_id = v.id AND li.state = 'REQUESTED') AS parent_requests,
     (SELECT jsonb_array_length(s.story->'pages') FROM source_records s WHERE s.id = v.source_record_id) AS story_page_count
   FROM content_records_v v
   LEFT JOIN LATERAL (SELECT components, reason, missing FROM kidq_scores
-                     WHERE content_item_id = v.id ORDER BY created_at DESC LIMIT 1) ks ON true
-  LEFT JOIN LATERAL (SELECT count(*) FILTER (WHERE recommendation = 'RECOMMEND')::int AS recommend, count(*)::int AS total,
-                            count(*) FILTER (WHERE verified)::int AS verified,
-                            count(*) FILTER (WHERE verified AND recommendation = 'RECOMMEND')::int AS verified_recommend
-                     FROM expert_reviews WHERE content_item_id = v.id) er ON true`;
+                     WHERE content_item_id = v.id ORDER BY created_at DESC LIMIT 1) ks ON true`;
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Row = Record<string, any>;
@@ -88,12 +82,6 @@ function toLearning(row: Row) {
   return { value: toNumber(row.learning_value), areas };
 }
 
-function toExpertReview(row: Row) {
-  if (!(row.expert_total > 0)) return null;
-  const counts = { recommend: row.expert_recommend, total: row.expert_total, verified: row.expert_verified, verifiedRecommend: row.expert_verified_recommend ?? 0 };
-  return { recommend: counts.recommend, total: counts.total, verified: counts.verified, verified_recommend: counts.verifiedRecommend, label: expertLabel(counts) };
-}
-
 export function toCard(row: Row) {
   const ageMin = toNumber(row.age_min);
   const ageMax = toNumber(row.age_max);
@@ -116,7 +104,6 @@ export function toCard(row: Row) {
     regulation_goals: row.regulation_goals ?? [],
     content_score: toContentScore(row),
     learning: toLearning(row),
-    expert_review: toExpertReview(row),
     player: toPlayer(row),
     attribution: {
       text: row.attribution_text ?? null,
@@ -243,7 +230,7 @@ export async function getCardRows(db: Db, ids: string[], options: { approvedOnly
 export async function getAdminDetail(db: Db, id: string) {
   const row = (await db.query(`${CARD_SELECT} WHERE v.id = $1`, [id])).rows[0];
   if (!row) return null;
-  const [assessments, meta, decisions, revisions, experts, source] = await Promise.all([
+  const [assessments, meta, decisions, revisions, source] = await Promise.all([
     loadAssessments(db, id),
     db.query(
       `SELECT id, assessor_type, assessor_name, model_name, model_snapshot, prompt_version, rubric_version, result, summary,
@@ -257,7 +244,6 @@ export async function getAdminDetail(db: Db, id: string) {
       [id],
     ),
     db.query("SELECT changes, edited_by, created_at FROM editorial_revisions WHERE content_item_id = $1 ORDER BY created_at DESC", [id]),
-    db.query("SELECT * FROM expert_reviews WHERE content_item_id = $1 ORDER BY created_at DESC", [id]),
     db.query(
       `SELECT sr.connector_version, sr.raw_metadata, sr.story FROM (
          SELECT s.*, ss.connector_version FROM source_records s JOIN source_systems ss ON ss.id = s.source_system_id
@@ -364,12 +350,6 @@ export async function getAdminDetail(db: Db, id: string) {
     })),
     decisions: decisions.rows.map((d) => ({ ...d, decided_at: toIso(d.decided_at) })),
     revisions: revisions.rows.map((r) => ({ ...r, created_at: toIso(r.created_at) })),
-    expert_reviews: experts.rows.map((e) => ({
-      ...e,
-      recommended_age_min: toNumber(e.recommended_age_min),
-      recommended_age_max: toNumber(e.recommended_age_max),
-      created_at: toIso(e.created_at),
-    })),
     rights: {
       license_name: row.license_name,
       license_url: row.license_url,

@@ -184,7 +184,7 @@ Targets before "Ready to approve" is trusted without a second look:
 
 Run it once after deploying a new prompt or rubric version.
 
-## Recommendation engine (`RANK_V2`)
+## Recommendation engine (`RANK_V3`)
 
 1. **Eligible**: approved, playable, no unresolved safety flag, scored, and tagged with age, category and at least one goal.
 2. **Hard filters**:
@@ -193,8 +193,7 @@ Run it once after deploying a new prompt or rubric version.
    - with "Let me choose categories", **any** of the item's categories is one the parent chose;
    - the item isn't already in the library or recently dismissed.
 3. **Relevance** (0–1): overlap of interests (0.4), development goals (0.3), regulation goals (0.2) and preferred categories (0.1), counting only the dimensions the parent filled in. For a child with only an age, the age band's default development goals count.
-4. **Rank** = 0.40·relevance + 0.25·(score/100) + 0.15·(learning value/100) + 0.10·expert + 0.10·fit.
-   - **Expert**: (recommendations + 2 × 0.5) / (reviews + 2). A neutral prior means one review can't make an item 100%. A public review counts half as much as a verified KidQ expert's.
+4. **Rank** = 0.45·relevance + 0.30·(score/100) + 0.15·(learning value/100) + 0.10·fit.
    - **Fit**: the average of age fit and session fit. Age fit is 1 when the child's age sits in the middle of the item's range and 0.5 at its edges. Session fit is 1 when the item fits one session.
    - An item nobody judged for learning ranks as if its learning value were 50.
    - The weights are versioned and configurable (`/config/ranking`).
@@ -208,17 +207,8 @@ Views, likes, subscribers and trending are never inputs.
 Every result carries the full content card and a `why`: plain-language reasons.
 - Matched interests and goals.
 - The favourite category.
-- The expert line, e.g. "Recommended by 3 KidQ experts".
 - "Calm and gentle" for a score of 85 or more.
 - The learning areas.
-
-### The expert line
-
-- Expert reviews stay separate from the score (architecture doc §7).
-- The card's `expert_review` carries the counts and a ready-to-show `label`:
-  - "Recommended by 3 KidQ experts" or "3 of 4 KidQ experts recommend it", from reviewers KidQ verified;
-  - "Recommended in 2 public reviews", when no reviewer is verified. Unverified reviews are never called experts.
-- A KidQ panel review needs no `source_url`.
 
 ## Taxonomy and age groups
 
@@ -247,6 +237,7 @@ Every result carries the full content card and a `why`: plain-language reasons.
 | Pacing / visual / audio | No downloads | Analyse media | Gemini watches the public video; its observations bound its scores; admins adjust |
 | Age | 0–2 / 2–4 / 4–6 | One-year bands | 0–2, 2–3, 3–4, 4–5, 5–6 — the onboarding bands — stored as min/max |
 | Filters vs ranking | — | Interests and goals as filters | Hard filters: age, language, and the categories a parent chose. Interests and goals rank (hard AND-filters empty a 300-item catalogue) |
+| Expert review | — | Expert reviews shown to parents and used in ranking (§7, §11) | Removed (decided with Shalini, 2026-09-13): no expert line for parents and no expert signal in ranking |
 | Parent URLs | Only APPROVED reaches children | Parent keeps or removes | AI score shown to the parent; admin approval before the child sees it |
 
 ## Not built yet

@@ -1,15 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { ageFit, expertSignal, recommend, type CandidateInput, type ChildProfileInput, type RankingConfig } from "../../src/domain/recommendation";
+import { ageFit, recommend, type CandidateInput, type ChildProfileInput, type RankingConfig } from "../../src/domain/recommendation";
 
 const config: RankingConfig = {
-  version: "RANK_V2",
-  weights: { relevance: 0.4, score: 0.25, learning: 0.15, expert: 0.1, preference: 0.1 },
+  version: "RANK_V3",
+  weights: { relevance: 0.45, score: 0.3, learning: 0.15, preference: 0.1 },
   params: {
     relevanceWeights: { interests: 0.4, developmentGoals: 0.3, regulationGoals: 0.2, category: 0.1 },
     maxPerCreatorInTop: 3,
     topWindow: 20,
     dismissCooldownDays: 14,
-    expertNeutral: 0.5,
   },
 };
 
@@ -45,7 +44,6 @@ function candidate(overrides: Partial<CandidateInput> = {}): CandidateInput {
     creator: `creator-${counter}`,
     kidqScore: 80,
     learningValue: null,
-    expert: null,
     ...overrides,
   };
 }
@@ -136,21 +134,6 @@ describe("recommend", () => {
     const little = candidate({ learningValue: 25 });
     const rich = candidate({ learningValue: 75 });
     expect(ids(profile, [little, rich])).toEqual([rich.id, little.id]);
-  });
-
-  it("weighs expert reviews against a neutral prior, counting public reviews half", () => {
-    const verified = (recommend: number, total: number) => ({ recommend, total, verifiedRecommend: recommend, verifiedTotal: total });
-    expect(expertSignal(null, 0.5)).toBe(0.5);
-    expect(expertSignal(verified(1, 1), 0.5)).toBeCloseTo(2 / 3, 5);
-    expect(expertSignal(verified(3, 3), 0.5)).toBeCloseTo(0.8, 5);
-    expect(expertSignal(verified(0, 2), 0.5)).toBeCloseTo(0.25, 5);
-    expect(expertSignal({ recommend: 2, total: 2, verifiedRecommend: 0, verifiedTotal: 0 }, 0.5)).toBeCloseTo(2 / 3, 5);
-
-    const recommended = candidate({ expert: verified(3, 3) });
-    const unreviewed = candidate();
-    const [first] = recommend(profile, [unreviewed, recommended], config, new Set());
-    expect(first.contentId).toBe(recommended.id);
-    expect(first.why).toContain("Recommended by 3 KidQ expert(s)");
   });
 
   it("skips items already in the library or recently dismissed", () => {

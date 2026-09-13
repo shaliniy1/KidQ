@@ -1,6 +1,6 @@
 // KidQ recommendation engine (RANK_V2, docs/recommendation/README.md "Recommendation engine"):
 // filter admin-approved content by the child profile, rank it by relevance, KidQ score, learning
-// value, expert review and fit, then mix it so no two items of one category sit side by side.
+// value and fit, then mix it so no two items of one category sit side by side.
 // Pure: no I/O. Popularity (views, likes, subscribers, trending) is never an input.
 
 export interface ChildProfileInput {
@@ -13,13 +13,6 @@ export interface ChildProfileInput {
   contentMix: "SURPRISE" | "CHOSEN";
   preferredCategories: string[];
   sessionMinutes: number | null;
-}
-
-export interface ExpertSummary {
-  recommend: number;
-  total: number;
-  verifiedRecommend: number;
-  verifiedTotal: number;
 }
 
 export interface CandidateInput {
@@ -43,20 +36,17 @@ export interface CandidateInput {
   kidqScore: number | null;
   /** 0–100 from the filter-in criteria; null when not judged. */
   learningValue: number | null;
-  expert: ExpertSummary | null;
 }
 
 export interface RankingConfig {
   version: string;
   /** `learning` arrived with RANK_V2; older versions rank without it. */
-  weights: { relevance: number; score: number; expert: number; preference: number; learning?: number };
+  weights: { relevance: number; score: number; preference: number; learning?: number };
   params: {
     relevanceWeights: { interests: number; developmentGoals: number; regulationGoals: number; category: number };
     maxPerCreatorInTop: number;
     topWindow: number;
     dismissCooldownDays: number;
-    /** The expert signal of an item nobody has reviewed, and the prior every review is weighed against. */
-    expertNeutral: number;
   };
 }
 
@@ -81,10 +71,6 @@ export interface RankedRecommendation {
 const MAX_AGE = 6;
 // An item whose learning value nobody judged ranks as if it were middling, not as if it had none.
 const NEUTRAL_LEARNING = 50;
-// A review from an unverified source counts half as much as one from a verified KidQ expert.
-const UNVERIFIED_WEIGHT = 0.5;
-// How many reviews' worth of neutral prior every item starts with, so one review can't make it 100%.
-const EXPERT_PRIOR_REVIEWS = 2;
 
 /** Admin approval, safety, a score and complete tags are all required before anything is recommended. */
 export function isEligible(candidate: CandidateInput): boolean {
@@ -128,14 +114,6 @@ export function ageFit(ageYears: number, ageMin: number, ageMax: number): number
   return 1 - 0.5 * Math.min(1, Math.abs(ageYears - middle) / halfRange);
 }
 
-/** The share of expert recommendations, pulled toward the neutral prior until there are a few reviews. */
-export function expertSignal(expert: ExpertSummary | null, neutral: number): number {
-  if (!expert || expert.total === 0) return neutral;
-  const positive = expert.verifiedRecommend + UNVERIFIED_WEIGHT * (expert.recommend - expert.verifiedRecommend);
-  const total = expert.verifiedTotal + UNVERIFIED_WEIGHT * (expert.total - expert.verifiedTotal);
-  return (positive + EXPERT_PRIOR_REVIEWS * neutral) / (total + EXPERT_PRIOR_REVIEWS);
-}
-
 function scoreCandidate(candidate: CandidateInput, profile: ChildProfileInput, config: RankingConfig) {
   const weights = config.params.relevanceWeights;
   const matched: Matched = { interests: [], developmentGoals: [], regulationGoals: [], category: false };
@@ -173,7 +151,6 @@ function scoreCandidate(candidate: CandidateInput, profile: ChildProfileInput, c
     w.relevance * relevance +
     w.score * ((candidate.kidqScore ?? 0) / 100) +
     (w.learning ?? 0) * ((candidate.learningValue ?? NEUTRAL_LEARNING) / 100) +
-    w.expert * expertSignal(candidate.expert, config.params.expertNeutral) +
     w.preference * fit;
   return { relevance, anyMatch, matched, finalScore };
 }
@@ -181,7 +158,6 @@ function scoreCandidate(candidate: CandidateInput, profile: ChildProfileInput, c
 function explain(candidate: CandidateInput, matched: Matched, coldStart: boolean, ageYears: number): string[] {
   const why: string[] = [];
   if (coldStart) why.push(`Top KidQ score for age ${Math.floor(ageYears)}`);
-  if (candidate.expert && candidate.expert.verifiedRecommend > 0) why.push(`Recommended by ${candidate.expert.verifiedRecommend} KidQ expert(s)`);
   if (matched.interests.length) why.push(`Interests: ${matched.interests.join(", ")}`);
   if (matched.developmentGoals.length) why.push(`Development goals: ${matched.developmentGoals.join(", ")}`);
   if (matched.regulationGoals.length) why.push(`Regulation goals: ${matched.regulationGoals.join(", ")}`);

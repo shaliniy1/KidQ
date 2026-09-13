@@ -284,46 +284,7 @@ export async function bulkDecide(user: AuthUser, ids: string[], decision: Decisi
   return { results };
 }
 
-// ── Expert reviews, re-analysis, playback reports ─────────────────────────────
-export async function addExpertReview(
-  user: AuthUser,
-  id: string,
-  review: {
-    reviewer_name: string;
-    reviewer_type: string;
-    credentials?: string | null;
-    recommendation: "RECOMMEND" | "NOT_RECOMMEND";
-    recommended_age_min?: number | null;
-    recommended_age_max?: number | null;
-    comments?: string | null;
-    source_url?: string | null;
-    verified: boolean;
-  },
-) {
-  await withTransaction(async (client) => {
-    await lockItem(client, id);
-    await client.query(
-      `INSERT INTO expert_reviews (content_item_id, reviewer_name, reviewer_type, credentials, recommendation,
-         recommended_age_min, recommended_age_max, comments, source_url, verified, created_by)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
-      [
-        id,
-        review.reviewer_name,
-        review.reviewer_type,
-        review.credentials ?? null,
-        review.recommendation,
-        review.recommended_age_min ?? null,
-        review.recommended_age_max ?? null,
-        review.comments ?? null,
-        review.source_url ?? null,
-        review.verified,
-        actorName(user),
-      ],
-    );
-  });
-  return detail(id);
-}
-
+// ── Re-analysis and playback reports ────────────────────────────────────────────
 export async function reanalyze(id: string) {
   const pool = getPool();
   const exists = (await pool.query("SELECT 1 FROM content_items WHERE id = $1", [id])).rowCount;

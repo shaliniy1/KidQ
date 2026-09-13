@@ -14,7 +14,6 @@ interface Detail {
   assessments: Array<{ id: string; assessor_type: string; assessor_name: string; model_name: string | null; summary: string; result: string; created_at: string }>;
   decisions: Array<{ decision: string; reason: string; decided_by: string; decision_source: string; overrode_critical_flag: boolean; decided_at: string }>;
   revisions: Array<{ changes: Record<string, unknown>; edited_by: string; created_at: string }>;
-  expert_reviews: Array<{ id: string; reviewer_name: string; reviewer_type: string; recommendation: string; source_url: string; verified: boolean }>;
   rights: Record<string, unknown>;
   transcript_status: string | null;
   story: { pages: Array<{ page: number; text: string; image_url: string | null; image_small_url: string | null }>; credits: string | null } | null;
@@ -117,7 +116,6 @@ export default function ContentDetailPage() {
           </div>
           <div className="stack">
             <ParentPreview content={content} taxonomy={taxonomy} />
-            <Experts detail={detail} act={act} id={id} />
             <History detail={detail} />
           </div>
         </div>
@@ -533,63 +531,6 @@ function ParentPreview({ content, taxonomy }: { content: AdminContent; taxonomy:
             Not now
           </button>
         </div>
-      </div>
-    </div>
-  );
-}
-
-function Experts({ detail, act, id }: { detail: Detail; act: Act; id: string }) {
-  const [name, setName] = useState("");
-  const [type, setType] = useState("Early-years educator");
-  const [recommendation, setRecommendation] = useState<"RECOMMEND" | "NOT_RECOMMEND">("RECOMMEND");
-  const [source, setSource] = useState("");
-  return (
-    <div className="card stack">
-      <h2 style={{ margin: 0 }}>Expert reviews</h2>
-      {detail.expert_reviews.length === 0 ? (
-        <p className="muted" style={{ margin: 0 }}>None yet.</p>
-      ) : (
-        <ul style={{ margin: 0 }}>
-          {detail.expert_reviews.map((review) => (
-            <li key={review.id}>
-              {review.reviewer_name} ({review.reviewer_type}): {review.recommendation === "RECOMMEND" ? "recommends" : "does not recommend"} ·{" "}
-              {review.verified ? "verified" : "per public sources"} ·{" "}
-              <a href={review.source_url} target="_blank" rel="noreferrer">
-                source
-              </a>
-            </li>
-          ))}
-        </ul>
-      )}
-      <div className="row">
-        <input aria-label="Reviewer name" placeholder="Reviewer name" value={name} onChange={(event) => setName(event.target.value)} />
-        <input aria-label="Reviewer type" value={type} onChange={(event) => setType(event.target.value)} />
-        <select aria-label="Recommendation" value={recommendation} onChange={(event) => setRecommendation(event.target.value as typeof recommendation)}>
-          <option value="RECOMMEND">Recommends</option>
-          <option value="NOT_RECOMMEND">Does not recommend</option>
-        </select>
-        <input aria-label="Source URL" placeholder="https://… (where they said it)" value={source} onChange={(event) => setSource(event.target.value)} />
-        <button
-          className="btn small"
-          disabled={!name || !source.startsWith("http")}
-          onClick={() =>
-            void act("Expert review added", async () =>
-              unwrap(
-                await api.POST("/content-items/{id}/expert-reviews", {
-                  params: { path: { id } },
-                  body: { reviewer_name: name, reviewer_type: type, recommendation, source_url: source, verified: false },
-                }),
-              ),
-            )
-              .then(() => {
-                setName("");
-                setSource("");
-              })
-              .catch(() => undefined)
-          }
-        >
-          Add
-        </button>
       </div>
     </div>
   );

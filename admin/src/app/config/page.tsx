@@ -20,7 +20,6 @@ interface RankingConfig {
     maxPerCreatorInTop: number;
     topWindow: number;
     dismissCooldownDays: number;
-    expertNeutral: number;
   };
 }
 interface Preview {
@@ -35,7 +34,7 @@ const SCORE_PARTS: Record<string, [string, string]> = {
   AUDIO_COMFORT: ["Audio comfort", "Gentle, even sound; no sudden loud noises"],
 };
 const TRUST: Record<string, [string, string]> = {
-  HUMAN: ["Your ratings", "Admins and experts"],
+  HUMAN: ["Your ratings", "Admins"],
   MODEL: ["AI ratings", "The Gemini scoring agent"],
   RULE: ["Rule checks", "Title and description checks"],
 };
@@ -43,7 +42,6 @@ const RANK_PARTS: Record<string, [string, string]> = {
   relevance: ["Matches the child", "Interests, goals and chosen categories"],
   score: ["KidQ score", "Better-scored items first"],
   learning: ["Learning value", "What the child can learn or do"],
-  expert: ["Expert reviews", "Items experts recommend"],
   preference: ["Fits the child", "Made for their age and short enough for one session"],
 };
 
@@ -134,7 +132,6 @@ export default function SettingsPage() {
             max_per_creator_in_top: p.maxPerCreatorInTop,
             top_window: p.topWindow,
             dismiss_cooldown_days: p.dismissCooldownDays,
-            expert_neutral: p.expertNeutral,
           },
         }),
       );
