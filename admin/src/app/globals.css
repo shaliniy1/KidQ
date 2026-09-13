@@ -143,15 +143,32 @@ th { color: var(--ink-soft); font-size: 12px; letter-spacing: 0.04em; text-trans
 .advanced-review > .two-col { margin-top: 16px; }
 .metadata-details { display: grid; gap: 14px; padding: 12px; border: 1px solid var(--line); border-radius: 10px; }
 .metadata-details[open] > summary { margin-bottom: 12px; }
-.add-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; align-items: start; }
-.add-grid h2, .add-grid p { margin: 0; }
-.method-number { float: left; display: grid; place-items: center; width: 25px; height: 25px; margin-right: 9px; border-radius: 50%; background: var(--sage-tint); color: var(--sage); font-size: 12px; font-weight: 800; }
+.add-workspace { overflow: hidden; border: 1px solid var(--line); border-radius: 18px; background: var(--paper); box-shadow: 0 8px 30px rgba(37, 51, 46, 0.045); }
+.method-tabs { display: flex; gap: 6px; padding: 8px; border-bottom: 1px solid var(--line); background: rgba(82, 123, 103, 0.035); }
+.method-tabs button { min-height: 40px; padding: 0 18px; border: 0; border-radius: 999px; background: transparent; color: var(--ink-soft); font: inherit; font-weight: 700; cursor: pointer; }
+.method-tabs button:hover { background: var(--sage-tint); color: var(--ink); }
+.method-tabs button.active { background: var(--ink); color: var(--paper); }
+.add-panel { max-width: 860px; min-height: 370px; padding: 28px; }
+.add-panel h2, .add-panel p { margin: 0; }
+.add-panel textarea { min-height: 150px; padding: 14px; line-height: 1.6; }
+.add-panel-heading { display: flex; align-items: center; gap: 13px; }
+.method-icon { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 12px; background: var(--sage-tint); color: var(--sage); font-size: 15px; font-weight: 800; }
+.add-submit { justify-self: start; min-width: 170px; }
+.discover-fields { display: grid; grid-template-columns: 190px minmax(260px, 1fr) 150px; gap: 14px; }
 .import-preview { display: grid; gap: 4px; padding: 10px 12px; border-radius: 10px; background: var(--sage-tint); font-size: 12px; }
 .import-preview span { overflow: hidden; color: var(--ink-soft); text-overflow: ellipsis; white-space: nowrap; }
 .file-drop { display: grid; place-items: center; min-height: 156px; padding: 18px; border: 1.5px dashed rgba(82, 123, 103, 0.38); border-radius: 12px; background: rgba(82, 123, 103, 0.05); text-align: center; cursor: pointer; }
 .file-drop input { position: absolute; width: 1px; height: 1px; opacity: 0; }
 .file-drop span { max-width: 100%; color: var(--ink-soft); font-size: 12px; overflow-wrap: anywhere; }
 .storage-note { margin: -4px 0 0 !important; font-size: 12px; text-align: center; }
+.fetched-summary { display: flex; align-items: center; gap: 22px; padding: 16px 18px; border: 1px solid var(--line); border-radius: 16px; background: var(--paper); }
+.fetched-total { display: flex; align-items: center; gap: 12px; padding-right: 22px; border-right: 1px solid var(--line); }
+.fetched-total span { color: var(--ink-soft); font-weight: 650; }
+.fetched-total strong { font-size: 28px; line-height: 1; }
+.source-totals { display: flex; flex: 1; flex-wrap: wrap; gap: 8px 16px; }
+.source-totals span { color: var(--ink-soft); font-size: 13px; white-space: nowrap; }
+.source-totals strong { color: var(--ink); }
+.fetched-summary > a { color: var(--sage); font-weight: 750; text-decoration: none; white-space: nowrap; }
 
 @media (max-width: 900px) {
   .shell { grid-template-columns: 1fr; }
@@ -168,7 +185,9 @@ th { color: var(--ink-soft); font-size: 12px; letter-spacing: 0.04em; text-trans
   .content-row .type-col, .content-row .age-col, .content-row .duration-col,
   thead .type-col, thead .age-col, thead .duration-col { display: none; }
   .compact-meta { display: block; }
-  .add-grid { grid-template-columns: 1fr; }
+  .discover-fields { grid-template-columns: 1fr; }
+  .fetched-summary { align-items: flex-start; flex-wrap: wrap; }
+  .fetched-summary > a { margin-left: auto; }
 }
 
 @media (max-width: 620px) {
@@ -179,4 +198,10 @@ th { color: var(--ink-soft); font-size: 12px; letter-spacing: 0.04em; text-trans
   .result-count { width: 100%; margin-left: 0; }
   .thumb { width: 92px; }
   .content-row .category-col, thead .category-col { display: none; }
+  .method-tabs { overflow-x: auto; }
+  .method-tabs button { flex: 1 0 auto; padding-inline: 13px; }
+  .add-panel { min-height: 0; padding: 20px 16px; }
+  .add-submit { width: 100%; }
+  .fetched-total { width: 100%; border-right: 0; }
+  .source-totals { width: 100%; }
 }

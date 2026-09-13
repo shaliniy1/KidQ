@@ -1,14 +1,22 @@
 "use client";
 
 import { useCallback, useEffect, useState, type FormEvent } from "react";
-import { api, friendlyError, unwrap } from "@/lib/api";
+import Link from "next/link";
+import { api, friendlyError, unwrap, type Dashboard } from "@/lib/api";
 import { ageRange, useTaxonomy } from "@/lib/useTaxonomy";
 
 type Run = Record<string, unknown> & { ingestion_run_id: string; status: string };
 const ACTIVE = new Set(["QUEUED", "RUNNING"]);
+const SOURCE_LABELS: Record<string, string> = {
+  youtube: "YouTube",
+  storyweaver: "StoryWeaver",
+  nasa_images: "NASA",
+  wikimedia_commons: "Wikimedia",
+};
 
 export default function AddContentPage() {
   const taxonomy = useTaxonomy();
+  const [method, setMethod] = useState<"links" | "pdf" | "discover">("links");
   const [urls, setUrls] = useState("");
   const [pdfs, setPdfs] = useState<File[]>([]);
   const [ageGroup, setAgeGroup] = useState("");
@@ -18,6 +26,7 @@ export default function AddContentPage() {
   const [maxResults, setMaxResults] = useState(10);
   const [current, setCurrent] = useState<Run | null>(null);
   const [recent, setRecent] = useState<Run[]>([]);
+  const [summary, setSummary] = useState<Dashboard | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const loadRecent = useCallback(async () => {
@@ -25,9 +34,14 @@ export default function AddContentPage() {
     setRecent(result.items as Run[]);
   }, []);
 
+  const loadSummary = useCallback(async () => {
+    setSummary(unwrap(await api.GET("/dashboard")));
+  }, []);
+
   useEffect(() => {
     void loadRecent().catch(() => undefined);
-  }, [loadRecent]);
+    void loadSummary().catch(() => undefined);
+  }, [loadRecent, loadSummary]);
 
   // Poll the active run until the worker finishes it (this also keeps a sleeping QA API awake).
   useEffect(() => {
@@ -35,10 +49,13 @@ export default function AddContentPage() {
     const timer = setInterval(async () => {
       const run = unwrap(await api.GET("/ingestion-runs/{id}", { params: { path: { id: current.ingestion_run_id } } }));
       setCurrent(run as Run);
-      if (!ACTIVE.has(run.status)) void loadRecent();
+      if (!ACTIVE.has(run.status)) {
+        void loadRecent();
+        void loadSummary();
+      }
     }, 2000);
     return () => clearInterval(timer);
-  }, [current, loadRecent]);
+  }, [current, loadRecent, loadSummary]);
 
   const hints = () => {
     const value: Record<string, unknown> = {};
@@ -75,50 +92,59 @@ export default function AddContentPage() {
     <div className="stack">
       <div className="page-heading"><div><h1>Add content</h1><p className="muted">New content is saved as a draft for you to review before publishing.</p></div></div>
 
-      <div className="add-grid">
-        <form className="card stack" onSubmit={submitUrls}>
-          <div><span className="method-number">1</span><h2>Add video links</h2><p className="muted">Paste one YouTube URL per line.</p></div>
+      {summary && (
+        <section className="fetched-summary" aria-label="Fetched content summary">
+          <div className="fetched-total">
+            <span>Content fetched</span>
+            <strong>{summary.total}</strong>
+          </div>
+          <div className="source-totals">
+            {Object.entries(SOURCE_LABELS).map(([source, label]) => (
+              <span key={source}><strong>{summary.by_source[source] ?? 0}</strong> {label}</span>
+            ))}
+          </div>
+          <Link href="/content">View all content →</Link>
+        </section>
+      )}
+
+      <div className="add-workspace">
+        <div className="method-tabs" role="tablist" aria-label="Choose how to add content">
+          <button type="button" role="tab" aria-selected={method === "links"} className={method === "links" ? "active" : undefined} onClick={() => setMethod("links")}>Video links</button>
+          <button type="button" role="tab" aria-selected={method === "pdf"} className={method === "pdf" ? "active" : undefined} onClick={() => setMethod("pdf")}>Upload PDF</button>
+          <button type="button" role="tab" aria-selected={method === "discover"} className={method === "discover" ? "active" : undefined} onClick={() => setMethod("discover")}>Discover</button>
+        </div>
+
+        {method === "links" && <form className="add-panel stack" onSubmit={submitUrls}>
+          <div className="add-panel-heading"><span className="method-icon">↗</span><div><h2>Add video links</h2><p className="muted">Paste one or more YouTube URLs. Each link will be added as a draft.</p></div></div>
           <textarea aria-label="YouTube links, one per line" placeholder={'https://www.youtube.com/watch?v=…\nhttps://youtu.be/…'} value={urls} onChange={(event) => setUrls(event.target.value)} rows={6} />
           {parsedUrls.length > 0 && <div className="import-preview"><strong>{parsedUrls.length} {parsedUrls.length === 1 ? "link" : "links"} ready</strong>{parsedUrls.slice(0, 4).map((url) => <span key={url}>{url}</span>)}</div>}
-          <button className="btn primary" disabled={!urls.trim()}>
+          <button className="btn primary add-submit" disabled={!urls.trim()}>
             Add {parsedUrls.length || ""} {parsedUrls.length === 1 ? "item" : "items"}
           </button>
-        </form>
+        </form>}
 
-        <section className="card stack">
-          <div><span className="method-number">2</span><h2>Upload PDFs</h2><p className="muted">Add picture books or learning documents.</p></div>
+        {method === "pdf" && <section className="add-panel stack">
+          <div className="add-panel-heading"><span className="method-icon">PDF</span><div><h2>Upload PDFs</h2><p className="muted">Choose picture books or learning documents to add.</p></div></div>
           <label className="file-drop">
             <input type="file" accept="application/pdf,.pdf" multiple onChange={(event) => setPdfs(Array.from(event.target.files ?? []))} />
             <strong>{pdfs.length ? `${pdfs.length} PDF ${pdfs.length === 1 ? "selected" : "files selected"}` : "Choose PDF files"}</strong>
             <span>{pdfs.length ? pdfs.map((file) => file.name).join(", ") : "PDF files up to 20 MB each"}</span>
           </label>
-          <button className="btn primary" disabled title="Connect file storage to enable PDF uploads">Add {pdfs.length || ""} {pdfs.length === 1 ? "PDF" : "PDFs"}</button>
+          <button className="btn primary add-submit" disabled title="Connect file storage to enable PDF uploads">Add {pdfs.length || ""} {pdfs.length === 1 ? "PDF" : "PDFs"}</button>
           <p className="muted storage-note">PDF saving will be enabled after KidQ file storage is connected.</p>
-        </section>
+        </section>}
 
-        <form className="card stack" onSubmit={submitSearch}>
-          <div><span className="method-number">3</span><h2>Find open content</h2><p className="muted">Search approved open sources.</p></div>
-          <label>
-            Source
-            <select value={source} onChange={(event) => setSource(event.target.value)}>
-              <option value="youtube">YouTube</option>
-              <option value="nasa_images">NASA</option>
-              <option value="wikimedia_commons">Wikimedia Commons</option>
-              <option value="storyweaver">StoryWeaver picture books</option>
-            </select>
-          </label>
-          <label>
-            Search for
-            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="calm counting for toddlers" />
-          </label>
-          <label>
-            How many
-            <input type="number" min={1} max={50} value={maxResults} onChange={(event) => setMaxResults(Number(event.target.value))} />
-          </label>
-          <button className="btn primary" disabled={query.trim().length < 2}>
+        {method === "discover" && <form className="add-panel stack" onSubmit={submitSearch}>
+          <div className="add-panel-heading"><span className="method-icon">⌕</span><div><h2>Discover open content</h2><p className="muted">Search a trusted source, then review the results in Content.</p></div></div>
+          <div className="discover-fields">
+            <label>Source<select value={source} onChange={(event) => setSource(event.target.value)}><option value="youtube">YouTube</option><option value="nasa_images">NASA</option><option value="wikimedia_commons">Wikimedia Commons</option><option value="storyweaver">StoryWeaver picture books</option></select></label>
+            <label className="discover-query">Search for<input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="calm counting for toddlers" /></label>
+            <label>Number of results<input type="number" min={1} max={50} value={maxResults} onChange={(event) => setMaxResults(Number(event.target.value))} /></label>
+          </div>
+          <button className="btn primary add-submit" disabled={query.trim().length < 2}>
             Find content
           </button>
-        </form>
+        </form>}
       </div>
 
       <details className="advanced-review">
