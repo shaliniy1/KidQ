@@ -1,0 +1,158 @@
+# Child mode — design
+
+The designed child-facing experience for `web/`, as a runnable prototype plus the
+design system behind it. Nothing here is production code. It exists so the child
+half of `web/` can be built without re-deciding what it should look like or how
+it should behave.
+
+`web/src/components` and `web/src/features` are still empty. This is what goes
+in them.
+
+## Start here
+
+```bash
+cd design/prototype && python -m http.server 8080   # then open localhost:8080
+```
+
+Or read it live: **https://shreena27.github.io/kidq-prototype/**
+
+The demo bar in the bottom-right is a review aid, not part of the product. Use it
+to restart the flow or jump to any screen.
+
+## What the child sees
+
+A parent picks a handful of videos. The child gets exactly those, in a session
+that visibly ends. No algorithm, no autoplay into an endless feed, no infinite
+scroll.
+
+Time is a **sky**. The sun crosses an arc from sunrise to sunset across the
+session, driven by real playback progress, so a child who can't read a clock can
+still see how much of the day is left. When the sun sets, the session is over.
+Between videos the sun comes down to play — short activity breaks that break up
+screen time rather than extend it.
+
+| Screen | What it is |
+|---|---|
+| Splash | Balloon letters, ~2.4s |
+| Who's watching | Child picker, pre-dawn sky |
+| Sunrise | One tap on the sun starts the session |
+| Watching | Player, sun on the arc, day bar, full session strip |
+| Playtime | Seam into a break |
+| Break: breathe | Three slow breaths with the sun |
+| Break: find 3 | Find three things of one colour in the room |
+| After-break choice | Tap the sun for next, or pick any remaining video |
+| Sunset → All done | High five, then what's next |
+| No session | "The sun is still asleep" — deliberately no child CTA |
+| Night light | After the session, a warm glow. No way back to videos. |
+| Cast | Visual mock only |
+
+Behaviour worth knowing before porting:
+
+- **Breaks land on time, not on video count** — at the 1/3 and 2/3 marks of the
+  session's minutes, each snapping to the nearest video boundary so a break never
+  interrupts a video. Two videos gets one break, one video gets none.
+- **The sun tracks allotted time, not videos finished.** Switching videos never
+  rewinds it; rewatching something finished never pushes it forward.
+- **Autoplay runs between videos, but never out of a break.** A break exists to
+  interrupt screen time, so coming back from one always takes a tap.
+
+## The seam: `KidQData`
+
+`prototype/kidq-desktop-app.js` opens with a `KidQData` object. Everything else
+only reads from it. It is a **stand-in for the API**, written before this
+repo's API existed, so treat its shape as a statement of *what the child UI
+needs*, not as a proposed contract.
+
+```js
+profiles:  [{ id, name, color, face }]
+sessions:  { [profileId]: { totalMinutes, videos: [...] } | null }   // null = no session today
+yesterdays:{ [profileId]: { totalMinutes, replay: true, videos: [...] } }
+whatsNext: [{ label, scene, picked, pickedBy }]
+// video: { id, title, minutes, pickedBy, src, poster }
+```
+
+## How this maps onto the real API
+
+Read against `docs/api/README.md`. Some of this lines up; some of it does not
+exist yet, and a little of it conflicts. Listed honestly so it can be settled
+before anyone ports a component.
+
+**Already supported**
+
+| Prototype | API |
+|---|---|
+| `profiles` | `children` — `nickname`, `age_band` |
+| Session length | `session_minutes` on `PATCH /children/:id` |
+| Which break to serve | `break_type` on `PATCH /children/:id` |
+| The pool a session draws from | `GET /children/:id/library` |
+| Video poster | `card.thumbnails` |
+
+**Not in the API yet — and on the roadmap**
+
+`docs/status.md` lists "the session queue with break slots, and the Orange Break
+Agent with its activity library" as a next slice. That is exactly this design's
+core, so these are offered as input to that work rather than as gaps to paper
+over:
+
+- **A session** — an ordered, finite, parent-chosen list for *today*, distinct
+  from the library. The child UI needs the order, since autoplay picks the next
+  video with no child input.
+- **Per-video duration.** The sun's position, "N min left" and break placement
+  are all computed from real minutes. Estimates would visibly drift.
+- **Break slots** in the session, and which activity fills each one.
+- **Yesterday's session**, for the replay path on the no-session screen.
+- **"What's next"** cards — currently invented.
+
+**Conflicts to resolve**
+
+1. **Per-video attribution.** The design says "Picked by Mumma", "Mumma & Papa".
+   The API has one parent account per family with a single `parent_name`, so
+   there is nothing to render this from today. Either the model grows a notion
+   of who picked an item, or the design drops to a single parent voice.
+2. **Playback.** The prototype uses a raw `<video>` with `ended` and `timeupdate`
+   driving the sun. Real playback must go through `packages/kidq-player`, and
+   YouTube runs in an iframe. **The port needs equivalent progress and ended
+   signals out of `KidQPlayer`** — the entire sky-as-clock depends on them.
+3. **Casting.** This design assumed Google Cast in the MVP, with the child's
+   device as sender. `docs/api/README.md` instead ships a thin hosted wrapper per
+   TV platform and notes YouTube embeds need a real web origin. The cast screen
+   in the prototype is a visual mock only, so nothing is blocked — but the two
+   directions should be reconciled before that screen is built for real.
+4. **TV remote focus.** The integration guide requires every control to be
+   focusable and arrow-key operable with no hover-only UI. The prototype uses
+   hover affordances and assumes pointer or touch. Focus states need adding
+   during the port.
+
+## Porting notes
+
+The prototype is deliberately plain: one HTML file, one stylesheet, one closure
+with a small state machine. It is not structured as React, because it was built
+to settle design questions, not architecture.
+
+- Layout is driven by **container queries** on `#app`, not media queries, at
+  three tiers. One element inventory at every size; only arrangement and scale
+  change. There is no separate phone layout.
+- All colour, type, spacing and motion tokens are in `brand.md`. The stylesheet
+  uses them directly, so it should map onto whatever styling approach `web/`
+  adopts.
+- Two animations are Lottie bundles recoloured to brand
+  (`kidq-hifive-anim.js`, `kidq-breathe-anim.js`), each with a hand-built SVG
+  fallback that shows if Lottie can't load.
+- Reduced motion is honoured throughout.
+- Media under `prototype/proposal-src/` is demo footage only and should not ship.
+
+## Files
+
+| Path | What |
+|---|---|
+| `concept.md` | Product concept, principles, guardrails |
+| `brand.md` | Design system — tokens, type scale, motion tiers, geometry |
+| `prototype/` | The runnable prototype |
+| `mockups/kidq-desktop-mockups-v1.html` | Static frames at phone, tablet and laptop widths |
+
+## Credits
+
+Demo footage: *Big Buck Bunny* © Blender Foundation, CC-BY 3.0. Breathing
+animation: *"Sunrise – Breathe in Breathe out"* by Palak Jain and high five:
+*"Hand clap 2"* by Nicolas Binaghi, both LottieFiles, recoloured to brand.
+Typefaces: Baloo 2 and Mukta by Ek Type.

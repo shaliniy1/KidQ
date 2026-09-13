@@ -1,0 +1,1128 @@
+<title>KidQ Desktop Pivot</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&family=Mukta:wght@400;500;600;700&display=swap">
+<style>
+  :root{
+    --pg-bg:#F1EAE0; --pg-ink:#2E2A24; --pg-soft:#6B6459; --pg-line:#DDD3C2;
+    --cream:#FAF4E8; --cream-deep:#F2E9D8; --ink:#2E2A24; --ink-soft:#6B6459;
+    --teal:#1F7A6D; --teal-deep:#16594F; --teal-on-dark:#7FD8C8;
+    --sun:#FFC64D; --sun-deep:#F0A72E; --dusk:#C9B8E8; --night:#2B2955; --night-deep:#211F45;
+    --heart:#E2705E;
+    --disp:'Baloo 2','Trebuchet MS',system-ui,sans-serif;
+    --body:'Mukta','Segoe UI',system-ui,sans-serif;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){ --pg-bg:#211E19; --pg-ink:#F0E9DC; --pg-soft:#A99F90; --pg-line:#3A352C; }
+  }
+  :root[data-theme="dark"]{ --pg-bg:#211E19; --pg-ink:#F0E9DC; --pg-soft:#A99F90; --pg-line:#3A352C; }
+
+  body{background:var(--pg-bg); color:var(--pg-ink); font-family:var(--body);
+       display:flex; flex-direction:column; align-items:center; padding:40px 20px 80px}
+  .pg-head{text-align:center; max-width:720px}
+  .pg-head h1{font-family:var(--disp); font-weight:800; font-size:30px; line-height:1.15}
+  .pg-head p{margin-top:8px; font-size:15.5px; color:var(--pg-soft); line-height:1.6}
+  .pg-head .note{margin-top:14px; font-size:13px; color:var(--pg-soft); border-top:1px solid var(--pg-line);
+                  padding-top:14px}
+
+  .pg-section{width:100%; max-width:1560px; margin-top:60px}
+  .pg-section h2{font-family:var(--disp); font-weight:800; font-size:22px; text-align:center; margin-bottom:6px}
+  .pg-section .sec-sub{text-align:center; font-size:14px; color:var(--pg-soft); max-width:680px;
+                        margin:0 auto 30px; line-height:1.55}
+
+  .row{display:flex; flex-wrap:wrap; gap:40px; justify-content:center; align-items:flex-end}
+  .frameshot{display:flex; flex-direction:column; align-items:center; gap:12px}
+  .frameshot .tag{font-size:12px; font-weight:700; letter-spacing:.05em; text-transform:uppercase;
+                   color:var(--teal-deep)}
+  .frameshot figcaption{max-width:340px; text-align:center; font-size:13px; color:var(--pg-soft);
+                         line-height:1.5}
+  .frameshot figcaption b{color:var(--pg-ink)}
+
+  /* ---------- device chrome per tier ---------- */
+  .kqframe{position:relative; overflow:hidden; container-type:inline-size; background:var(--cream)}
+  .kqframe[data-tier="phone"]{width:390px; height:844px; border-radius:44px;
+    box-shadow:0 0 0 10px #2E2A24, 0 30px 60px -30px rgba(0,0,0,.5)}
+  .kqframe[data-tier="tablet"]{width:900px; height:600px; border-radius:16px;
+    box-shadow:0 0 0 1px var(--pg-line), 0 30px 60px -28px rgba(0,0,0,.4)}
+  .kqframe[data-tier="wide"]{width:1280px; max-width:calc(100vw - 40px); height:740px; border-radius:12px;
+    box-shadow:0 0 0 1px var(--pg-line), 0 36px 70px -30px rgba(0,0,0,.4)}
+
+  /* ---------- shared kq screen system (mobile-first) ---------- */
+  .kq-sky{position:absolute; inset:0; overflow:hidden;
+    background:linear-gradient(180deg,#FDF8EC 0%, #F7EBD2 58%, #F1E2C4 100%)}
+  .kq-duskveil{position:absolute; inset:0; opacity:0}
+  .kqframe[data-stage="end"] .kq-duskveil{opacity:.85;
+    background:linear-gradient(180deg,#9F8CCB 0%, #C9B8E8 40%, #F3B583 100%)}
+
+  .kq-cloud{position:absolute; opacity:.85}
+
+  .kq-arcwrap{position:absolute; left:0; right:0; top:70px; height:220px}
+  .kq-arcwrap svg{display:block; width:100%; height:100%}
+
+  .kq-sun{position:absolute; width:64px; height:64px; pointer-events:none}
+  .kq-sun .halo{position:absolute; inset:-18px; border-radius:50%;
+    background:radial-gradient(circle, rgba(255,198,77,.4), transparent 70%)}
+  .kq-sun svg{position:relative; width:100%; height:100%}
+  .kq-sun .rays line{stroke:var(--sun-deep); stroke-width:3.4; stroke-linecap:round; opacity:.55}
+
+  .kq-timeleft{position:absolute; right:20px; top:262px; font-weight:600; font-size:13px;
+    color:var(--ink-soft); background:rgba(250,244,232,.85); padding:3px 12px; border-radius:99px}
+
+  .kq-head{position:absolute; top:24px; left:22px; display:flex; align-items:center; gap:11px}
+  .kq-head .av{width:40px; height:40px; border-radius:50%; background:var(--teal); color:#fff;
+    font-family:var(--disp); font-weight:800; font-size:18px; display:flex; align-items:center;
+    justify-content:center; flex-shrink:0}
+  .kq-head h4{font-family:var(--disp); font-weight:700; font-size:17px; color:var(--ink);
+    line-height:1.15; margin:0}
+  .kq-head .sub{font-size:13px; color:var(--ink-soft); font-weight:500; margin:0}
+
+  .kq-castpill{position:absolute; top:24px; left:50%; transform:translateX(-50%); display:flex;
+    align-items:center; gap:8px; background:rgba(255,255,255,.78); padding:9px 18px;
+    border-radius:99px; font-weight:600; font-size:14px; color:var(--teal-deep); white-space:nowrap}
+
+  .kq-content{position:static}
+
+  .kq-player{position:absolute; left:20px; right:20px; top:310px; aspect-ratio:16/9;
+    border-radius:24px; overflow:hidden; box-shadow:0 12px 28px -16px rgba(46,42,36,.4);
+    background:linear-gradient(135deg,#D8C89C,#B9A574)}
+  .kq-player img{position:absolute; inset:0; width:100%; height:100%; object-fit:cover}
+  .kq-pause{position:absolute; right:14px; top:14px; width:44px; height:44px; border-radius:50%;
+    border:none; background:rgba(250,244,232,.92); color:var(--teal-deep); display:flex;
+    align-items:center; justify-content:center}
+  .kq-eq{position:absolute; left:16px; bottom:12px; display:flex; gap:3px; align-items:flex-end; height:16px}
+  .kq-eq i{width:4px; border-radius:2px; background:rgba(22,89,79,.85); display:block}
+  .kq-eq i:nth-child(1){height:15px} .kq-eq i:nth-child(2){height:8px} .kq-eq i:nth-child(3){height:12px}
+
+  .kq-daybar{position:absolute; left:20px; right:20px; top:530px; height:12px; border-radius:99px;
+    background:linear-gradient(90deg,#F7EBD2 0%,#FFC64D 34%,#C9B8E8 68%,#2B2955 100%)}
+  .kq-daybar .veil{position:absolute; top:0; bottom:0; right:0; border-radius:0 99px 99px 0;
+    background:rgba(250,244,232,.78)}
+  .kq-daybar .knob{position:absolute; top:50%; width:20px; height:20px; transform:translate(-50%,-50%);
+    border-radius:50%; background:var(--sun); border:3px solid #fff; box-shadow:0 2px 6px rgba(46,42,36,.3)}
+
+  .kq-now{position:absolute; left:0; right:0; top:562px; text-align:center; padding:0 30px}
+  .kq-now h4{font-family:var(--disp); font-weight:700; font-size:21px; color:var(--ink); line-height:1.2;
+    margin:0}
+  .kq-now .sub{display:flex; justify-content:center; align-items:center; gap:8px; margin-top:6px;
+    font-size:14.5px; font-weight:500; color:var(--ink-soft)}
+  .kq-now .sub b{font-weight:700; color:var(--ink)}
+  .kq-now .sub svg{flex-shrink:0}
+
+  .kq-quplabel{position:absolute; left:0; right:0; bottom:120px; text-align:center; font-size:13px;
+    font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-soft)}
+  .kq-qrow{position:absolute; left:0; right:0; bottom:40px; display:flex; justify-content:center; gap:14px}
+  .kq-qcard{width:124px; height:70px; border-radius:14px; overflow:hidden; border:2px solid rgba(46,42,36,.1);
+    background:linear-gradient(135deg,#D8C89C,#B9A574)}
+  .kq-qcard img{display:block; width:100%; height:100%; object-fit:cover}
+  .kq-qend{width:124px; height:70px; border-radius:14px; background:var(--night); border:2px dashed var(--dusk);
+    display:flex; align-items:center; justify-content:center; color:var(--cream); font-family:var(--disp);
+    font-weight:800; font-size:15px}
+
+  .kq-bigpause{position:absolute; left:50%; bottom:150px; width:76px; height:76px; margin-left:-38px;
+    border:none; border-radius:50%; background:var(--teal); color:#fff; display:flex; align-items:center;
+    justify-content:center; box-shadow:0 14px 26px -14px rgba(22,89,79,.55)}
+
+  /* ---------- tablet tier (600–1100 container width): desktop-style flow, tighter arc ---------- */
+  @container (min-width:601px){
+    .kq-head{top:18px; left:26px}
+    .kq-head .av{width:40px; height:40px; font-size:18px}
+    .kq-head h4{font-size:17px}
+    .kq-head .sub{font-size:13px}
+    .kq-castpill{top:18px; font-size:14px; padding:9px 18px}
+
+    .kq-arcwrap{top:0; height:150px}
+    .kq-sun{width:70px; height:70px}
+    .kq-timeleft{top:95px; right:32px}
+
+    .kq-content{position:absolute; left:0; right:0; top:156px; bottom:0; display:flex;
+      flex-direction:column; align-items:center; justify-content:center; gap:9px; padding:0 24px 14px}
+
+    .kq-now{position:static; padding:0}
+    .kq-now h4{font-size:17px}
+    .kq-now .sub{font-size:13px; margin-top:4px}
+
+    .kq-player{position:relative; width:100%; max-width:420px; left:auto; right:auto; top:auto; flex-shrink:0}
+    .kq-daybar{position:relative; width:100%; max-width:420px; left:auto; right:auto; top:auto; height:10px; flex-shrink:0}
+    .kq-quplabel{position:static; bottom:auto; margin-top:0; font-size:12px}
+    .kq-qrow{position:static; bottom:auto; margin-top:2px}
+    .kq-qcard,.kq-qend{width:104px; height:58px; border-radius:12px}
+    .kq-bigpause{position:static; bottom:auto; margin-left:0}
+  }
+
+  /* ---------- wide tier (>1100 container width): full arc, roomier composition ---------- */
+  @container (min-width:1100px){
+    .kq-head{top:26px; left:36px}
+    .kq-head .av{width:46px; height:46px; font-size:19px}
+    .kq-head h4{font-size:19px}
+    .kq-head .sub{font-size:14px}
+    .kq-castpill{top:26px; font-size:15px; padding:10px 20px}
+
+    .kq-arcwrap{height:220px}
+    .kq-sun{width:92px; height:92px}
+    .kq-timeleft{top:150px; right:48px; font-size:14px; padding:5px 16px}
+
+    .kq-content{top:224px; gap:11px; padding:0 30px 22px; justify-content:center}
+    .kq-now h4{font-size:21px}
+    .kq-now .sub{font-size:14.5px; margin-top:6px}
+
+    .kq-player{max-width:480px; border-radius:24px; flex-shrink:0; position:relative}
+    .kq-daybar{max-width:480px; height:12px; flex-shrink:0; position:relative}
+    .kq-quplabel{font-size:13px}
+    .kq-qrow{gap:14px}
+    .kq-qcard,.kq-qend{width:120px; height:68px; border-radius:14px}
+    .kq-bigpause{width:84px; height:84px; margin-left:-42px}
+  }
+
+  /* ---------- round 2: night skies + login / no-session ---------- */
+  .kq-sky--predawn{background:linear-gradient(180deg,#3A3768 0%, #4E4482 58%, #8D7BB5 100%)}
+  .kq-sky--night{background:linear-gradient(180deg,#3A3768 0%, #2B2955 52%, #211F45 100%)}
+  .kq-star{position:absolute; width:4px; height:4px; border-radius:50%; background:#FAF4E8;
+    animation:kq-twinkle 3.4s ease-in-out infinite}
+  @keyframes kq-twinkle{50%{opacity:.25}}
+  @keyframes kq-halopulse{0%,100%{transform:scale(1); opacity:.85}50%{transform:scale(1.08); opacity:1}}
+  @keyframes kq-mbeat{0%,100%{transform:scale(1)}12%{transform:scale(1.3)}24%{transform:scale(1)}}
+
+  .kq-centercol{position:absolute; inset:0; display:flex; flex-direction:column; align-items:center;
+    justify-content:center; gap:26px; padding:0 30px; text-align:center}
+
+  /* who's watching */
+  .kq-whotitle{font-family:var(--disp); font-weight:800; font-size:34px; line-height:1.1;
+    color:var(--cream); text-wrap:balance; margin:0}
+  .kq-whorow{display:flex; gap:36px; justify-content:center}
+  .kq-who{border:none; background:none; padding:0; cursor:pointer; display:flex;
+    flex-direction:column; align-items:center; gap:12px}
+  .kq-who .facewrap{position:relative; width:116px; height:116px; display:block}
+  .kq-who .halo{position:absolute; inset:-22px; border-radius:50%; pointer-events:none;
+    background:radial-gradient(circle, rgba(250,244,232,.28) 0%, rgba(250,244,232,0) 66%);
+    animation:kq-halopulse 4.5s ease-in-out infinite}
+  .kq-who:nth-child(2) .halo{animation-delay:-2.2s}
+  .kq-who svg{position:relative; width:100%; height:100%; display:block}
+  .kq-who .name{font-family:var(--disp); font-weight:700; font-size:19px; color:var(--cream)}
+  .kq-who:focus-visible{outline:none}
+  .kq-who:focus-visible .avdisc{stroke:var(--teal-on-dark); stroke-width:2.5}
+  
+  /* no-session (ported from kidq-mockups-v1.html, kq-renamed) */
+  .kq-moonbtn{position:absolute; right:44px; top:150px; width:94px; height:94px; border:none;
+    padding:0; background:none; cursor:pointer; animation:kq-mfloat 7s ease-in-out infinite}
+  @keyframes kq-mfloat{0%,100%{transform:translateY(0)}42%{transform:translateY(-8px)}
+    66%{transform:translateY(0)}78%{transform:translateY(-15px)}86%{transform:translateY(2px)}
+    92%{transform:translateY(0)}}
+  .kq-moonhalo{position:absolute; inset:-26px; border-radius:50%; pointer-events:none;
+    background:radial-gradient(circle, rgba(250,244,232,.34) 0%, rgba(250,244,232,0) 66%);
+    animation:kq-halopulse 4.5s ease-in-out -2s infinite}
+  .kq-moon{position:relative; width:100%; height:100%; display:block; transform-origin:50% 90%;
+    animation:kq-moonsway 6.5s ease-in-out infinite; filter:drop-shadow(0 0 9px rgba(250,244,232,.5))}
+  @keyframes kq-moonsway{0%,100%{transform:rotate(-3deg)}50%{transform:rotate(3deg)}}
+  .kq-zz{position:absolute; font-family:var(--disp); font-weight:800; color:var(--dusk); opacity:0;
+    animation:kq-zfloat 3.6s ease-out infinite; pointer-events:none}
+  @keyframes kq-zfloat{0%{opacity:0; transform:translate(0,0) scale(.8)}22%{opacity:1}
+    100%{opacity:0; transform:translate(16px,-40px) scale(1.2)}}
+  .kq-nsgreet{font-family:var(--disp); font-weight:800; font-size:36px; line-height:1.1;
+    color:var(--cream); text-wrap:balance; margin:0}
+  .kq-nsask{display:flex; align-items:center; justify-content:center; gap:9px; font-size:16px;
+    font-weight:500; color:var(--dusk); margin:0}
+  .kq-nsask svg{width:17px; height:17px; flex-shrink:0; transform-origin:center;
+    animation:kq-mbeat 2.6s ease-in-out infinite}
+  .kq-sleepsun{position:relative; width:140px; height:140px; border:none; padding:0;
+    background:none; cursor:pointer}
+  .kq-sleepsun .halo{position:absolute; inset:-26px; border-radius:50%; pointer-events:none;
+    background:radial-gradient(circle, rgba(255,198,77,.22) 0%, rgba(255,198,77,0) 66%);
+    animation:kq-halopulse 5s ease-in-out infinite}
+  .kq-sleepsun svg{position:relative; width:100%; height:100%; display:block;
+    animation:kq-snooze 4.5s ease-in-out infinite; transform-origin:center}
+  @keyframes kq-snooze{0%,100%{transform:scale(1)}50%{transform:scale(1.035) rotate(1.2deg)}}
+  .kq-sleepsun .rays2 line{stroke:var(--sun-deep); stroke-width:3.4; stroke-linecap:round; opacity:.22}
+  .kq-yesterday{display:flex; align-items:center; gap:10px; border:1.5px solid rgba(201,184,232,.5);
+    background:rgba(250,244,232,.08); color:var(--cream); font-family:var(--body); font-weight:600;
+    font-size:15px; padding:12px 22px; border-radius:99px; cursor:pointer}
+  .kq-yesterday svg{width:17px; height:17px; flex-shrink:0}
+
+  /* after-break choice (choice within the parent's picks) */
+  .kq-sunpick .halo{animation:kq-halopulse 3s ease-in-out infinite}
+  .kq-pickcol{position:absolute; left:0; right:0; top:300px; bottom:0; display:flex;
+    flex-direction:column; align-items:center; justify-content:center; gap:18px;
+    padding:0 28px 30px; text-align:center}
+  .kq-pickhead{font-family:var(--disp); font-weight:800; font-size:30px; line-height:1.15;
+    color:var(--ink); text-wrap:balance; margin:0}
+  .kq-picksub{display:flex; align-items:center; justify-content:center; gap:9px; font-size:16px;
+    font-weight:500; color:var(--ink-soft); margin:0}
+  .kq-picksub svg{width:17px; height:17px; flex-shrink:0; transform-origin:center;
+    animation:kq-mbeat 2.6s ease-in-out infinite}
+  .kq-pickwrap{display:flex; flex-direction:column; align-items:center}
+  .kq-qcard--pick{cursor:pointer; border:3px solid var(--sun);
+    box-shadow:0 0 0 6px rgba(255,198,77,.18), 0 10px 22px -12px rgba(46,42,36,.35)}
+  .kq-qname{font-family:var(--disp); font-weight:700; font-size:14px; color:var(--ink);
+    text-align:center; margin:7px 0 0}
+  .kq-pickcol .kq-qrow{gap:10px}
+  .kq-pickcol .kq-qcard,.kq-pickcol .kq-qend{width:96px; height:54px; border-radius:12px}
+  .kq-pickcol .kq-qend{font-size:13px}
+
+  @media (prefers-reduced-motion: reduce){
+    .kq-star,.kq-who .halo,.kq-moonbtn,.kq-moonhalo,.kq-moon,.kq-zz,.kq-sleepsun svg,
+    .kq-sleepsun .halo,.kq-nsask svg,.kq-sunpick .halo,.kq-picksub svg{animation:none}
+    .kq-zz{opacity:.7}
+  }
+
+  /* round-2 tier overrides */
+  @container (min-width:601px){
+    .kq-whotitle{font-size:38px}
+    .kq-who .facewrap{width:124px; height:124px}
+    .kq-nsgreet{font-size:38px}
+    .kq-moonbtn{top:90px; right:70px}
+    .kq-pickcol{top:160px; gap:14px}
+    .kq-pickhead{font-size:26px}
+  }
+  @container (min-width:1100px){
+    .kq-pickcol{top:230px; gap:20px}
+    .kq-pickhead{font-size:38px}
+    .kq-pickcol .kq-qrow{gap:14px}
+    .kq-pickcol .kq-qcard,.kq-pickcol .kq-qend{width:120px; height:68px; border-radius:14px}
+    .kq-pickcol .kq-qend{font-size:15px}
+    .kq-whotitle{font-size:46px}
+    .kq-whorow{gap:56px}
+    .kq-who .facewrap{width:150px; height:150px}
+    .kq-who .name{font-size:22px}
+    .kq-nsgreet{font-size:46px}
+    .kq-sleepsun{width:170px; height:170px}
+    .kq-moonbtn{top:110px; right:130px; width:110px; height:110px}
+  }
+</style>
+
+<div class="pg-head">
+  <h1>KidQ — Desktop-First Responsive Pivot</h1>
+  <p>Rounds 1–2: the <b>watching</b> screen, its <b>cast-sender</b> pairing, and the <b>login set</b>
+  (who's-watching, no-session with yesterday-replay) plus the
+  <b>after-break choice</b> screen from player-flow feedback, built as one
+  responsive system (CSS container queries, not fixed frames) and checked at three widths. The sky-as-timer
+  stays a true arc at every width — the earlier plan to flatten it into the day-progress-bar was
+  reconsidered after review; the arc now just widens and flattens its curvature gradually, the way a real
+  horizon does, while the day-bar stays underneath exactly as it does on phone.</p>
+  <p class="note">Same markup, same CSS classes, no per-device duplication — resizing a browser window
+  would move a real page between these three states. Content is illustrative (gradient placeholders stand
+  in for the real BBB clip stills used elsewhere in the mock set).</p>
+</div>
+
+<!-- ================= SECTION A: one screen, three widths ================= -->
+<div class="pg-section">
+  <h2>Same screen, three widths</h2>
+  <p class="sec-sub">The phone frame is pixel-identical to the locked mock in <code>kidq-mockups-v1.html</code>
+  — the parity check. Tablet and wide use the same element set, just rearranged and rescaled.</p>
+  <div class="row">
+
+    <figure class="frameshot">
+      <span class="tag">Phone · 390px</span>
+      <div class="kqframe" data-tier="phone" data-stage="mid">
+        <div class="kq-sky">
+          <div class="kq-duskveil"></div>
+          <svg class="kq-cloud" style="top:96px" width="66" height="24" viewBox="0 0 66 24"><ellipse cx="26" cy="15" rx="26" ry="8.5" fill="#FFFFFF" opacity=".9"/><ellipse cx="46" cy="11" rx="17" ry="7.5" fill="#FFFFFF" opacity=".9"/></svg>
+          <svg class="kq-cloud" style="top:225px" width="50" height="19" viewBox="0 0 50 19"><ellipse cx="19" cy="12" rx="19" ry="6.8" fill="#FFFFFF" opacity=".85"/><ellipse cx="36" cy="9" rx="13" ry="5.8" fill="#FFFFFF" opacity=".85"/></svg>
+          <div class="kq-arcwrap">
+            <svg viewBox="0 0 390 220" preserveAspectRatio="none" aria-hidden="true">
+              <path d="M28 216 Q195 -20 362 216" fill="none" stroke="#E4D6B8" stroke-width="2.5" stroke-dasharray="1 9" stroke-linecap="round"/>
+              <line x1="28" y1="216" x2="362" y2="216" stroke="#E4D6B8" stroke-width="2.5" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <div class="kq-sun" style="left:180px; top:137px">
+            <span class="halo"></span>
+            <svg viewBox="0 0 60 60" aria-hidden="true">
+              <g class="rays"><line x1="30" y1="1.5" x2="30" y2="9.5"/><line x1="50" y1="30" x2="58.5" y2="30"/><line x1="44" y1="16" x2="50" y2="10"/><line x1="44" y1="44" x2="50" y2="50"/><line x1="30" y1="50.5" x2="30" y2="58.5"/><line x1="10" y1="50" x2="16" y2="44"/><line x1="1.5" y1="30" x2="10" y2="30"/><line x1="10" y1="10" x2="16" y2="16"/></g>
+              <circle cx="30" cy="30" r="16.5" fill="#FFC64D"/>
+              <circle cx="24.5" cy="28" r="1.9" fill="#2E2A24"/><circle cx="35.5" cy="28" r="1.9" fill="#2E2A24"/>
+              <path d="M24.5 34.5 Q30 39 35.5 34.5" fill="none" stroke="#2E2A24" stroke-width="2.2" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <span class="kq-timeleft">12 min left</span>
+          <div class="kq-head">
+            <span class="av">A</span>
+            <div><h4>Aarav's watch time</h4><p class="sub">video 2 of 3</p></div>
+          </div>
+          <div class="kq-content">
+            <div class="kq-player">
+              <button class="kq-pause" aria-label="Pause">
+                <svg width="16" height="16" viewBox="0 0 16 16"><rect x="2" y="1" width="4.5" height="14" rx="2" fill="currentColor"/><rect x="9.5" y="1" width="4.5" height="14" rx="2" fill="currentColor"/></svg>
+              </button>
+              <span class="kq-eq"><i></i><i></i><i></i></span>
+            </div>
+            <div class="kq-daybar"><span class="veil" style="width:45%"></span><span class="knob" style="left:55%"></span></div>
+            <div class="kq-now">
+              <h4>Big Buck Bunny · Part 2</h4>
+              <p class="sub"><svg viewBox="0 0 20 20" width="18" height="18"><path d="M10 17 C4 12 2 8.5 4.2 6.2 A3.4 3.4 0 0 1 10 7.4 A3.4 3.4 0 0 1 15.8 6.2 C18 8.5 16 12 10 17 Z" fill="#E2705E"/></svg><span><b>Picked by Papa</b> · 8 min</span></p>
+            </div>
+            <p class="kq-quplabel">Up next</p>
+            <div class="kq-qrow">
+              <div class="kq-qcard"></div>
+              <div class="kq-qend">The End 🌙</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <figcaption><b>Parity check.</b> Identical to the locked phone mock — same classes, unmodified
+      values, just renamed.</figcaption>
+    </figure>
+
+    <figure class="frameshot">
+      <span class="tag">Tablet landscape · 900px</span>
+      <div class="kqframe" data-tier="tablet" data-stage="mid">
+        <div class="kq-sky">
+          <div class="kq-duskveil"></div>
+          <svg class="kq-cloud" style="top:30px; left:60px" width="80" height="28" viewBox="0 0 66 24"><ellipse cx="26" cy="15" rx="26" ry="8.5" fill="#FFFFFF" opacity=".9"/><ellipse cx="46" cy="11" rx="17" ry="7.5" fill="#FFFFFF" opacity=".9"/></svg>
+          <div class="kq-arcwrap">
+            <svg viewBox="0 0 900 150" preserveAspectRatio="none" aria-hidden="true">
+              <path d="M50 140 Q450 10 850 140" fill="none" stroke="#E4D6B8" stroke-width="2.5" stroke-dasharray="1 10" stroke-linecap="round"/>
+              <line x1="50" y1="140" x2="850" y2="140" stroke="#E4D6B8" stroke-width="2.5" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <div class="kq-sun" style="left:455px; top:41px">
+            <span class="halo"></span>
+            <svg viewBox="0 0 60 60" aria-hidden="true">
+              <g class="rays"><line x1="30" y1="1.5" x2="30" y2="9.5"/><line x1="50" y1="30" x2="58.5" y2="30"/><line x1="44" y1="16" x2="50" y2="10"/><line x1="44" y1="44" x2="50" y2="50"/><line x1="30" y1="50.5" x2="30" y2="58.5"/><line x1="10" y1="50" x2="16" y2="44"/><line x1="1.5" y1="30" x2="10" y2="30"/><line x1="10" y1="10" x2="16" y2="16"/></g>
+              <circle cx="30" cy="30" r="16.5" fill="#FFC64D"/>
+              <circle cx="24.5" cy="28" r="1.9" fill="#2E2A24"/><circle cx="35.5" cy="28" r="1.9" fill="#2E2A24"/>
+              <path d="M24.5 34.5 Q30 39 35.5 34.5" fill="none" stroke="#2E2A24" stroke-width="2.2" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <span class="kq-timeleft">12 min left</span>
+          <div class="kq-head">
+            <span class="av">A</span>
+            <div><h4>Aarav's watch time</h4><p class="sub">video 2 of 3</p></div>
+          </div>
+          <div class="kq-content">
+            <div class="kq-player">
+              <button class="kq-pause" aria-label="Pause">
+                <svg width="16" height="16" viewBox="0 0 16 16"><rect x="2" y="1" width="4.5" height="14" rx="2" fill="currentColor"/><rect x="9.5" y="1" width="4.5" height="14" rx="2" fill="currentColor"/></svg>
+              </button>
+              <span class="kq-eq"><i></i><i></i><i></i></span>
+            </div>
+            <div class="kq-daybar"><span class="veil" style="width:45%"></span><span class="knob" style="left:55%"></span></div>
+            <div class="kq-now">
+              <h4>Big Buck Bunny · Part 2</h4>
+              <p class="sub"><svg viewBox="0 0 20 20" width="18" height="18"><path d="M10 17 C4 12 2 8.5 4.2 6.2 A3.4 3.4 0 0 1 10 7.4 A3.4 3.4 0 0 1 15.8 6.2 C18 8.5 16 12 10 17 Z" fill="#E2705E"/></svg><span><b>Picked by Papa</b> · 8 min</span></p>
+            </div>
+            <p class="kq-quplabel">Up next</p>
+            <div class="kq-qrow">
+              <div class="kq-qcard"></div>
+              <div class="kq-qend">The End 🌙</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <figcaption><b>Same classes, rearranged.</b> Header moves to a corner, arc flattens its curvature
+      slightly, content becomes a centered flow instead of a set of fixed positions — nothing new appears.</figcaption>
+    </figure>
+
+    <figure class="frameshot">
+      <span class="tag">Laptop · 1280px</span>
+      <div class="kqframe" data-tier="wide" data-stage="mid">
+        <div class="kq-sky">
+          <div class="kq-duskveil"></div>
+          <svg class="kq-cloud" style="top:36px; left:90px" width="100" height="34" viewBox="0 0 66 24"><ellipse cx="26" cy="15" rx="26" ry="8.5" fill="#FFFFFF" opacity=".9"/><ellipse cx="46" cy="11" rx="17" ry="7.5" fill="#FFFFFF" opacity=".9"/></svg>
+          <svg class="kq-cloud" style="top:90px; right:120px" width="70" height="26" viewBox="0 0 50 19"><ellipse cx="19" cy="12" rx="19" ry="6.8" fill="#FFFFFF" opacity=".85"/><ellipse cx="36" cy="9" rx="13" ry="5.8" fill="#FFFFFF" opacity=".85"/></svg>
+          <div class="kq-arcwrap">
+            <svg viewBox="0 0 1280 220" preserveAspectRatio="none" aria-hidden="true">
+              <path d="M70 205 Q640 15 1210 205" fill="none" stroke="#E4D6B8" stroke-width="3" stroke-dasharray="1 11" stroke-linecap="round"/>
+              <line x1="70" y1="205" x2="1210" y2="205" stroke="#E4D6B8" stroke-width="3" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <div class="kq-sun" style="left:651px; top:65px">
+            <span class="halo"></span>
+            <svg viewBox="0 0 60 60" aria-hidden="true">
+              <g class="rays"><line x1="30" y1="1.5" x2="30" y2="9.5"/><line x1="50" y1="30" x2="58.5" y2="30"/><line x1="44" y1="16" x2="50" y2="10"/><line x1="44" y1="44" x2="50" y2="50"/><line x1="30" y1="50.5" x2="30" y2="58.5"/><line x1="10" y1="50" x2="16" y2="44"/><line x1="1.5" y1="30" x2="10" y2="30"/><line x1="10" y1="10" x2="16" y2="16"/></g>
+              <circle cx="30" cy="30" r="16.5" fill="#FFC64D"/>
+              <circle cx="24.5" cy="28" r="1.9" fill="#2E2A24"/><circle cx="35.5" cy="28" r="1.9" fill="#2E2A24"/>
+              <path d="M24.5 34.5 Q30 39 35.5 34.5" fill="none" stroke="#2E2A24" stroke-width="2.2" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <span class="kq-timeleft">12 min left</span>
+          <div class="kq-head">
+            <span class="av">A</span>
+            <div><h4>Aarav's watch time</h4><p class="sub">video 2 of 3</p></div>
+          </div>
+          <div class="kq-content">
+            <div class="kq-player">
+              <button class="kq-pause" aria-label="Pause">
+                <svg width="16" height="16" viewBox="0 0 16 16"><rect x="2" y="1" width="4.5" height="14" rx="2" fill="currentColor"/><rect x="9.5" y="1" width="4.5" height="14" rx="2" fill="currentColor"/></svg>
+              </button>
+              <span class="kq-eq"><i></i><i></i><i></i></span>
+            </div>
+            <div class="kq-daybar"><span class="veil" style="width:45%"></span><span class="knob" style="left:55%"></span></div>
+            <div class="kq-now">
+              <h4>Big Buck Bunny · Part 2</h4>
+              <p class="sub"><svg viewBox="0 0 20 20" width="19" height="19"><path d="M10 17 C4 12 2 8.5 4.2 6.2 A3.4 3.4 0 0 1 10 7.4 A3.4 3.4 0 0 1 15.8 6.2 C18 8.5 16 12 10 17 Z" fill="#E2705E"/></svg><span><b>Picked by Papa</b> · 8 min</span></p>
+            </div>
+            <p class="kq-quplabel">Up next</p>
+            <div class="kq-qrow">
+              <div class="kq-qcard"></div>
+              <div class="kq-qend">The End 🌙</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <figcaption><b>Same elements, most room.</b> The player grows with the window (height-aware in the
+      real build) but never stretches edge-to-edge, and the queue stays a small two-card row, not a sidebar list.</figcaption>
+    </figure>
+
+  </div>
+</div>
+
+<!-- ================= SECTION B: full arc range at one width ================= -->
+<div class="pg-section">
+  <h2>Same width, full session range</h2>
+  <p class="sec-sub">Pressure-testing the arc itself: does the sun's position still read as "where we are
+  in the day" once the arc is this wide? Three moments from the same session, laptop width.</p>
+  <div class="row">
+
+    <figure class="frameshot">
+      <span class="tag">Session start</span>
+      <div class="kqframe" data-tier="wide" data-stage="start">
+        <div class="kq-sky">
+          <div class="kq-duskveil"></div>
+          <div class="kq-arcwrap">
+            <svg viewBox="0 0 1280 220" preserveAspectRatio="none" aria-hidden="true">
+              <path d="M70 205 Q640 15 1210 205" fill="none" stroke="#E4D6B8" stroke-width="3" stroke-dasharray="1 11" stroke-linecap="round"/>
+              <line x1="70" y1="205" x2="1210" y2="205" stroke="#E4D6B8" stroke-width="3" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <div class="kq-sun" style="left:161px; top:119px">
+            <span class="halo"></span>
+            <svg viewBox="0 0 60 60" aria-hidden="true">
+              <g class="rays"><line x1="30" y1="1.5" x2="30" y2="9.5"/><line x1="50" y1="30" x2="58.5" y2="30"/><line x1="44" y1="16" x2="50" y2="10"/><line x1="44" y1="44" x2="50" y2="50"/><line x1="30" y1="50.5" x2="30" y2="58.5"/><line x1="10" y1="50" x2="16" y2="44"/><line x1="1.5" y1="30" x2="10" y2="30"/><line x1="10" y1="10" x2="16" y2="16"/></g>
+              <circle cx="30" cy="30" r="16.5" fill="#FFC64D"/>
+              <circle cx="24.5" cy="28" r="1.9" fill="#2E2A24"/><circle cx="35.5" cy="28" r="1.9" fill="#2E2A24"/>
+              <path d="M24.5 34.5 Q30 39 35.5 34.5" fill="none" stroke="#2E2A24" stroke-width="2.2" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <span class="kq-timeleft">24 min left</span>
+          <div class="kq-head">
+            <span class="av">A</span>
+            <div><h4>Aarav's watch time</h4><p class="sub">video 1 of 3</p></div>
+          </div>
+          <div class="kq-content">
+            <div class="kq-player">
+              <button class="kq-pause" aria-label="Pause">
+                <svg width="16" height="16" viewBox="0 0 16 16"><rect x="2" y="1" width="4.5" height="14" rx="2" fill="currentColor"/><rect x="9.5" y="1" width="4.5" height="14" rx="2" fill="currentColor"/></svg>
+              </button>
+              <span class="kq-eq"><i></i><i></i><i></i></span>
+            </div>
+            <div class="kq-daybar"><span class="veil" style="width:80%"></span><span class="knob" style="left:20%"></span></div>
+            <div class="kq-now">
+              <h4>Big Buck Bunny · Part 1</h4>
+              <p class="sub"><svg viewBox="0 0 20 20" width="19" height="19"><path d="M10 17 C4 12 2 8.5 4.2 6.2 A3.4 3.4 0 0 1 10 7.4 A3.4 3.4 0 0 1 15.8 6.2 C18 8.5 16 12 10 17 Z" fill="#E2705E"/></svg><span><b>Picked by Mumma</b> · 8 min</span></p>
+            </div>
+            <p class="kq-quplabel">Up next</p>
+            <div class="kq-qrow">
+              <div class="kq-qcard"></div>
+              <div class="kq-qend">The End 🌙</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </figure>
+
+    <figure class="frameshot">
+      <span class="tag">Mid-session</span>
+      <div class="kqframe" data-tier="wide" data-stage="mid">
+        <div class="kq-sky">
+          <div class="kq-duskveil"></div>
+          <div class="kq-arcwrap">
+            <svg viewBox="0 0 1280 220" preserveAspectRatio="none" aria-hidden="true">
+              <path d="M70 205 Q640 15 1210 205" fill="none" stroke="#E4D6B8" stroke-width="3" stroke-dasharray="1 11" stroke-linecap="round"/>
+              <line x1="70" y1="205" x2="1210" y2="205" stroke="#E4D6B8" stroke-width="3" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <div class="kq-sun" style="left:651px; top:65px">
+            <span class="halo"></span>
+            <svg viewBox="0 0 60 60" aria-hidden="true">
+              <g class="rays"><line x1="30" y1="1.5" x2="30" y2="9.5"/><line x1="50" y1="30" x2="58.5" y2="30"/><line x1="44" y1="16" x2="50" y2="10"/><line x1="44" y1="44" x2="50" y2="50"/><line x1="30" y1="50.5" x2="30" y2="58.5"/><line x1="10" y1="50" x2="16" y2="44"/><line x1="1.5" y1="30" x2="10" y2="30"/><line x1="10" y1="10" x2="16" y2="16"/></g>
+              <circle cx="30" cy="30" r="16.5" fill="#FFC64D"/>
+              <circle cx="24.5" cy="28" r="1.9" fill="#2E2A24"/><circle cx="35.5" cy="28" r="1.9" fill="#2E2A24"/>
+              <path d="M24.5 34.5 Q30 39 35.5 34.5" fill="none" stroke="#2E2A24" stroke-width="2.2" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <span class="kq-timeleft">12 min left</span>
+          <div class="kq-head">
+            <span class="av">A</span>
+            <div><h4>Aarav's watch time</h4><p class="sub">video 2 of 3</p></div>
+          </div>
+          <div class="kq-content">
+            <div class="kq-player">
+              <button class="kq-pause" aria-label="Pause">
+                <svg width="16" height="16" viewBox="0 0 16 16"><rect x="2" y="1" width="4.5" height="14" rx="2" fill="currentColor"/><rect x="9.5" y="1" width="4.5" height="14" rx="2" fill="currentColor"/></svg>
+              </button>
+              <span class="kq-eq"><i></i><i></i><i></i></span>
+            </div>
+            <div class="kq-daybar"><span class="veil" style="width:45%"></span><span class="knob" style="left:55%"></span></div>
+            <div class="kq-now">
+              <h4>Big Buck Bunny · Part 2</h4>
+              <p class="sub"><svg viewBox="0 0 20 20" width="19" height="19"><path d="M10 17 C4 12 2 8.5 4.2 6.2 A3.4 3.4 0 0 1 10 7.4 A3.4 3.4 0 0 1 15.8 6.2 C18 8.5 16 12 10 17 Z" fill="#E2705E"/></svg><span><b>Picked by Papa</b> · 8 min</span></p>
+            </div>
+            <p class="kq-quplabel">Up next</p>
+            <div class="kq-qrow">
+              <div class="kq-qcard"></div>
+              <div class="kq-qend">The End 🌙</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </figure>
+
+    <figure class="frameshot">
+      <span class="tag">Last minute</span>
+      <div class="kqframe" data-tier="wide" data-stage="end">
+        <div class="kq-sky">
+          <div class="kq-duskveil"></div>
+          <div class="kq-arcwrap">
+            <svg viewBox="0 0 1280 220" preserveAspectRatio="none" aria-hidden="true">
+              <path d="M70 205 Q640 15 1210 205" fill="none" stroke="#E4D6B8" stroke-width="3" stroke-dasharray="1 11" stroke-linecap="round"/>
+              <line x1="70" y1="205" x2="1210" y2="205" stroke="#E4D6B8" stroke-width="3" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <div class="kq-sun" style="left:1073px; top:131px">
+            <span class="halo"></span>
+            <svg viewBox="0 0 60 60" aria-hidden="true">
+              <g class="rays"><line x1="30" y1="1.5" x2="30" y2="9.5"/><line x1="50" y1="30" x2="58.5" y2="30"/><line x1="44" y1="16" x2="50" y2="10"/><line x1="44" y1="44" x2="50" y2="50"/><line x1="30" y1="50.5" x2="30" y2="58.5"/><line x1="10" y1="50" x2="16" y2="44"/><line x1="1.5" y1="30" x2="10" y2="30"/><line x1="10" y1="10" x2="16" y2="16"/></g>
+              <circle cx="30" cy="30" r="16.5" fill="#FFC64D"/>
+              <circle cx="24.5" cy="28" r="1.9" fill="#2E2A24"/><circle cx="35.5" cy="28" r="1.9" fill="#2E2A24"/>
+              <path d="M24.5 34.5 Q30 39 35.5 34.5" fill="none" stroke="#2E2A24" stroke-width="2.2" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <span class="kq-timeleft">1 min left</span>
+          <div class="kq-head">
+            <span class="av">A</span>
+            <div><h4>Aarav's watch time</h4><p class="sub">video 3 of 3</p></div>
+          </div>
+          <div class="kq-content">
+            <div class="kq-player">
+              <button class="kq-pause" aria-label="Pause">
+                <svg width="16" height="16" viewBox="0 0 16 16"><rect x="2" y="1" width="4.5" height="14" rx="2" fill="currentColor"/><rect x="9.5" y="1" width="4.5" height="14" rx="2" fill="currentColor"/></svg>
+              </button>
+              <span class="kq-eq"><i></i><i></i><i></i></span>
+            </div>
+            <div class="kq-daybar"><span class="veil" style="width:4%"></span><span class="knob" style="left:96%"></span></div>
+            <div class="kq-now">
+              <h4>Big Buck Bunny · Part 3</h4>
+              <p class="sub"><svg viewBox="0 0 20 20" width="19" height="19"><path d="M10 17 C4 12 2 8.5 4.2 6.2 A3.4 3.4 0 0 1 10 7.4 A3.4 3.4 0 0 1 15.8 6.2 C18 8.5 16 12 10 17 Z" fill="#E2705E"/></svg><span><b>Picked by Mumma &amp; Papa</b> · 8 min</span></p>
+            </div>
+            <p class="kq-quplabel">Up next</p>
+            <div class="kq-qrow">
+              <div class="kq-qend">The End 🌙</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </figure>
+
+  </div>
+  <p class="sec-sub" style="margin-top:26px"><b>Reading the range:</b> the sun's height above the horizon
+  line still tells the story at a glance — low-and-rising at the start, cresting mid-session, dipping back
+  toward the horizon under a dusk wash in the last minute — the same shape as the phone version, just
+  wider. The day-progress-bar underneath tracks the same three moments in parallel, the way it already
+  does on phone.</p>
+</div>
+
+<!-- ================= SECTION C: cast-sender pairing ================= -->
+<div class="pg-section">
+  <h2>Cast-sender pairing</h2>
+  <p class="sec-sub">Whichever device is casting — phone or laptop — becomes this: sky-as-clock and
+  remote, no player card, one pause button. Same arc and sun components as the watching screen above,
+  same phone/laptop parity.</p>
+  <div class="row">
+
+    <figure class="frameshot">
+      <span class="tag">Phone · 390px</span>
+      <div class="kqframe" data-tier="phone" data-stage="mid">
+        <div class="kq-sky">
+          <div class="kq-duskveil"></div>
+          <svg class="kq-cloud" style="top:120px" width="66" height="24" viewBox="0 0 66 24"><ellipse cx="26" cy="15" rx="26" ry="8.5" fill="#FFFFFF" opacity=".9"/><ellipse cx="46" cy="11" rx="17" ry="7.5" fill="#FFFFFF" opacity=".9"/></svg>
+          <div class="kq-arcwrap" style="top:120px; height:300px">
+            <svg viewBox="0 0 390 300" preserveAspectRatio="none" aria-hidden="true">
+              <path d="M28 296 Q195 -30 362 296" fill="none" stroke="#E4D6B8" stroke-width="2.5" stroke-dasharray="1 9" stroke-linecap="round"/>
+              <line x1="28" y1="296" x2="362" y2="296" stroke="#E4D6B8" stroke-width="2.5" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <div class="kq-sun" style="left:157px; top:200px; width:110px; height:110px">
+            <span class="halo"></span>
+            <svg viewBox="0 0 60 60" aria-hidden="true">
+              <g class="rays"><line x1="30" y1="1.5" x2="30" y2="9.5"/><line x1="50" y1="30" x2="58.5" y2="30"/><line x1="44" y1="16" x2="50" y2="10"/><line x1="44" y1="44" x2="50" y2="50"/><line x1="30" y1="50.5" x2="30" y2="58.5"/><line x1="10" y1="50" x2="16" y2="44"/><line x1="1.5" y1="30" x2="10" y2="30"/><line x1="10" y1="10" x2="16" y2="16"/></g>
+              <circle cx="30" cy="30" r="16.5" fill="#FFC64D"/>
+              <circle cx="24.5" cy="28" r="1.9" fill="#2E2A24"/><circle cx="35.5" cy="28" r="1.9" fill="#2E2A24"/>
+              <path d="M24.5 34.5 Q30 39 35.5 34.5" fill="none" stroke="#2E2A24" stroke-width="2.2" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <span class="kq-timeleft" style="top:430px">12 min left</span>
+          <p class="kq-castpill">
+            <svg width="17" height="14" viewBox="0 0 20 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="1" width="18" height="12" rx="2"/><path d="M6 15 h8"/></svg>
+            <span>Playing on Living Room TV</span>
+          </p>
+          <div class="kq-content">
+            <div class="kq-now" style="top:auto; bottom:268px; position:absolute">
+              <h4>Big Buck Bunny · Part 2</h4>
+              <p class="sub"><svg viewBox="0 0 20 20" width="18" height="18"><path d="M10 17 C4 12 2 8.5 4.2 6.2 A3.4 3.4 0 0 1 10 7.4 A3.4 3.4 0 0 1 15.8 6.2 C18 8.5 16 12 10 17 Z" fill="#E2705E"/></svg><span><b>Picked by Mumma</b> · 8 min</span></p>
+            </div>
+            <button class="kq-bigpause" aria-label="Pause the video on the TV">
+              <svg width="24" height="24" viewBox="0 0 16 16"><rect x="2.5" y="1.5" width="4" height="13" rx="1.8" fill="currentColor"/><rect x="9.5" y="1.5" width="4" height="13" rx="1.8" fill="currentColor"/></svg>
+            </button>
+            <p class="kq-quplabel">Up next</p>
+            <div class="kq-qrow">
+              <div class="kq-qcard"></div>
+              <div class="kq-qend">The End 🌙</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <figcaption><b>Parity check.</b> Matches the locked cast-mode mock (Screen 7).</figcaption>
+    </figure>
+
+    <figure class="frameshot">
+      <span class="tag">Laptop · 1280px</span>
+      <div class="kqframe" data-tier="wide" data-stage="mid">
+        <div class="kq-sky">
+          <div class="kq-duskveil"></div>
+          <svg class="kq-cloud" style="top:40px; left:100px" width="100" height="34" viewBox="0 0 66 24"><ellipse cx="26" cy="15" rx="26" ry="8.5" fill="#FFFFFF" opacity=".9"/><ellipse cx="46" cy="11" rx="17" ry="7.5" fill="#FFFFFF" opacity=".9"/></svg>
+          <div class="kq-arcwrap">
+            <svg viewBox="0 0 1280 220" preserveAspectRatio="none" aria-hidden="true">
+              <path d="M70 205 Q640 15 1210 205" fill="none" stroke="#E4D6B8" stroke-width="3" stroke-dasharray="1 11" stroke-linecap="round"/>
+              <line x1="70" y1="205" x2="1210" y2="205" stroke="#E4D6B8" stroke-width="3" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <div class="kq-sun" style="left:651px; top:65px">
+            <span class="halo"></span>
+            <svg viewBox="0 0 60 60" aria-hidden="true">
+              <g class="rays"><line x1="30" y1="1.5" x2="30" y2="9.5"/><line x1="50" y1="30" x2="58.5" y2="30"/><line x1="44" y1="16" x2="50" y2="10"/><line x1="44" y1="44" x2="50" y2="50"/><line x1="30" y1="50.5" x2="30" y2="58.5"/><line x1="10" y1="50" x2="16" y2="44"/><line x1="1.5" y1="30" x2="10" y2="30"/><line x1="10" y1="10" x2="16" y2="16"/></g>
+              <circle cx="30" cy="30" r="16.5" fill="#FFC64D"/>
+              <circle cx="24.5" cy="28" r="1.9" fill="#2E2A24"/><circle cx="35.5" cy="28" r="1.9" fill="#2E2A24"/>
+              <path d="M24.5 34.5 Q30 39 35.5 34.5" fill="none" stroke="#2E2A24" stroke-width="2.2" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <span class="kq-timeleft">12 min left</span>
+          <p class="kq-castpill">
+            <svg width="18" height="15" viewBox="0 0 20 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="1" width="18" height="12" rx="2"/><path d="M6 15 h8"/></svg>
+            <span>Playing on Living Room TV</span>
+          </p>
+          <div class="kq-content">
+            <div class="kq-now">
+              <h4>Big Buck Bunny · Part 2</h4>
+              <p class="sub"><svg viewBox="0 0 20 20" width="19" height="19"><path d="M10 17 C4 12 2 8.5 4.2 6.2 A3.4 3.4 0 0 1 10 7.4 A3.4 3.4 0 0 1 15.8 6.2 C18 8.5 16 12 10 17 Z" fill="#E2705E"/></svg><span><b>Picked by Mumma</b> · 8 min</span></p>
+            </div>
+            <button class="kq-bigpause" style="position:static; margin-left:0; margin-top:26px" aria-label="Pause the video on the TV">
+              <svg width="26" height="26" viewBox="0 0 16 16"><rect x="2.5" y="1.5" width="4" height="13" rx="1.8" fill="currentColor"/><rect x="9.5" y="1.5" width="4" height="13" rx="1.8" fill="currentColor"/></svg>
+            </button>
+            <p class="kq-quplabel">Up next</p>
+            <div class="kq-qrow">
+              <div class="kq-qcard"></div>
+              <div class="kq-qend">The End 🌙</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <figcaption><b>No player card.</b> The whole screen is the sky — the same composition the watching
+      screen uses above, minus the video itself, since the TV is playing it.</figcaption>
+    </figure>
+
+  </div>
+</div>
+
+<!-- ================= SECTION D: who's watching (login entry) ================= -->
+<div class="pg-section">
+  <h2>Who's watching — the child's front door</h2>
+  <p class="sec-sub">New in round 2: the login pairing. Parent setup happened in the parent app;
+  the child's only "login" is tapping their own face. Pre-dawn sky — story-wise this sits
+  <b>before</b> the sunrise screen: pick who you are, then <b>your</b> sun rises. Shown on every
+  open (shared devices are the norm). No parent-facing controls anywhere in child mode — picking and settings live in the parent app.</p>
+  <div class="row">
+
+    <figure class="frameshot">
+      <span class="tag">Phone · 390px</span>
+      <div class="kqframe" data-tier="phone">
+        <div class="kq-sky kq-sky--predawn">
+          <span class="kq-star" style="left:15%; top:8%"></span>
+          <span class="kq-star" style="left:82%; top:12%; animation-delay:-1.2s; width:3px; height:3px"></span>
+          <span class="kq-star" style="left:66%; top:22%; animation-delay:-2.5s"></span>
+          <span class="kq-star" style="left:24%; top:30%; animation-delay:-.7s; width:3px; height:3px"></span>
+          <div class="kq-centercol">
+            <h3 class="kq-whotitle">Who's watching<br>today?</h3>
+            <div class="kq-whorow">
+              <button class="kq-who" aria-label="Aarav — tap to start your day">
+                <span class="facewrap"><span class="halo"></span>
+                  <svg viewBox="0 0 64 64" aria-hidden="true">
+                    <circle class="avdisc" cx="32" cy="32" r="30" fill="#1F7A6D"/>
+                    <circle cx="25.5" cy="29" r="2.4" fill="#FAF4E8"/><circle cx="38.5" cy="29" r="2.4" fill="#FAF4E8"/>
+                    <path d="M24.5 37 Q32 43 39.5 37" fill="none" stroke="#FAF4E8" stroke-width="2.6" stroke-linecap="round"/>
+                  </svg>
+                </span>
+                <span class="name">Aarav</span>
+              </button>
+              <button class="kq-who" aria-label="Meera — tap to start your day">
+                <span class="facewrap"><span class="halo"></span>
+                  <svg viewBox="0 0 64 64" aria-hidden="true">
+                    <circle class="avdisc" cx="32" cy="32" r="30" fill="#C9B8E8"/>
+                    <circle cx="25.5" cy="29" r="2.4" fill="#2E2A24"/><circle cx="38.5" cy="29" r="2.4" fill="#2E2A24"/>
+                    <path d="M24.5 37 Q32 43 39.5 37" fill="none" stroke="#2E2A24" stroke-width="2.6" stroke-linecap="round"/>
+                  </svg>
+                </span>
+                <span class="name">Meera</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <figcaption><b>Tap your face, your sun rises.</b> No password, no add-profile button
+      (profiles are made in the parent app). One action per screen: the avatars.</figcaption>
+    </figure>
+
+    <figure class="frameshot">
+      <span class="tag">Tablet landscape · 900px</span>
+      <div class="kqframe" data-tier="tablet">
+        <div class="kq-sky kq-sky--predawn">
+          <span class="kq-star" style="left:10%; top:12%"></span>
+          <span class="kq-star" style="left:88%; top:16%; animation-delay:-1.2s; width:3px; height:3px"></span>
+          <span class="kq-star" style="left:70%; top:8%; animation-delay:-2.5s"></span>
+          <div class="kq-centercol">
+            <h3 class="kq-whotitle">Who's watching<br>today?</h3>
+            <div class="kq-whorow">
+              <button class="kq-who" aria-label="Aarav — tap to start your day">
+                <span class="facewrap"><span class="halo"></span>
+                  <svg viewBox="0 0 64 64" aria-hidden="true">
+                    <circle class="avdisc" cx="32" cy="32" r="30" fill="#1F7A6D"/>
+                    <circle cx="25.5" cy="29" r="2.4" fill="#FAF4E8"/><circle cx="38.5" cy="29" r="2.4" fill="#FAF4E8"/>
+                    <path d="M24.5 37 Q32 43 39.5 37" fill="none" stroke="#FAF4E8" stroke-width="2.6" stroke-linecap="round"/>
+                  </svg>
+                </span>
+                <span class="name">Aarav</span>
+              </button>
+              <button class="kq-who" aria-label="Meera — tap to start your day">
+                <span class="facewrap"><span class="halo"></span>
+                  <svg viewBox="0 0 64 64" aria-hidden="true">
+                    <circle class="avdisc" cx="32" cy="32" r="30" fill="#C9B8E8"/>
+                    <circle cx="25.5" cy="29" r="2.4" fill="#2E2A24"/><circle cx="38.5" cy="29" r="2.4" fill="#2E2A24"/>
+                    <path d="M24.5 37 Q32 43 39.5 37" fill="none" stroke="#2E2A24" stroke-width="2.6" stroke-linecap="round"/>
+                  </svg>
+                </span>
+                <span class="name">Meera</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <figcaption><b>Same two faces, more sky.</b> The row just breathes wider.</figcaption>
+    </figure>
+
+    <figure class="frameshot">
+      <span class="tag">Laptop · 1280px</span>
+      <div class="kqframe" data-tier="wide">
+        <div class="kq-sky kq-sky--predawn">
+          <span class="kq-star" style="left:8%; top:10%"></span>
+          <span class="kq-star" style="left:90%; top:14%; animation-delay:-1.2s; width:3px; height:3px"></span>
+          <span class="kq-star" style="left:74%; top:6%; animation-delay:-2.5s"></span>
+          <span class="kq-star" style="left:20%; top:26%; animation-delay:-.7s; width:3px; height:3px"></span>
+          <div class="kq-centercol">
+            <h3 class="kq-whotitle">Who's watching<br>today?</h3>
+            <div class="kq-whorow">
+              <button class="kq-who" aria-label="Aarav — tap to start your day">
+                <span class="facewrap"><span class="halo"></span>
+                  <svg viewBox="0 0 64 64" aria-hidden="true">
+                    <circle class="avdisc" cx="32" cy="32" r="30" fill="#1F7A6D"/>
+                    <circle cx="25.5" cy="29" r="2.4" fill="#FAF4E8"/><circle cx="38.5" cy="29" r="2.4" fill="#FAF4E8"/>
+                    <path d="M24.5 37 Q32 43 39.5 37" fill="none" stroke="#FAF4E8" stroke-width="2.6" stroke-linecap="round"/>
+                  </svg>
+                </span>
+                <span class="name">Aarav</span>
+              </button>
+              <button class="kq-who" aria-label="Meera — tap to start your day">
+                <span class="facewrap"><span class="halo"></span>
+                  <svg viewBox="0 0 64 64" aria-hidden="true">
+                    <circle class="avdisc" cx="32" cy="32" r="30" fill="#C9B8E8"/>
+                    <circle cx="25.5" cy="29" r="2.4" fill="#2E2A24"/><circle cx="38.5" cy="29" r="2.4" fill="#2E2A24"/>
+                    <path d="M24.5 37 Q32 43 39.5 37" fill="none" stroke="#2E2A24" stroke-width="2.6" stroke-linecap="round"/>
+                  </svg>
+                </span>
+                <span class="name">Meera</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <figcaption><b>Laptop.</b> Avatars scale up (150px), the title gets display size —
+      nothing new appears at width, per the frozen-inventory rule.</figcaption>
+    </figure>
+
+  </div>
+</div>
+
+<!-- ================= SECTION F: no session yet (with yesterday) ================= -->
+<div class="pg-section">
+  <h2>No session yet — now with yesterday</h2>
+  <p class="sec-sub">The phone set's sleeping-sun screen, joining the desktop system — with one
+  addition from group feedback: a replay of <b>yesterday's</b> parent-picked session when one
+  exists. A memory, not a library: one tap, one normal finite session, no browsing.</p>
+  <div class="row">
+
+    <figure class="frameshot">
+      <span class="tag">Yesterday exists · Phone · 390px</span>
+      <div class="kqframe" data-tier="phone">
+        <div class="kq-sky kq-sky--night">
+          <span class="kq-star" style="left:14%; top:9%"></span>
+          <span class="kq-star" style="left:80%; top:6%; animation-delay:-1.1s; width:3px; height:3px"></span>
+          <span class="kq-star" style="left:62%; top:16%; animation-delay:-2.4s"></span>
+          <span class="kq-star" style="left:28%; top:24%; animation-delay:-.6s; width:3px; height:3px"></span>
+          <span class="kq-star" style="left:10%; top:44%; animation-delay:-1.4s"></span>
+          <button class="kq-moonbtn" aria-label="Sleepy moon">
+            <span class="kq-moonhalo"></span>
+            <svg class="kq-moon" viewBox="0 0 64 64" aria-hidden="true">
+              <circle cx="32" cy="32" r="26" fill="#FAF4E8"/><circle cx="21" cy="24" r="4" fill="#E4D6B8"/>
+              <circle cx="42" cy="43" r="3" fill="#E4D6B8"/>
+              <path d="M23 31 q3 2.5 6 0" stroke="#6B6459" stroke-width="2" fill="none" stroke-linecap="round"/>
+              <path d="M35 31 q3 2.5 6 0" stroke="#6B6459" stroke-width="2" fill="none" stroke-linecap="round"/>
+              <path d="M27 39.5 Q32 43.5 37 39.5" stroke="#6B6459" stroke-width="2" fill="none" stroke-linecap="round"/>
+            </svg>
+          </button>
+          <div class="kq-centercol" style="gap:20px">
+            <h3 class="kq-nsgreet">The sun is<br>still asleep!</h3>
+            <p class="kq-nsask">
+              <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 17 C4 12 2 8.5 4.2 6.2 A3.4 3.4 0 0 1 10 7.4 A3.4 3.4 0 0 1 15.8 6.2 C18 8.5 16 12 10 17 Z" fill="none" stroke="#E2705E" stroke-width="1.8"/></svg>
+              <span>Ask Mumma or Papa to pick today's videos</span>
+            </p>
+            <button class="kq-sleepsun" aria-label="The sun is still sleeping — no videos picked yet">
+              <span class="halo"></span>
+              <span class="kq-zz" style="right:8px; top:2px; font-size:22px">z</span>
+              <span class="kq-zz" style="right:-8px; top:14px; font-size:16px; animation-delay:-1.2s">z</span>
+              <svg viewBox="0 0 60 60" aria-hidden="true">
+                <g class="rays2">
+                  <line x1="30" y1="1.5" x2="30" y2="9.5"/><line x1="50" y1="30" x2="58.5" y2="30"/>
+                  <line x1="44" y1="16" x2="50" y2="10"/><line x1="44" y1="44" x2="50" y2="50"/>
+                  <line x1="30" y1="50.5" x2="30" y2="58.5"/><line x1="10" y1="50" x2="16" y2="44"/>
+                  <line x1="1.5" y1="30" x2="10" y2="30"/><line x1="10" y1="10" x2="16" y2="16"/>
+                </g>
+                <circle cx="30" cy="30" r="16.5" fill="#FFC64D"/>
+                <g stroke="#2E2A24" stroke-width="2" fill="none" stroke-linecap="round">
+                  <path d="M21.5 28.5 q3 2.6 6 0"/><path d="M32.5 28.5 q3 2.6 6 0"/>
+                </g>
+                <path d="M26.5 35 Q30 37.5 33.5 35" fill="none" stroke="#2E2A24" stroke-width="2.2" stroke-linecap="round"/>
+              </svg>
+            </button>
+            <button class="kq-yesterday">
+              <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 17 C4 12 2 8.5 4.2 6.2 A3.4 3.4 0 0 1 10 7.4 A3.4 3.4 0 0 1 15.8 6.2 C18 8.5 16 12 10 17 Z" fill="#E2705E"/></svg>
+              <span>Watch yesterday's videos again?</span>
+            </button>
+          </div>
+        </div>
+      </div>
+      <figcaption><b>Yesterday had a session.</b> The replay pill carries the filled heart —
+      it's still parent-picked content. Tapping it starts yesterday's picks as one normal
+      finite session: the sun rises and sets as usual, "The End 🌙" still lands.</figcaption>
+    </figure>
+
+    <figure class="frameshot">
+      <span class="tag">Yesterday exists · Laptop · 1280px</span>
+      <div class="kqframe" data-tier="wide">
+        <div class="kq-sky kq-sky--night">
+          <span class="kq-star" style="left:8%; top:10%"></span>
+          <span class="kq-star" style="left:90%; top:14%; animation-delay:-1.2s; width:3px; height:3px"></span>
+          <span class="kq-star" style="left:72%; top:24%; animation-delay:-2.5s"></span>
+          <span class="kq-star" style="left:22%; top:30%; animation-delay:-.7s; width:3px; height:3px"></span>
+          <button class="kq-moonbtn" aria-label="Sleepy moon">
+            <span class="kq-moonhalo"></span>
+            <svg class="kq-moon" viewBox="0 0 64 64" aria-hidden="true">
+              <circle cx="32" cy="32" r="26" fill="#FAF4E8"/><circle cx="21" cy="24" r="4" fill="#E4D6B8"/>
+              <circle cx="42" cy="43" r="3" fill="#E4D6B8"/>
+              <path d="M23 31 q3 2.5 6 0" stroke="#6B6459" stroke-width="2" fill="none" stroke-linecap="round"/>
+              <path d="M35 31 q3 2.5 6 0" stroke="#6B6459" stroke-width="2" fill="none" stroke-linecap="round"/>
+              <path d="M27 39.5 Q32 43.5 37 39.5" stroke="#6B6459" stroke-width="2" fill="none" stroke-linecap="round"/>
+            </svg>
+          </button>
+          <div class="kq-centercol" style="gap:20px">
+            <h3 class="kq-nsgreet">The sun is<br>still asleep!</h3>
+            <p class="kq-nsask">
+              <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 17 C4 12 2 8.5 4.2 6.2 A3.4 3.4 0 0 1 10 7.4 A3.4 3.4 0 0 1 15.8 6.2 C18 8.5 16 12 10 17 Z" fill="none" stroke="#E2705E" stroke-width="1.8"/></svg>
+              <span>Ask Mumma or Papa to pick today's videos</span>
+            </p>
+            <button class="kq-sleepsun" aria-label="The sun is still sleeping — no videos picked yet">
+              <span class="halo"></span>
+              <span class="kq-zz" style="right:8px; top:2px; font-size:22px">z</span>
+              <span class="kq-zz" style="right:-8px; top:14px; font-size:16px; animation-delay:-1.2s">z</span>
+              <svg viewBox="0 0 60 60" aria-hidden="true">
+                <g class="rays2">
+                  <line x1="30" y1="1.5" x2="30" y2="9.5"/><line x1="50" y1="30" x2="58.5" y2="30"/>
+                  <line x1="44" y1="16" x2="50" y2="10"/><line x1="44" y1="44" x2="50" y2="50"/>
+                  <line x1="30" y1="50.5" x2="30" y2="58.5"/><line x1="10" y1="50" x2="16" y2="44"/>
+                  <line x1="1.5" y1="30" x2="10" y2="30"/><line x1="10" y1="10" x2="16" y2="16"/>
+                </g>
+                <circle cx="30" cy="30" r="16.5" fill="#FFC64D"/>
+                <g stroke="#2E2A24" stroke-width="2" fill="none" stroke-linecap="round">
+                  <path d="M21.5 28.5 q3 2.6 6 0"/><path d="M32.5 28.5 q3 2.6 6 0"/>
+                </g>
+                <path d="M26.5 35 Q30 37.5 33.5 35" fill="none" stroke="#2E2A24" stroke-width="2.2" stroke-linecap="round"/>
+              </svg>
+            </button>
+            <button class="kq-yesterday">
+              <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 17 C4 12 2 8.5 4.2 6.2 A3.4 3.4 0 0 1 10 7.4 A3.4 3.4 0 0 1 15.8 6.2 C18 8.5 16 12 10 17 Z" fill="#E2705E"/></svg>
+              <span>Watch yesterday's videos again?</span>
+            </button>
+          </div>
+        </div>
+      </div>
+      <figcaption><b>Laptop.</b> Moon drifts to the upper corner, the column gets air —
+      inventory identical to phone.</figcaption>
+    </figure>
+
+    <figure class="frameshot">
+      <span class="tag">No yesterday · Phone · 390px</span>
+      <div class="kqframe" data-tier="phone">
+        <div class="kq-sky kq-sky--night">
+          <span class="kq-star" style="left:14%; top:9%"></span>
+          <span class="kq-star" style="left:80%; top:6%; animation-delay:-1.1s; width:3px; height:3px"></span>
+          <span class="kq-star" style="left:62%; top:16%; animation-delay:-2.4s"></span>
+          <span class="kq-star" style="left:28%; top:24%; animation-delay:-.6s; width:3px; height:3px"></span>
+          <span class="kq-star" style="left:10%; top:44%; animation-delay:-1.4s"></span>
+          <button class="kq-moonbtn" aria-label="Sleepy moon">
+            <span class="kq-moonhalo"></span>
+            <svg class="kq-moon" viewBox="0 0 64 64" aria-hidden="true">
+              <circle cx="32" cy="32" r="26" fill="#FAF4E8"/><circle cx="21" cy="24" r="4" fill="#E4D6B8"/>
+              <circle cx="42" cy="43" r="3" fill="#E4D6B8"/>
+              <path d="M23 31 q3 2.5 6 0" stroke="#6B6459" stroke-width="2" fill="none" stroke-linecap="round"/>
+              <path d="M35 31 q3 2.5 6 0" stroke="#6B6459" stroke-width="2" fill="none" stroke-linecap="round"/>
+              <path d="M27 39.5 Q32 43.5 37 39.5" stroke="#6B6459" stroke-width="2" fill="none" stroke-linecap="round"/>
+            </svg>
+          </button>
+          <div class="kq-centercol" style="gap:20px">
+            <h3 class="kq-nsgreet">The sun is<br>still asleep!</h3>
+            <p class="kq-nsask">
+              <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 17 C4 12 2 8.5 4.2 6.2 A3.4 3.4 0 0 1 10 7.4 A3.4 3.4 0 0 1 15.8 6.2 C18 8.5 16 12 10 17 Z" fill="none" stroke="#E2705E" stroke-width="1.8"/></svg>
+              <span>Ask Mumma or Papa to pick today's videos</span>
+            </p>
+            <button class="kq-sleepsun" aria-label="The sun is still sleeping — no videos picked yet">
+              <span class="halo"></span>
+              <span class="kq-zz" style="right:8px; top:2px; font-size:22px">z</span>
+              <span class="kq-zz" style="right:-8px; top:14px; font-size:16px; animation-delay:-1.2s">z</span>
+              <svg viewBox="0 0 60 60" aria-hidden="true">
+                <g class="rays2">
+                  <line x1="30" y1="1.5" x2="30" y2="9.5"/><line x1="50" y1="30" x2="58.5" y2="30"/>
+                  <line x1="44" y1="16" x2="50" y2="10"/><line x1="44" y1="44" x2="50" y2="50"/>
+                  <line x1="30" y1="50.5" x2="30" y2="58.5"/><line x1="10" y1="50" x2="16" y2="44"/>
+                  <line x1="1.5" y1="30" x2="10" y2="30"/><line x1="10" y1="10" x2="16" y2="16"/>
+                </g>
+                <circle cx="30" cy="30" r="16.5" fill="#FFC64D"/>
+                <g stroke="#2E2A24" stroke-width="2" fill="none" stroke-linecap="round">
+                  <path d="M21.5 28.5 q3 2.6 6 0"/><path d="M32.5 28.5 q3 2.6 6 0"/>
+                </g>
+                <path d="M26.5 35 Q30 37.5 33.5 35" fill="none" stroke="#2E2A24" stroke-width="2.2" stroke-linecap="round"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+      <figcaption><b>No session yesterday either.</b> The replay pill simply isn't there — the
+      screen falls back to the locked original: sleeping sun, no child CTA, stir-without-waking.</figcaption>
+    </figure>
+
+  </div>
+</div>
+
+<!-- ================= SECTION G: after-break choice (within the parent's picks) ================= -->
+<div class="pg-section">
+  <h2>After the break — choose from Mumma-Papa's picks</h2>
+  <p class="sec-sub">From group feedback on the player flow, adopted as <b>choice within the
+  parent's basket</b>: when the break ends and the sun is back in its seat, the child can tap the
+  sun for the next video in order — or tap any of the remaining parent-picked cards to watch that
+  one instead. No recommendations, no algorithm, nothing new enters the queue; "The End 🌙" stays
+  where it is. (This deliberately reopens the earlier "child has no queue control" decision —
+  approved for reaction.) Session shown: 4 videos, 2 remaining.</p>
+  <div class="row">
+
+    <figure class="frameshot">
+      <span class="tag">Phone · 390px</span>
+      <div class="kqframe" data-tier="phone" data-stage="mid">
+        <div class="kq-sky">
+          <div class="kq-duskveil"></div>
+          <svg class="kq-cloud" style="top:96px" width="66" height="24" viewBox="0 0 66 24"><ellipse cx="26" cy="15" rx="26" ry="8.5" fill="#FFFFFF" opacity=".9"/><ellipse cx="46" cy="11" rx="17" ry="7.5" fill="#FFFFFF" opacity=".9"/></svg>
+          <div class="kq-arcwrap">
+            <svg viewBox="0 0 390 220" preserveAspectRatio="none" aria-hidden="true">
+              <path d="M28 216 Q195 -20 362 216" fill="none" stroke="#E4D6B8" stroke-width="2.5" stroke-dasharray="1 9" stroke-linecap="round"/>
+              <line x1="28" y1="216" x2="362" y2="216" stroke="#E4D6B8" stroke-width="2.5" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <div class="kq-sun kq-sunpick" style="left:180px; top:137px">
+            <span class="halo"></span>
+            <svg viewBox="0 0 60 60" aria-hidden="true">
+              <g class="rays"><line x1="30" y1="1.5" x2="30" y2="9.5"/><line x1="50" y1="30" x2="58.5" y2="30"/><line x1="44" y1="16" x2="50" y2="10"/><line x1="44" y1="44" x2="50" y2="50"/><line x1="30" y1="50.5" x2="30" y2="58.5"/><line x1="10" y1="50" x2="16" y2="44"/><line x1="1.5" y1="30" x2="10" y2="30"/><line x1="10" y1="10" x2="16" y2="16"/></g>
+              <circle cx="30" cy="30" r="16.5" fill="#FFC64D"/>
+              <circle cx="24.5" cy="28" r="1.9" fill="#2E2A24"/><circle cx="35.5" cy="28" r="1.9" fill="#2E2A24"/>
+              <path d="M24.5 34.5 Q30 39 35.5 34.5" fill="none" stroke="#2E2A24" stroke-width="2.2" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <span class="kq-timeleft">16 min left</span>
+          <div class="kq-head">
+            <span class="av">A</span>
+            <div><h4>Aarav's watch time</h4><p class="sub">2 videos to go</p></div>
+          </div>
+          <div class="kq-pickcol">
+            <h3 class="kq-pickhead">Tap the sun for your<br>next video</h3>
+            <p class="kq-picksub">
+              <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 17 C4 12 2 8.5 4.2 6.2 A3.4 3.4 0 0 1 10 7.4 A3.4 3.4 0 0 1 15.8 6.2 C18 8.5 16 12 10 17 Z" fill="#E2705E"/></svg>
+              <span>or pick one of Mumma-Papa's videos</span>
+            </p>
+            <div class="kq-qrow" style="position:static">
+              <div class="kq-pickwrap"><button class="kq-qcard kq-qcard--pick" aria-label="Watch Big Buck Bunny Part 3 next"></button><p class="kq-qname">Part 3</p></div>
+              <div class="kq-pickwrap"><button class="kq-qcard kq-qcard--pick" aria-label="Watch Big Buck Bunny Part 4 next"></button><p class="kq-qname">Part 4</p></div>
+              <div class="kq-pickwrap"><div class="kq-qend">The End 🌙</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <figcaption><b>Choice, not recommendations.</b> The sun stays the default next; the two
+      remaining parent-picked cards become tappable (sun-gold ring). "The End 🌙" is not a
+      choice — it just stays visible, as always.</figcaption>
+    </figure>
+
+    <figure class="frameshot">
+      <span class="tag">Laptop · 1280px</span>
+      <div class="kqframe" data-tier="wide" data-stage="mid">
+        <div class="kq-sky">
+          <div class="kq-duskveil"></div>
+          <svg class="kq-cloud" style="top:36px; left:90px" width="100" height="34" viewBox="0 0 66 24"><ellipse cx="26" cy="15" rx="26" ry="8.5" fill="#FFFFFF" opacity=".9"/><ellipse cx="46" cy="11" rx="17" ry="7.5" fill="#FFFFFF" opacity=".9"/></svg>
+          <div class="kq-arcwrap">
+            <svg viewBox="0 0 1280 220" preserveAspectRatio="none" aria-hidden="true">
+              <path d="M70 205 Q640 15 1210 205" fill="none" stroke="#E4D6B8" stroke-width="3" stroke-dasharray="1 11" stroke-linecap="round"/>
+              <line x1="70" y1="205" x2="1210" y2="205" stroke="#E4D6B8" stroke-width="3" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <div class="kq-sun kq-sunpick" style="left:651px; top:65px">
+            <span class="halo"></span>
+            <svg viewBox="0 0 60 60" aria-hidden="true">
+              <g class="rays"><line x1="30" y1="1.5" x2="30" y2="9.5"/><line x1="50" y1="30" x2="58.5" y2="30"/><line x1="44" y1="16" x2="50" y2="10"/><line x1="44" y1="44" x2="50" y2="50"/><line x1="30" y1="50.5" x2="30" y2="58.5"/><line x1="10" y1="50" x2="16" y2="44"/><line x1="1.5" y1="30" x2="10" y2="30"/><line x1="10" y1="10" x2="16" y2="16"/></g>
+              <circle cx="30" cy="30" r="16.5" fill="#FFC64D"/>
+              <circle cx="24.5" cy="28" r="1.9" fill="#2E2A24"/><circle cx="35.5" cy="28" r="1.9" fill="#2E2A24"/>
+              <path d="M24.5 34.5 Q30 39 35.5 34.5" fill="none" stroke="#2E2A24" stroke-width="2.2" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <span class="kq-timeleft">16 min left</span>
+          <div class="kq-head">
+            <span class="av">A</span>
+            <div><h4>Aarav's watch time</h4><p class="sub">2 videos to go</p></div>
+          </div>
+          <div class="kq-pickcol">
+            <h3 class="kq-pickhead">Tap the sun for your next video</h3>
+            <p class="kq-picksub">
+              <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 17 C4 12 2 8.5 4.2 6.2 A3.4 3.4 0 0 1 10 7.4 A3.4 3.4 0 0 1 15.8 6.2 C18 8.5 16 12 10 17 Z" fill="#E2705E"/></svg>
+              <span>or pick one of Mumma-Papa's videos</span>
+            </p>
+            <div class="kq-qrow" style="position:static">
+              <div class="kq-pickwrap"><button class="kq-qcard kq-qcard--pick" aria-label="Watch Big Buck Bunny Part 3 next"></button><p class="kq-qname">Part 3</p></div>
+              <div class="kq-pickwrap"><button class="kq-qcard kq-qcard--pick" aria-label="Watch Big Buck Bunny Part 4 next"></button><p class="kq-qname">Part 4</p></div>
+              <div class="kq-pickwrap"><div class="kq-qend">The End 🌙</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <figcaption><b>Laptop.</b> Same composition as the cast screen family — sky as hero, no
+      player card — with the pulsing sun halo marking the default action.</figcaption>
+    </figure>
+
+  </div>
+</div>
+
+<div class="pg-head" style="margin-top:64px; padding-top:20px; border-top:1px solid var(--pg-line)">
+  <p class="note" style="margin-top:0">Open items not addressed in this round (logged in the spec,
+  deferred on purpose): the Cast receiver's ambient-backdrop gap, cast-connect entry point, sender
+  sleep/resync, browser-tab containment on desktop, and the pause button overlapping the player.
+  Attribution is now dynamic across the set — Mumma, Papa, or both, per video — replacing the old
+  Mumma-only copy. Next: your reaction to rounds 1–2 together; further screens follow the same
+  system. This page is the design deliverable — implementation is a separate workstream.</p>
+</div>
