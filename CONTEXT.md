@@ -33,12 +33,24 @@ A versioned evaluation of a content item against KidQ criteria, with evidence an
 _Avoid_: Score, AI approval
 
 **Publication Decision**:
-The human-controlled decision that makes a content item approved, rejected, or pending manual review.
+The decision that makes a content item approved, rejected, or pending manual review. Only an admin approves; KidQ Checks may reject or unpublish, and an admin can reverse that.
 _Avoid_: AI status, safety score
 
 **Content Score** (KidQ Score):
-The 0–100 summary KidQ computes from an item's latest assessments — content & language, pacing, visual comfort and audio comfort — with a confidence figure and a reason. It shows how KidQ evaluated the item; it is never an approval.
+The 0–100 summary of how calm and safe an item is, computed from its latest assessments — content & language, pacing, visual comfort and audio comfort — with a confidence figure and a reason. A failed check caps the part it's about. It shows how KidQ evaluated the item; it is never an approval.
 _Avoid_: AI approval, safety score
+
+**Learning Value**:
+A 0–100 measure of what a child can learn or do from an item — thinking, language, feelings & friends, doing — from its filter-in criteria. Kept apart from the Content Score; ranking uses both.
+_Avoid_: educational score
+
+**Pre-screen**:
+The pull-time check that drops a discovered item before it's stored when its title or length shows it isn't for children aged 0–6 (a trailer, agency news, a clip under 15 seconds).
+_Avoid_: filter, blocklist
+
+**KidQ Checks**:
+The step after an AI review that rejects an item — or unpublishes a live one — when the AI or an admin confirmed a safety problem or an exclusion, or its Content Score is under 60. Recorded as a SYSTEM publication decision any admin can reverse.
+_Avoid_: auto-reject, AI rejection
 
 **Scoring Agent**:
 The AI model call that watches a video and proposes component scores, rubric results and tags. Its output is recorded as a MODEL assessment that an admin can override.

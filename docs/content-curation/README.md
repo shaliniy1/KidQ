@@ -25,20 +25,24 @@ Every item must have exactly one primary content type:
 - `STORYBOOK`: a narrated, illustrated, read-aloud, or digital story
 - `INTERACTIVE_CONTENT`: a simple age-appropriate game, puzzle, matching exercise, or learning interaction
 
-Categories are the parent onboarding categories (architecture doc §9), so parents choose from exactly what admins tag:
+Categories are the parent onboarding categories (architecture doc §9), so parents choose from exactly what admins tag. Each has a one-line definition (`taxonomy_terms.meta.definition`) that the AI and admins use:
 
-- Animation
-- Stories (story videos, animated or told)
-- Storybooks (picture books read in the KidQ reader)
-- Crafts
-- Painting
-- Science
-- Maths
-- Yoga
-- Activities
-- Educational
-- Music / Rhymes
-- Knowledge / General Learning
+| Category | Definition |
+|---|---|
+| Animation | Cartoons and animated videos whose main appeal is the animation itself, not a story or a song |
+| Stories | A story told on video: animated, with puppets, or someone reading or telling it aloud |
+| Storybooks | Picture books read in the KidQ story reader. Only for books, never for videos |
+| Crafts | Making things with paper, clay, recycled materials or other simple craft supplies |
+| Painting | Drawing, painting, colouring and other art made with pencils, crayons or paint |
+| Science | Explains how or why things work: space, weather, the human body, life cycles and simple experiments |
+| Maths | Counting, numbers, shapes, sizes, patterns, sorting and measuring |
+| Yoga | Yoga, stretching, breathing and calm movement to follow along with |
+| Activities | Play-along games, movement or dance challenges, and things to do away from the screen |
+| Educational | Early-learning lessons: letters, phonics, first words, colours, body parts, routines and manners |
+| Music / Rhymes | Songs, nursery rhymes, lullabies and gentle music |
+| Knowledge / General Learning | Shows and names the real world: animals, nature, vehicles, places, people and jobs |
+
+An item fits up to three categories, primary first. Every picture book is Storybooks first, with its topic after it, so a counting book is Storybooks + Maths.
 
 Earlier categories were folded in: Animals / Nature → Knowledge / General Learning; Baby Learning and Trusted Educators → Educational; Games / Play-Along → Activities.
 
@@ -593,15 +597,30 @@ Each candidate receives exactly one status:
 - `REJECTED`
 - `MANUAL_REVIEW_REQUIRED`
 
+Every filter-out criterion has a tier (rubric v3, `api/src/domain/rubric.ts`):
+
+| Tier | Criteria | A confirmed FAIL… |
+|---|---|---|
+| Safety | `physical_violence`, `verbal_or_emotional_aggression`, `frightening_imagery`, `mature_themes`, `discrimination_or_stereotypes`, `dangerous_behaviour` | withholds the score, and KidQ rejects the item |
+| Exclude | `rapid_visual_cuts`, `flashing_or_excessive_contrast` (also a harsh, neon or high-contrast palette), `loud_or_jarring_audio`, `direct_advertising`, `unboxing_or_toy_review`, `franchise_led_promotion`, `endless_or_open_loop`, `developmental_mismatch` (also anything made for adults) | makes KidQ reject the item |
+| Flag | `cluttered_visuals`, `product_placement`, `clickbait_title_or_thumbnail`, `repetitive_without_objective`, `passive_viewing_only` | shows the problem to the admin; some cap a score |
+
+- **Confirmed** means the AI, watching the item, or an admin gave the FAIL.
+- A text rule's FAIL is only a suspicion: the item still goes to the AI, and waits in Needs attention until it's cleared.
+- KidQ's rejections are SYSTEM publication decisions that any admin can reverse. Automation never approves.
+
 Apply these rules:
 
 ```text
-Explicit exclusion criterion fails → REJECTED
+Confirmed safety or exclusion FAIL → REJECTED by KidQ checks (an admin can reverse it)
+KidQ score below 60                → REJECTED by KidQ checks (an admin can reverse it)
 Required evidence is missing       → MANUAL_REVIEW_REQUIRED
 Audiovisual safety is unchecked    → MANUAL_REVIEW_REQUIRED
-Model output is uncertain          → MANUAL_REVIEW_REQUIRED
+Model output is uncertain (<60%)   → MANUAL_REVIEW_REQUIRED
 Automated checks pass              → still requires human publication review
 ```
+
+The full publish policy, including the 60–69 "needs a look" band, is in [`docs/recommendation/README.md`](../recommendation/README.md).
 
 Popularity is never an approval or ranking signal.
 
@@ -642,16 +661,20 @@ Its output is a MODEL assessment with `audiovisual_inspected=true`. It can recom
 
 ### Token controls
 
-1. Run source, duration, embeddability, license, deduplication, and blocked-term checks without an LLM.
+1. Run source, duration, embeddability, license, deduplication, and blocked-term checks without an LLM. The pull-time **pre-screen** (`api/src/domain/analysis/prescreen.ts`) drops a discovered item before it's stored when:
+   - it has an unsuitable term: trailer, horror, exposé, slaughter;
+   - it's agency news, a briefing, a promo or b-roll;
+   - it's an off-topic match, such as "butterfly stroke";
+   - it's a video under 15 seconds or over 15 minutes.
 2. Send only relevant source facts and permitted text, not the complete API response.
 3. Require compact Structured Outputs matching the KidQ schema.
 4. Use stable criterion keys and keep full rubric definitions in application code.
-5. Cache by `content_hash + rubric_version + model_snapshot`.
+5. Cache by `content_hash + rubric_version + prompt_version + model`.
 6. Skip unchanged content.
 7. Chunk long transcripts once and aggregate only criterion evidence.
 8. Limit evidence to one factual sentence per criterion.
 9. Record input and output tokens for every model assessment.
-10. Evaluate model changes against a human-labelled KidQ test set before production use.
+10. Evaluate model changes against a human-labelled KidQ test set before production use (`npm run eval:scoring -w api`).
 
 Prefer false manual-review referrals over false approvals.
 
@@ -798,12 +821,10 @@ OPENAI_MODERATION_MODEL=omni-moderation-latest
 OPENAI_CLASSIFICATION_MODEL=gpt-5-nano
 OPENAI_ESCALATION_MODEL=
 
-KIDQ_RUBRIC_VERSION=1
-KIDQ_PROMPT_VERSION=1
 KIDQ_MAX_TRANSCRIPT_CHARS=24000
 ```
 
-Use server-side environment variables locally and deployment secret managers in hosted environments.
+Use server-side environment variables locally and deployment secret managers in hosted environments. The rubric and prompt versions are code constants (`RUBRIC_VERSION`, `PROMPT_VERSION`), not settings, so a version always matches the code that produced it.
 
 ### Secret ownership
 

@@ -1,5 +1,6 @@
-// KidQ recommendation engine (scoring MD §11): filter admin-approved content by the child
-// profile, then rank by relevance, KidQ score, expert review and parent preference.
+// KidQ recommendation engine (RANK_V2, docs/recommendation/README.md "Recommendation engine"):
+// filter admin-approved content by the child profile, rank it by relevance, KidQ score, learning
+// value, expert review and fit, then mix it so no two items of one category sit side by side.
 // Pure: no I/O. Popularity (views, likes, subscribers, trending) is never an input.
 
 export interface ChildProfileInput {
@@ -14,6 +15,13 @@ export interface ChildProfileInput {
   sessionMinutes: number | null;
 }
 
+export interface ExpertSummary {
+  recommend: number;
+  total: number;
+  verifiedRecommend: number;
+  verifiedTotal: number;
+}
+
 export interface CandidateInput {
   id: string;
   approved: boolean;
@@ -23,24 +31,31 @@ export interface CandidateInput {
   language: string | null;
   ageMin: number | null;
   ageMax: number | null;
+  /** The primary category. */
   category: string | null;
+  /** Every category the item fits, primary first. */
+  categories: string[];
   interests: string[];
   developmentGoals: string[];
   regulationGoals: string[];
   durationSeconds: number | null;
   creator: string | null;
   kidqScore: number | null;
-  expert: { recommend: number; total: number } | null;
+  /** 0–100 from the filter-in criteria; null when not judged. */
+  learningValue: number | null;
+  expert: ExpertSummary | null;
 }
 
 export interface RankingConfig {
   version: string;
-  weights: { relevance: number; score: number; expert: number; preference: number };
+  /** `learning` arrived with RANK_V2; older versions rank without it. */
+  weights: { relevance: number; score: number; expert: number; preference: number; learning?: number };
   params: {
     relevanceWeights: { interests: number; developmentGoals: number; regulationGoals: number; category: number };
     maxPerCreatorInTop: number;
     topWindow: number;
     dismissCooldownDays: number;
+    /** The expert signal of an item nobody has reviewed, and the prior every review is weighed against. */
     expertNeutral: number;
   };
 }
@@ -64,6 +79,12 @@ export interface RankedRecommendation {
 }
 
 const MAX_AGE = 6;
+// An item whose learning value nobody judged ranks as if it were middling, not as if it had none.
+const NEUTRAL_LEARNING = 50;
+// A review from an unverified source counts half as much as one from a verified KidQ expert.
+const UNVERIFIED_WEIGHT = 0.5;
+// How many reviews' worth of neutral prior every item starts with, so one review can't make it 100%.
+const EXPERT_PRIOR_REVIEWS = 2;
 
 /** Admin approval, safety, a score and complete tags are all required before anything is recommended. */
 export function isEligible(candidate: CandidateInput): boolean {
@@ -80,6 +101,7 @@ export function isEligible(candidate: CandidateInput): boolean {
 }
 
 const baseLanguage = (code: string) => code.toLowerCase().split(/[-_]/)[0];
+const categoriesOf = (candidate: CandidateInput) => (candidate.categories.length ? candidate.categories : candidate.category ? [candidate.category] : []);
 
 function passesHardFilters(candidate: CandidateInput, profile: ChildProfileInput): boolean {
   if (candidate.ageMin === null || candidate.ageMax === null) return false;
@@ -87,8 +109,8 @@ function passesHardFilters(candidate: CandidateInput, profile: ChildProfileInput
   if (candidate.language && profile.languages.length > 0) {
     if (!profile.languages.map(baseLanguage).includes(baseLanguage(candidate.language))) return false;
   }
-  // "Let me choose categories": only the parent's chosen categories.
-  if (profile.contentMix === "CHOSEN" && !(candidate.category && profile.preferredCategories.includes(candidate.category))) return false;
+  // "Let me choose categories": only items that fit one of the parent's chosen categories.
+  if (profile.contentMix === "CHOSEN" && !categoriesOf(candidate).some((key) => profile.preferredCategories.includes(key))) return false;
   return true;
 }
 
@@ -97,6 +119,21 @@ function durationFit(durationSeconds: number | null, sessionMinutes: number | nu
   if (!durationSeconds || !sessionMinutes) return 0.5;
   const budget = sessionMinutes * 60;
   return durationSeconds <= budget ? 1 : Math.max(0, 1 - (durationSeconds - budget) / budget);
+}
+
+/** 1 when the child's age sits in the middle of the item's range, 0.5 at its edges: made-for-this-age beats merely allowed. */
+export function ageFit(ageYears: number, ageMin: number, ageMax: number): number {
+  const middle = (ageMin + ageMax) / 2;
+  const halfRange = Math.max((ageMax - ageMin) / 2, 0.5);
+  return 1 - 0.5 * Math.min(1, Math.abs(ageYears - middle) / halfRange);
+}
+
+/** The share of expert recommendations, pulled toward the neutral prior until there are a few reviews. */
+export function expertSignal(expert: ExpertSummary | null, neutral: number): number {
+  if (!expert || expert.total === 0) return neutral;
+  const positive = expert.verifiedRecommend + UNVERIFIED_WEIGHT * (expert.recommend - expert.verifiedRecommend);
+  const total = expert.verifiedTotal + UNVERIFIED_WEIGHT * (expert.total - expert.verifiedTotal);
+  return (positive + EXPERT_PRIOR_REVIEWS * neutral) / (total + EXPERT_PRIOR_REVIEWS);
 }
 
 function scoreCandidate(candidate: CandidateInput, profile: ChildProfileInput, config: RankingConfig) {
@@ -121,7 +158,7 @@ function scoreCandidate(candidate: CandidateInput, profile: ChildProfileInput, c
   }
   if (profile.preferredCategories.length > 0) {
     weightSum += weights.category;
-    if (candidate.category && profile.preferredCategories.includes(candidate.category)) {
+    if (categoriesOf(candidate).some((key) => profile.preferredCategories.includes(key))) {
       matched.category = true;
       relevanceSum += weights.category;
     }
@@ -130,22 +167,21 @@ function scoreCandidate(candidate: CandidateInput, profile: ChildProfileInput, c
   const relevance = weightSum > 0 ? relevanceSum / weightSum : 0;
   const anyMatch =
     matched.interests.length + matched.developmentGoals.length + matched.regulationGoals.length > 0 || matched.category;
-  const expert =
-    candidate.expert && candidate.expert.total > 0
-      ? candidate.expert.recommend / candidate.expert.total
-      : config.params.expertNeutral;
+  const fit = (ageFit(profile.ageYears, candidate.ageMin ?? 0, candidate.ageMax ?? MAX_AGE) + durationFit(candidate.durationSeconds, profile.sessionMinutes)) / 2;
   const w = config.weights;
   const finalScore =
     w.relevance * relevance +
     w.score * ((candidate.kidqScore ?? 0) / 100) +
-    w.expert * expert +
-    w.preference * durationFit(candidate.durationSeconds, profile.sessionMinutes);
+    (w.learning ?? 0) * ((candidate.learningValue ?? NEUTRAL_LEARNING) / 100) +
+    w.expert * expertSignal(candidate.expert, config.params.expertNeutral) +
+    w.preference * fit;
   return { relevance, anyMatch, matched, finalScore };
 }
 
 function explain(candidate: CandidateInput, matched: Matched, coldStart: boolean, ageYears: number): string[] {
   const why: string[] = [];
   if (coldStart) why.push(`Top KidQ score for age ${Math.floor(ageYears)}`);
+  if (candidate.expert && candidate.expert.verifiedRecommend > 0) why.push(`Recommended by ${candidate.expert.verifiedRecommend} KidQ expert(s)`);
   if (matched.interests.length) why.push(`Interests: ${matched.interests.join(", ")}`);
   if (matched.developmentGoals.length) why.push(`Development goals: ${matched.developmentGoals.join(", ")}`);
   if (matched.regulationGoals.length) why.push(`Regulation goals: ${matched.regulationGoals.join(", ")}`);
@@ -154,21 +190,27 @@ function explain(candidate: CandidateInput, matched: Matched, coldStart: boolean
   return why;
 }
 
-/** Greedy creator cap inside the top window; capped items keep their order after it. */
-function diversify<T extends { creator: string | null; id: string }>(items: T[], maxPerCreator: number, window: number): T[] {
-  const head: T[] = [];
-  const placed = new Set<number>();
-  const counts = new Map<string, number>();
-  items.forEach((item, index) => {
-    if (head.length >= window) return;
-    const creator = item.creator ?? `__unknown:${item.id}`;
-    const count = counts.get(creator) ?? 0;
-    if (count >= maxPerCreator) return;
-    counts.set(creator, count + 1);
-    head.push(item);
-    placed.add(index);
-  });
-  return [...head, ...items.filter((_, index) => !placed.has(index))];
+/**
+ * Variety: walks the ranked list and takes the best item that isn't the same category as the one
+ * before it, and whose creator hasn't filled their share of the top window. Nothing is dropped;
+ * when no item qualifies, the best remaining one goes next.
+ */
+function arrange<T extends { id: string; creator: string | null; category: string | null }>(items: T[], maxPerCreator: number, window: number): T[] {
+  const remaining = [...items];
+  const arranged: T[] = [];
+  const perCreator = new Map<string, number>();
+  const creatorOf = (item: T) => item.creator ?? `__unknown:${item.id}`;
+  const withinCap = (item: T) => arranged.length >= window || (perCreator.get(creatorOf(item)) ?? 0) < maxPerCreator;
+  const repeats = (item: T) => arranged.length > 0 && arranged[arranged.length - 1].category === item.category;
+  while (remaining.length > 0) {
+    let index = remaining.findIndex((item) => withinCap(item) && !repeats(item));
+    if (index < 0) index = remaining.findIndex(withinCap);
+    if (index < 0) index = 0;
+    const [item] = remaining.splice(index, 1);
+    arranged.push(item);
+    perCreator.set(creatorOf(item), (perCreator.get(creatorOf(item)) ?? 0) + 1);
+  }
+  return arranged;
 }
 
 const round3 = (value: number) => Math.round(value * 1000) / 1000;
@@ -191,7 +233,7 @@ export function recommend(
   type Scored = (typeof scored)[number];
   const byScore = (a: Scored, b: Scored) =>
     b.result.finalScore - a.result.finalScore || (b.kidqScore ?? 0) - (a.kidqScore ?? 0) || a.id.localeCompare(b.id);
-  const ordered = diversify(
+  const ordered = arrange(
     [...scored.filter((s) => s.result.anyMatch).sort(byScore), ...scored.filter((s) => !s.result.anyMatch).sort(byScore)],
     config.params.maxPerCreatorInTop,
     config.params.topWindow,

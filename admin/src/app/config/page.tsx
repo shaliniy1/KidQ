@@ -42,8 +42,9 @@ const TRUST: Record<string, [string, string]> = {
 const RANK_PARTS: Record<string, [string, string]> = {
   relevance: ["Matches the child", "Interests, goals and chosen categories"],
   score: ["KidQ score", "Better-scored items first"],
+  learning: ["Learning value", "What the child can learn or do"],
   expert: ["Expert reviews", "Items experts recommend"],
-  preference: ["Fits one session", "Short enough for the child's session length"],
+  preference: ["Fits the child", "Made for their age and short enough for one session"],
 };
 
 const percent = (value: number) => Math.round(value * 100);

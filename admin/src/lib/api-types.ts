@@ -809,7 +809,10 @@ export interface paths {
                     "application/json": {
                         age_min?: number | null;
                         age_max?: number | null;
+                        /** @description The primary category; it leads `categories` */
                         category?: string | null;
+                        /** @description Every category the item fits, primary first; overrides `category` */
+                        categories?: string[];
                         subcategory?: string | null;
                         interests?: string[];
                         development_goals?: string[];
@@ -918,7 +921,10 @@ export interface paths {
                         changes: {
                             age_min?: number | null;
                             age_max?: number | null;
+                            /** @description The primary category; it leads `categories` */
                             category?: string | null;
+                            /** @description Every category the item fits, primary first; overrides `category` */
+                            categories?: string[];
                             subcategory?: string | null;
                             interests?: string[];
                             development_goals?: string[];
@@ -1017,7 +1023,10 @@ export interface paths {
                         /** @enum {string} */
                         decision: "APPROVED" | "REJECTED" | "MANUAL_REVIEW_REQUIRED";
                         reason: string;
-                        /** @default false */
+                        /**
+                         * @description Publish over KidQ's checks (a safety flag, an exclusion, a score under 70 or low confidence) with a written reason of 15+ characters
+                         * @default false
+                         */
                         override_critical_flag?: boolean;
                     };
                 };
@@ -1219,9 +1228,15 @@ export interface paths {
                         recommended_age_min?: number | null;
                         recommended_age_max?: number | null;
                         comments?: string | null;
-                        /** Format: uri */
-                        source_url: string;
-                        /** @default false */
+                        /**
+                         * Format: uri
+                         * @description Where the review was published; leave out for a KidQ panel review
+                         */
+                        source_url?: string | null;
+                        /**
+                         * @description KidQ has checked the reviewer's credentials; only verified reviews count as KidQ experts
+                         * @default false
+                         */
                         verified?: boolean;
                     };
                 };
@@ -1669,11 +1684,11 @@ export interface paths {
                                 }[];
                                 /** @description Set while every model has used its daily quota; AI scoring resumes then */
                                 paused_until: string | null;
-                                /** @description Items the AI has reviewed and scored */
+                                /** @description Items the AI has reviewed and scored with the current prompt */
                                 scored: number;
                                 /** @description Items waiting for, or going through, analysis */
                                 queued: number;
-                                /** @description Items the AI hasn't reviewed yet, rejected ones excluded */
+                                /** @description Items the AI hasn't reviewed with the current prompt yet, rejected ones excluded */
                                 unscored: number;
                                 /** @description Items the AI couldn't review: media rights, length, private video or invalid output */
                                 could_not_review: number;
@@ -2093,7 +2108,10 @@ export interface paths {
                         weights: {
                             relevance: number;
                             score: number;
+                            /** @default 0 */
+                            learning?: number;
                             expert: number;
+                            /** @description Fit: the child's age near the middle of the item's range, and the item inside one session */
                             preference: number;
                         };
                         relevance_weights: {
@@ -3455,6 +3473,8 @@ export interface components {
                 source: "AI" | "ADMIN" | "RULE" | null;
                 evidence: string | null;
                 timestamps: string[];
+                /** @description The failed check that capped this part, e.g. rapid_visual_cuts; never set on an admin's score */
+                capped_by: string | null;
             }[];
             reason: string;
             missing: string[];
@@ -3521,15 +3541,27 @@ export interface components {
                 max: number | null;
                 groups: string[];
             };
+            /** @description The primary category */
             category: string | null;
+            /** @description Every category the item fits (at most three), primary first */
+            categories: string[];
             interests: string[];
             development_goals: string[];
             regulation_goals: string[];
             content_score: components["schemas"]["ContentScore"] | null;
+            /** @description What the child can learn or do, kept separate from the KidQ score: 25 points per area (Thinking, Language, Feelings & friends, Doing) */
+            learning: {
+                value: number | null;
+                areas: string[];
+            };
             expert_review: {
                 recommend: number;
                 total: number;
+                /** @description Reviews from reviewers KidQ has verified */
                 verified: number;
+                verified_recommend: number;
+                /** @description Ready to show, e.g. "Recommended by 3 KidQ experts"; unverified reviews are called public reviews */
+                label: string;
             } | null;
             player: components["schemas"]["Player"];
             attribution: {

@@ -143,11 +143,12 @@ describe("API", () => {
     expect(overridden.body.content.content_score.score).toBe(88.8);
   });
 
-  it("sends every item the AI hasn't reviewed to the AI once, skipping rejected items", async () => {
+  it("sends every item the AI hasn't reviewed with the current prompt to the AI once, skipping rejected items", async () => {
     await importVideo("AAAAAAAAAAA");
-    // The keyword rules hold these two back from the AI at import ("scary").
-    const held = await importVideo("EEEEEEEEEEE", [], "Scary monster story");
-    const rejected = await importVideo("FFFFFFFFFFF", [], "Scary monster story, part two");
+    const held = await importVideo("EEEEEEEEEEE", [agentOutput()], "Gentle shapes");
+    const rejected = await importVideo("FFFFFFFFFFF", [agentOutput()], "Gentle shapes, part two");
+    // Both were reviewed with an earlier prompt, so they're due for another look.
+    await pool.query("UPDATE assessments SET prompt_version = '1' WHERE assessor_type = 'MODEL' AND content_item_id = ANY($1)", [[held, rejected]]);
     await publish(rejected, { decision: "REJECTED", reason: "Not for young children." }).expect(201);
 
     const scoreAll = () => request(app).post("/content-items/bulk-reanalyze").set("Authorization", ADMIN).send({ scope: "UNSCORED" });
@@ -163,7 +164,31 @@ describe("API", () => {
     await drainQueue();
     expect(await ai()).toMatchObject({ scored: 2, queued: 0, unscored: 0 });
     const reviews = (await pool.query("SELECT count(*)::int AS n FROM assessments WHERE content_item_id = $1 AND assessor_type = 'MODEL'", [held])).rows[0];
-    expect(reviews.n).toBe(1);
+    expect(reviews.n).toBe(2);
+  });
+
+  it("gives a child with only an age a mixed feed, and shows parents the KidQ expert line", async () => {
+    const counting = await importVideo("AAAAAAAAAAA");
+    const moreCounting = await importVideo("BBBBBBBBBBB", [agentOutput()], "Counting to ten");
+    const song = await importVideo("GGGGGGGGGGG", [agentOutput({ classification: { category: "music_rhymes" } })], "Slow lullaby");
+    for (const id of [counting, moreCounting, song]) await publish(id, { decision: "APPROVED", reason: "Calm and clear." }).expect(201);
+    await request(app)
+      .post(`/content-items/${counting}/expert-reviews`)
+      .set("Authorization", ADMIN)
+      .send({ reviewer_name: "Asha Rao", reviewer_type: "Early-years educator", recommendation: "RECOMMEND", verified: true })
+      .expect(201);
+
+    // Screen 1 only: a nickname and an age band, nothing else.
+    const onboarded = await request(app).post("/onboarding").set("Authorization", PARENT_A).send({ parent_name: "Priya", children: [{ nickname: "Mia", age_band: "3_4" }] });
+    expect(onboarded.status).toBe(201);
+    const feed = (await request(app).get(`/children/${onboarded.body.children[0].id}/recommendations`).set("Authorization", PARENT_A)).body.items;
+    expect(feed.map((item: { card: { id: string } }) => item.card.id)).toEqual([counting, song, moreCounting]);
+
+    const [first] = feed;
+    expect(first.card.expert_review).toMatchObject({ verified: 1, verified_recommend: 1, label: "Recommended by 1 KidQ expert" });
+    expect(first.why).toContain("Recommended by 1 KidQ expert");
+    expect(first.card.learning).toEqual({ value: 25, areas: ["Thinking"] });
+    expect(first.card.categories).toEqual(["maths"]);
   });
 
   it("serves a picture book's pages to admins, and to parents only once it's published", async () => {

@@ -15,6 +15,7 @@ import {
   type KeyboardEvent,
   type ReactNode,
 } from "react";
+import { comfortStyles, type VisualComfort } from "./comfort";
 
 export type PlayerSource =
   | { provider: "youtube"; video_id: string; embed_url?: string; params: Record<string, number> }
@@ -31,6 +32,8 @@ export interface KidQPlayerProps {
   onEnded?: () => void;
   /** Shown over the end screen instead of "Watch again" (later: the break activity). */
   endCard?: ReactNode;
+  /** Visual Comfort Mode: a warm, softer picture (e.g. in the evening). Off by default. */
+  comfort?: VisualComfort;
   className?: string;
 }
 
@@ -93,6 +96,7 @@ const formatTime = (seconds: number) => {
 
 export const KidQPlayer = forwardRef<KidQPlayerHandle, KidQPlayerProps>(function KidQPlayer(props, ref) {
   const { player, title, poster, attribution, endCard, className } = props;
+  const comfort = comfortStyles(props.comfort);
   const mountRef = useRef<HTMLDivElement>(null);
   const controlsRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -229,7 +233,7 @@ export const KidQPlayer = forwardRef<KidQPlayerHandle, KidQPlayerProps>(function
       <style>{PLAYER_CSS}</style>
       <div style={styles.frame}>
         {player.provider === "youtube" ? (
-          <div ref={mountRef} style={styles.media} />
+          <div ref={mountRef} style={{ ...styles.media, ...comfort?.picture }} />
         ) : (
           <video
             ref={videoRef}
@@ -239,7 +243,7 @@ export const KidQPlayer = forwardRef<KidQPlayerHandle, KidQPlayerProps>(function
             preload="metadata"
             disablePictureInPicture
             controlsList="nodownload noremoteplayback noplaybackrate"
-            style={styles.media}
+            style={{ ...styles.media, ...comfort?.picture }}
             onPlay={() => setStatus("playing")}
             onPause={() => setStatus((current) => (current === "ended" ? current : "paused"))}
             onEnded={finish}
@@ -248,6 +252,7 @@ export const KidQPlayer = forwardRef<KidQPlayerHandle, KidQPlayerProps>(function
             onError={() => fail(5)}
           />
         )}
+        {comfort ? <div aria-hidden="true" style={comfort.tint} /> : null}
         {/* Blocks clicks on YouTube's own title, channel link and logo. */}
         <button type="button" tabIndex={-1} aria-hidden="true" style={styles.shield} onClick={toggle} />
         {covered && (
@@ -302,6 +307,7 @@ export const KidQPlayer = forwardRef<KidQPlayerHandle, KidQPlayerProps>(function
 });
 
 export { KidQStoryReader, type KidQStoryReaderProps, type StoryPage } from "./story-reader";
+export type { VisualComfort } from "./comfort";
 
 const PLAYER_CSS = `
 .kidq-player iframe{position:absolute;inset:0;width:100%;height:100%;border:0}

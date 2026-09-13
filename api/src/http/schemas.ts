@@ -47,6 +47,7 @@ export const contentScoreSchema = registry.register(
         source: z.enum(["AI", "ADMIN", "RULE"]).nullable(),
         evidence: nullableString,
         timestamps: z.array(z.string()),
+        capped_by: nullableString.describe("The failed check that capped this part, e.g. rapid_visual_cuts; never set on an admin's score"),
       }),
     ),
     reason: z.string(),
@@ -98,14 +99,26 @@ export const contentCardSchema = registry.register(
     thumbnails: z.record(z.string(), z.string()),
     thumbnail_url: nullableString,
     age: z.object({ min: z.number().nullable(), max: z.number().nullable(), groups: z.array(z.string()) }),
-    category: nullableString,
+    category: nullableString.describe("The primary category"),
+    categories: z.array(z.string()).describe("Every category the item fits (at most three), primary first"),
     interests: z.array(z.string()),
     development_goals: z.array(z.string()),
     regulation_goals: z.array(z.string()),
     // A union, not .nullable(): OpenAPI 3.1 then emits anyOf [ContentScore, null], which client
     // generators read as `ContentScore | null` (nullable refs become an impossible intersection).
     content_score: z.union([contentScoreSchema, z.null()]),
-    expert_review: z.object({ recommend: z.number(), total: z.number(), verified: z.number() }).nullable(),
+    learning: z
+      .object({ value: z.number().nullable(), areas: z.array(z.string()) })
+      .describe("What the child can learn or do, kept separate from the KidQ score: 25 points per area (Thinking, Language, Feelings & friends, Doing)"),
+    expert_review: z
+      .object({
+        recommend: z.number(),
+        total: z.number(),
+        verified: z.number().describe("Reviews from reviewers KidQ has verified"),
+        verified_recommend: z.number(),
+        label: z.string().describe('Ready to show, e.g. "Recommended by 3 KidQ experts"; unverified reviews are called public reviews'),
+      })
+      .nullable(),
     player: playerSchema,
     attribution: z.object({
       text: nullableString,
@@ -219,7 +232,8 @@ export const classificationBody = z
   .object({
     age_min: z.number().min(0).max(6).nullable().optional(),
     age_max: z.number().min(0).max(6).nullable().optional(),
-    category: z.string().max(60).nullable().optional(),
+    category: z.string().max(60).nullable().optional().describe("The primary category; it leads `categories`"),
+    categories: z.array(z.string().max(60)).max(3).optional().describe("Every category the item fits, primary first; overrides `category`"),
     subcategory: z.string().max(100).nullable().optional(),
     interests: z.array(z.string().max(60)).max(20).optional(),
     development_goals: z.array(z.string().max(60)).max(10).optional(),
@@ -248,7 +262,10 @@ export type EditorialBody = z.infer<typeof editorialBody>;
 export const decisionBody = z.object({
   decision: z.enum(DECISIONS),
   reason: z.string().min(3).max(1000),
-  override_critical_flag: z.boolean().default(false),
+  override_critical_flag: z
+    .boolean()
+    .default(false)
+    .describe("Publish over KidQ's checks (a safety flag, an exclusion, a score under 70 or low confidence) with a written reason of 15+ characters"),
 });
 
 export const bulkDecisionBody = z.object({
@@ -278,9 +295,9 @@ export const dashboardSchema = z.object({
       .array(z.object({ model: z.string(), requests: z.number(), paused: z.boolean() }))
       .describe("The scoring model and its fallbacks, in the order they're tried, with today's use"),
     paused_until: nullableString.describe("Set while every model has used its daily quota; AI scoring resumes then"),
-    scored: z.number().describe("Items the AI has reviewed and scored"),
+    scored: z.number().describe("Items the AI has reviewed and scored with the current prompt"),
     queued: z.number().describe("Items waiting for, or going through, analysis"),
-    unscored: z.number().describe("Items the AI hasn't reviewed yet, rejected ones excluded"),
+    unscored: z.number().describe("Items the AI hasn't reviewed with the current prompt yet, rejected ones excluded"),
     could_not_review: z.number().describe("Items the AI couldn't review: media rights, length, private video or invalid output"),
     today: z.object({ requests: z.number(), youtube_video_seconds: z.number(), file_video_seconds: z.number(), youtube_daily_cap_seconds: z.number() }),
   }),
@@ -294,8 +311,8 @@ export const expertReviewBody = z.object({
   recommended_age_min: z.number().min(0).max(6).nullable().optional(),
   recommended_age_max: z.number().min(0).max(6).nullable().optional(),
   comments: z.string().max(2000).nullable().optional(),
-  source_url: z.url(),
-  verified: z.boolean().default(false),
+  source_url: z.url().nullable().optional().describe("Where the review was published; leave out for a KidQ panel review"),
+  verified: z.boolean().default(false).describe("KidQ has checked the reviewer's credentials; only verified reviews count as KidQ experts"),
 });
 
 export const scoringConfigBody = z.object({
@@ -308,7 +325,13 @@ export const scoringConfigBody = z.object({
 
 export const rankingConfigBody = z.object({
   weights: z
-    .object({ relevance: z.number().min(0).max(1), score: z.number().min(0).max(1), expert: z.number().min(0).max(1), preference: z.number().min(0).max(1) })
+    .object({
+      relevance: z.number().min(0).max(1),
+      score: z.number().min(0).max(1),
+      learning: z.number().min(0).max(1).default(0),
+      expert: z.number().min(0).max(1),
+      preference: z.number().min(0).max(1).describe("Fit: the child's age near the middle of the item's range, and the item inside one session"),
+    })
     .refine(sumsToOne, "Weights must add up to 1"),
   relevance_weights: z
     .object({ interests: z.number().min(0).max(1), development_goals: z.number().min(0).max(1), regulation_goals: z.number().min(0).max(1), category: z.number().min(0).max(1) })

@@ -3,6 +3,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 import { pacificDay } from "../../src/ai/scoring-agent";
 import { runMigrations } from "../../src/db/migrate";
 import { closePool, getPool } from "../../src/db/pool";
+import { recordDecision } from "../../src/repositories/decisions";
 import { createIngestionRun, getIngestionRun } from "../../src/services/ingestion";
 import { drainQueue } from "../../src/services/worker";
 import {
@@ -67,8 +68,11 @@ describe("content pipeline (fixtures, real Postgres)", () => {
       kidq_summary: "A calm counting video with gentle music. Children count along from one to five.",
     });
     expect(Number(record.kidq_score)).toBe(88.8);
-    expect(Number(record.kidq_confidence)).toBe(0.8);
+    // 0.8 for an AI score × the AI's 0.9 certainty, with every sight and sound check answered.
+    expect(Number(record.kidq_confidence)).toBe(0.72);
     expect(record.publish_blockers).toEqual([]);
+    expect(record.categories).toEqual(["maths"]);
+    expect(record.learning_value).toBe(25);
 
     const assessors = (await pool.query("SELECT assessor_type FROM assessments ORDER BY created_at")).rows.map((row) => row.assessor_type);
     expect(assessors).toEqual(["RULE", "MODEL"]);
@@ -109,7 +113,7 @@ describe("content pipeline (fixtures, real Postgres)", () => {
     expect(geminiCalls(apis)).toBe(2);
   });
 
-  it("withholds the score when the AI reports a critical safety problem", async () => {
+  it("withholds the score and rejects the item when the AI confirms a critical safety problem", async () => {
     const apis = fakeApis();
     apis.youtube.set(VIDEO, youtubeVideo(VIDEO));
     apis.gemini.push(
@@ -123,9 +127,44 @@ describe("content pipeline (fixtures, real Postgres)", () => {
     expect(record.has_critical_flag).toBe(true);
     expect(record.kidq_score).toBeNull();
     expect(record.publish_blockers).toContain("CRITICAL_FLAG");
-    expect(record.studio_state).toBe("NEEDS_ATTENTION");
+    expect(record.studio_state).toBe("REJECTED");
     const model = (await pool.query("SELECT result FROM assessments WHERE assessor_type = 'MODEL'")).rows[0];
     expect(model.result).toBe("REJECTED");
+    const decision = (await pool.query("SELECT decision, decision_source, reason FROM publication_decisions")).rows;
+    expect(decision).toEqual([{ decision: "REJECTED", decision_source: "SYSTEM", reason: "KidQ checks: safety: physical violence at 01:12." }]);
+  });
+
+  it("rejects a video whose colours the AI saw as harsh, capping its visual comfort", async () => {
+    const apis = fakeApis();
+    apis.youtube.set(VIDEO, youtubeVideo(VIDEO, { title: "Rainbow colours compilation" }));
+    apis.gemini.push(agentOutput({ observations: { palette: "HARSH" } }));
+    installFakeApis(apis);
+
+    await importUrls([VIDEO]);
+
+    const record = await item();
+    const visual = (await pool.query("SELECT components FROM kidq_scores ORDER BY created_at DESC LIMIT 1")).rows[0].components.components.find(
+      (component: { component: string }) => component.component === "VISUAL_COMFORT",
+    );
+    // The AI said 89; its own observation bounds it to 45, and the failed contrast check caps it at 40.
+    expect(visual).toMatchObject({ value: 40, cap: { criterion: "flashing_or_excessive_contrast", max: 40 } });
+    expect(record.publish_blockers).toContain("EXCLUDED");
+    expect(record.studio_state).toBe("REJECTED");
+    const decision = (await pool.query("SELECT decision_source, reason FROM publication_decisions")).rows[0];
+    expect(decision).toEqual({ decision_source: "SYSTEM", reason: "KidQ checks: flashing or excessive contrast." });
+  });
+
+  it("sends a keyword-flagged video to the AI, which clears it", async () => {
+    const apis = fakeApis();
+    apis.youtube.set(VIDEO, youtubeVideo(VIDEO, { title: "Pillow fight song" }));
+    apis.gemini.push(agentOutput());
+    installFakeApis(apis);
+
+    await importUrls([VIDEO]);
+
+    const record = await item();
+    expect(geminiCalls(apis)).toBe(1);
+    expect(record).toMatchObject({ has_critical_flag: false, studio_state: "READY_TO_APPROVE" });
   });
 
   it("defers AI scoring once the free-tier daily video quota is used", async () => {
@@ -242,6 +281,44 @@ describe("content pipeline (fixtures, real Postgres)", () => {
     expect(labels).toEqual(["Content & language", "Reading pace", "Illustrations"]);
     // The AI read both pages and saw both illustrations inline.
     expect(apis.calls.filter((url) => url.includes("illustration_crops")).length).toBe(2);
+  });
+
+  it("drops discovered items that fail the pre-screen before storing them", async () => {
+    const apis = fakeApis();
+    const book = storyweaverBook(9003);
+    const unsuitable = storyweaverBook(9004, { title: "A Horror Story" });
+    apis.storyweaver.hits.push(book.hit, unsuitable.hit);
+    apis.storyweaver.reads.set(book.hit.slug, book.pages);
+    apis.storyweaver.reads.set(unsuitable.hit.slug, unsuitable.pages);
+    apis.gemini.push(storyAgentOutput());
+    installFakeApis(apis);
+
+    const runId = await createIngestionRun(pool, {
+      sourceSystemId: "storyweaver",
+      query: { mode: "search", queries: [{ query: "rain", maxResults: 5 }] },
+      requestedBy: "test",
+    });
+    await drainQueue();
+
+    const run = await getIngestionRun(pool, runId);
+    expect(run).toMatchObject({ status: "SUCCEEDED", records_seen: 2, records_created: 1, records_rejected_before_ai: 1 });
+    expect(run?.errors).toEqual([expect.objectContaining({ code: "REJECTED_UNSUITABLE", message: "Pre-screen: horror." })]);
+    expect((await pool.query("SELECT title FROM content_items")).rows).toEqual([{ title: "A Rainy Day" }]);
+  });
+
+  it("spends no AI quota on a rejected item when its source changes", async () => {
+    const apis = fakeApis();
+    apis.youtube.set(VIDEO, youtubeVideo(VIDEO));
+    apis.gemini.push(agentOutput());
+    installFakeApis(apis);
+    await importUrls([VIDEO]);
+    await recordDecision(pool, (await item()).id, { decision: "REJECTED", reason: "Not for KidQ.", decidedBy: "admin@kidq.test" });
+
+    apis.youtube.set(VIDEO, youtubeVideo(VIDEO, { title: "Calm counting to ten" }));
+    await importUrls([VIDEO]);
+
+    expect(geminiCalls(apis)).toBe(1);
+    expect(await item()).toMatchObject({ title: "Calm counting to ten", current_status: "REJECTED", analysis_status: "ASSESSED" });
   });
 
   it("refuses automated approvals at the database level", async () => {

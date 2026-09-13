@@ -1,12 +1,12 @@
 // Admin Content Studio actions (plan: "Admin control model"). Automation only prepares items;
 // every visibility change here is an explicit, recorded admin decision.
 import type { PoolClient } from "pg";
-import { nextPacificReset, pacificDay, scoringModels } from "../ai/scoring-agent";
+import { nextPacificReset, pacificDay, PROMPT_VERSION, scoringModels } from "../ai/scoring-agent";
 import { env } from "../config/env";
 import { getPool, withTransaction } from "../db/pool";
 import { ageBandsFor } from "../domain/age";
 import { RUBRIC_VERSION } from "../domain/rubric";
-import { COMPONENTS, type Component, type ComponentInput, type SafetyFlag } from "../domain/scoring";
+import { COMPONENTS, JUDGEMENT_BLOCKERS, type Component, type ComponentInput, type SafetyFlag } from "../domain/scoring";
 import { actorName, type AuthUser } from "../http/auth";
 import { ApiError, notFound } from "../http/errors";
 import type { ClassificationBody, EditorialBody } from "../http/schemas";
@@ -73,6 +73,7 @@ const CLASSIFICATION_COLUMNS: Record<keyof ClassificationBody, string> = {
   age_min: "age_min",
   age_max: "age_max",
   category: "category",
+  categories: "categories",
   subcategory: "subcategory",
   interests: "topics",
   development_goals: "development_goals",
@@ -89,13 +90,37 @@ async function assertKnownKeys(changes: ClassificationBody) {
     if (unknown.length) throw new ApiError(400, "UNKNOWN_TAXONOMY_KEY", `Unknown ${field}: ${unknown.join(", ")}. Add it in Configuration first.`, { field, unknown });
   };
   check("category", "category", [changes.category]);
+  check("category", "categories", changes.categories ?? []);
   check("interest", "interests", changes.interests ?? []);
   check("development_goal", "development_goals", changes.development_goals ?? []);
   check("regulation_goal", "regulation_goals", changes.regulation_goals ?? []);
 }
 
-async function applyClassification(client: PoolClient, user: AuthUser, id: string, changes: ClassificationBody) {
+/**
+ * Keeps the primary category and the category list in step, whichever one the admin changed.
+ * A picture book always keeps Storybooks first.
+ */
+function withCategories(changes: ClassificationBody, current: { content_type: string; category: string | null; categories: string[] | null }): ClassificationBody {
+  const isBook = (changes.content_type ?? current.content_type) === "STORYBOOK";
+  const settle = (keys: Array<string | null | undefined>) => {
+    const unique = [...new Set(keys.filter((key): key is string => Boolean(key)))];
+    const ordered = isBook ? ["storybooks", ...unique.filter((key) => key !== "storybooks")] : unique;
+    return ordered.slice(0, 3);
+  };
+  if (changes.categories) {
+    const categories = settle(changes.categories);
+    return { ...changes, categories, category: categories[0] ?? null };
+  }
+  if ("category" in changes) {
+    const categories = settle([changes.category, ...(current.categories ?? []).filter((key) => key !== current.category)]);
+    return { ...changes, categories, category: categories[0] ?? null };
+  }
+  return changes;
+}
+
+async function applyClassification(client: PoolClient, user: AuthUser, id: string, requested: ClassificationBody) {
   const current = await lockItem(client, id);
+  const changes = withCategories(requested, current);
   const diff: Record<string, { before: unknown; after: unknown }> = {};
   const sets: string[] = [];
   const params: unknown[] = [id];
@@ -103,7 +128,7 @@ async function applyClassification(client: PoolClient, user: AuthUser, id: strin
     if (!(field in changes)) continue;
     const after = changes[field] ?? null;
     diff[field] = { before: current[column] instanceof Array ? current[column] : (current[column] ?? null), after };
-    params.push(after ?? (column === "topics" || column.endsWith("_goals") ? [] : null));
+    params.push(after ?? (column === "topics" || column === "categories" || column.endsWith("_goals") ? [] : null));
     sets.push(`${column} = $${params.length}`);
   }
   const ageMin = "age_min" in changes ? (changes.age_min ?? null) : toNumber(current.age_min);
@@ -166,10 +191,14 @@ export async function editEditorial(user: AuthUser, id: string, changes: Editori
 }
 
 // ── Publishing: the admin gate ────────────────────────────────────────────────
-async function currentSafetyFlags(client: PoolClient, id: string): Promise<SafetyFlag[]> {
+/** The failed safety and exclusion checks behind the item's current score. */
+async function currentFlags(client: PoolClient, id: string): Promise<SafetyFlag[]> {
   const row = (await client.query("SELECT components FROM kidq_scores WHERE content_item_id = $1 ORDER BY created_at DESC LIMIT 1", [id])).rows[0];
-  return (row?.components?.safetyFlags as SafetyFlag[] | undefined) ?? [];
+  const detail = row?.components as { safetyFlags?: SafetyFlag[]; exclusions?: SafetyFlag[] } | undefined;
+  return [...(detail?.safetyFlags ?? []), ...(detail?.exclusions ?? [])];
 }
+
+const isJudgement = (blocker: string) => (JUDGEMENT_BLOCKERS as readonly string[]).includes(blocker);
 
 async function publishInTransaction(
   client: PoolClient,
@@ -181,27 +210,39 @@ async function publishInTransaction(
   let overrode = false;
   if (input.decision === "APPROVED") {
     let blockers: string[] = item.publish_blockers ?? [];
-    if (blockers.includes("CRITICAL_FLAG")) {
+    // KidQ's checks (safety, exclusions, a score under 70, low confidence) are judgements an admin may
+    // overrule with a written reason; missing tags or scores and playback problems must be fixed first.
+    if (blockers.some(isJudgement)) {
       if (!input.overrideCriticalFlag) {
-        throw new ApiError(422, "CRITICAL_FLAG", "A safety flag is unresolved. Resolve it in the rubric, or override it with a written reason.", { blockers });
+        const safety = blockers.includes("CRITICAL_FLAG");
+        throw new ApiError(
+          422,
+          safety ? "CRITICAL_FLAG" : "KIDQ_CHECKS",
+          safety
+            ? "A safety flag is unresolved. Resolve it in the rubric, or override it with a written reason."
+            : "This item doesn't pass KidQ's checks. Fix the flagged parts, or publish anyway with a written reason.",
+          { blockers },
+        );
       }
       if (input.reason.trim().length < 15) throw new ApiError(422, "REASON_TOO_SHORT", "Explain the override in at least 15 characters.", { blockers });
-      // An override is recorded as a human rubric result, so the score is computed and auditable.
-      const flags = await currentSafetyFlags(client, id);
-      await insertAssessment(client, {
-        contentItemId: id,
-        assessorType: "HUMAN",
-        assessorName: actorName(user),
-        rubricVersion: RUBRIC_VERSION,
-        result: "MANUAL_REVIEW_REQUIRED",
-        summary: `Safety flag overridden: ${input.reason}`,
-        audiovisualInspected: true,
-        scores: [],
-        criteria: flags.map((flag) => ({ key: flag.key, result: "PASS" as const, evidence: `Admin override: ${input.reason}`, timestamps: [] })),
-      });
-      await rescoreItem(client, id);
-      item = await lockItem(client, id);
-      blockers = item.publish_blockers ?? [];
+      // Overruled checks are recorded as a human rubric result, so the score is recomputed and auditable.
+      const flags = await currentFlags(client, id);
+      if (flags.length) {
+        await insertAssessment(client, {
+          contentItemId: id,
+          assessorType: "HUMAN",
+          assessorName: actorName(user),
+          rubricVersion: RUBRIC_VERSION,
+          result: "MANUAL_REVIEW_REQUIRED",
+          summary: `KidQ checks overridden: ${input.reason}`,
+          audiovisualInspected: true,
+          scores: [],
+          criteria: flags.map((flag) => ({ key: flag.key, result: "PASS" as const, evidence: `Admin override: ${input.reason}`, timestamps: [] })),
+        });
+        await rescoreItem(client, id);
+        item = await lockItem(client, id);
+      }
+      blockers = (item.publish_blockers ?? []).filter((blocker: string) => !isJudgement(blocker));
       overrode = true;
     }
     if (blockers.length) throw new ApiError(422, "NOT_READY", "This item can't be published yet.", { blockers });
@@ -255,7 +296,7 @@ export async function addExpertReview(
     recommended_age_min?: number | null;
     recommended_age_max?: number | null;
     comments?: string | null;
-    source_url: string;
+    source_url?: string | null;
     verified: boolean;
   },
 ) {
@@ -274,7 +315,7 @@ export async function addExpertReview(
         review.recommended_age_min ?? null,
         review.recommended_age_max ?? null,
         review.comments ?? null,
-        review.source_url,
+        review.source_url ?? null,
         review.verified,
         actorName(user),
       ],
@@ -293,7 +334,7 @@ export async function reanalyze(id: string) {
 }
 
 /**
- * Sends every item the AI hasn't reviewed yet to the scoring agent, shortest first so more fit in a
+ * Sends every item the AI hasn't reviewed with the current prompt to the scoring agent, shortest first so more fit in a
  * free-tier day. Items a keyword rule flagged are included (force), so the admin gets the AI's
  * evidence too; rejected items are skipped.
  */
@@ -303,8 +344,9 @@ export async function queueAiScoring() {
   const { rows } = await pool.query<{ id: string }>(
     `SELECT ci.id FROM content_items ci
      WHERE ci.current_status <> 'REJECTED' AND ci.analysis_status NOT IN ('QUEUED', 'ANALYSING')
-       AND NOT EXISTS (SELECT 1 FROM assessments a WHERE a.content_item_id = ci.id AND a.assessor_type = 'MODEL')
+       AND NOT EXISTS (SELECT 1 FROM assessments a WHERE a.content_item_id = ci.id AND a.assessor_type = 'MODEL' AND a.prompt_version = $1)
      ORDER BY ci.duration_seconds NULLS LAST, ci.created_at`,
+    [PROMPT_VERSION],
   );
   // One statement per job, so created_at keeps the shortest-first order for the worker.
   for (const { id } of rows) {
@@ -347,8 +389,9 @@ export async function dashboard() {
        FROM content_items ci
        CROSS JOIN LATERAL (
          SELECT count(*) > 0 AS tried, COALESCE(bool_or(a.audiovisual_inspected), false) AS reviewed
-         FROM assessments a WHERE a.content_item_id = ci.id AND a.assessor_type = 'MODEL'
+         FROM assessments a WHERE a.content_item_id = ci.id AND a.assessor_type = 'MODEL' AND a.prompt_version = $1
        ) ai`,
+      [PROMPT_VERSION],
     ),
     pool.query("SELECT model, youtube_video_seconds, file_video_seconds, requests, quota_exhausted_at IS NOT NULL AS paused FROM ai_usage_daily WHERE day = $1", [
       pacificDay(),

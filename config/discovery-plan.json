@@ -1,6 +1,6 @@
 {
-  "version": 1,
-  "notes": "Seed discovery plan (~270 videos). Queries follow the README discovery topics; trusted educators come first for discovery order only. Hints are suggestions the AI and admin confirm — never approval signals.",
+  "version": 2,
+  "notes": "Seed discovery plan (~270 videos). Queries follow the README discovery topics; trusted educators come first for discovery order only. Hints are suggestions the AI and admin confirm — never approval signals. NASA queries target short explainers and calm footage (its library is mostly news and briefings); Wikimedia queries search curated Commons video categories, because free text brought in trailers and off-topic clips. Everything discovered passes the pre-screen before it's stored.",
   "defaults": { "language": "en", "regionCode": "IN" },
   "sources": {
     "youtube": [
@@ -21,17 +21,18 @@
       { "query": "paper craft for toddlers", "maxResults": 12, "hints": { "interests": ["art"], "category": "creative_crafts", "developmentGoals": ["creativity", "motor_skills"], "ageMin": 2, "ageMax": 6 } }
     ],
     "nasa_images": [
-      { "query": "moon", "maxResults": 10, "hints": { "interests": ["space"], "category": "science", "developmentGoals": ["learning"], "ageMin": 4, "ageMax": 6 } },
-      { "query": "earth from space", "maxResults": 10, "hints": { "interests": ["space", "nature"], "category": "science", "developmentGoals": ["learning"], "regulationGoals": ["calm"], "ageMin": 4, "ageMax": 6 } },
-      { "query": "mars rover", "maxResults": 10, "hints": { "interests": ["space", "how_things_work"], "category": "science", "developmentGoals": ["cognitive"], "ageMin": 4, "ageMax": 6 } },
-      { "query": "astronaut space station", "maxResults": 10, "hints": { "interests": ["space"], "category": "science", "developmentGoals": ["learning"], "ageMin": 4, "ageMax": 6 } },
-      { "query": "sun", "maxResults": 10, "hints": { "interests": ["space", "weather"], "category": "science", "developmentGoals": ["learning"], "ageMin": 4, "ageMax": 6 } }
+      { "query": "We Asked a NASA Expert", "maxResults": 10, "hints": { "interests": ["space", "how_things_work"], "category": "science", "developmentGoals": ["cognitive"], "ageMin": 4, "ageMax": 6 } },
+      { "query": "AskNASA", "maxResults": 10, "hints": { "interests": ["space"], "category": "science", "developmentGoals": ["learning"], "ageMin": 4, "ageMax": 6 } },
+      { "query": "360 mars", "maxResults": 10, "hints": { "interests": ["space"], "category": "science", "developmentGoals": ["learning"], "regulationGoals": ["calm"], "ageMin": 3, "ageMax": 6 } },
+      { "query": "earth views", "maxResults": 10, "hints": { "interests": ["space", "nature"], "category": "science", "developmentGoals": ["learning"], "regulationGoals": ["calm"], "ageMin": 3, "ageMax": 6 } },
+      { "query": "moon views", "maxResults": 10, "hints": { "interests": ["space"], "category": "science", "developmentGoals": ["learning"], "regulationGoals": ["calm"], "ageMin": 3, "ageMax": 6 } }
     ],
     "wikimedia_commons": [
-      { "query": "animals", "maxResults": 10, "hints": { "interests": ["animals"], "category": "general_knowledge", "developmentGoals": ["learning"], "ageMin": 2, "ageMax": 6 } },
-      { "query": "birds", "maxResults": 10, "hints": { "interests": ["animals", "nature"], "category": "general_knowledge", "developmentGoals": ["learning"], "regulationGoals": ["calm"], "ageMin": 2, "ageMax": 6 } },
-      { "query": "fish aquarium", "maxResults": 10, "hints": { "interests": ["ocean", "animals"], "category": "general_knowledge", "developmentGoals": ["learning"], "regulationGoals": ["calm"], "ageMin": 0, "ageMax": 6 } },
-      { "query": "butterfly", "maxResults": 10, "hints": { "interests": ["nature", "animals"], "category": "general_knowledge", "developmentGoals": ["learning"], "regulationGoals": ["calm"], "ageMin": 2, "ageMax": 6 } }
+      { "query": "incategory:Videos_of_Aves", "maxResults": 10, "hints": { "interests": ["animals", "nature"], "category": "general_knowledge", "developmentGoals": ["learning"], "regulationGoals": ["calm"], "ageMin": 0, "ageMax": 6 } },
+      { "query": "incategory:Videos_of_butterflies", "maxResults": 10, "hints": { "interests": ["nature", "animals"], "category": "general_knowledge", "developmentGoals": ["learning"], "regulationGoals": ["calm"], "ageMin": 0, "ageMax": 6 } },
+      { "query": "incategory:Videos_of_fish", "maxResults": 10, "hints": { "interests": ["ocean", "animals"], "category": "general_knowledge", "developmentGoals": ["learning"], "regulationGoals": ["calm"], "ageMin": 0, "ageMax": 6 } },
+      { "query": "incategory:Videos_of_dogs", "maxResults": 10, "hints": { "interests": ["animals"], "category": "general_knowledge", "developmentGoals": ["learning"], "ageMin": 0, "ageMax": 6 } },
+      { "query": "incategory:Videos_of_cats", "maxResults": 10, "hints": { "interests": ["animals"], "category": "general_knowledge", "developmentGoals": ["learning"], "ageMin": 0, "ageMax": 6 } }
     ],
     "storyweaver": [
       { "query": "animals", "maxResults": 8, "hints": { "interests": ["animals", "stories"], "category": "storybooks", "developmentGoals": ["communication"], "ageMin": 2, "ageMax": 6 } },

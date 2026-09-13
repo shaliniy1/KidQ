@@ -4,6 +4,7 @@
 // work with touch, a keyboard or a TV remote (arrows turn pages, Back goes back). There are no
 // links out; the book's full credits follow the last page, as its license requires.
 import { useCallback, useState, type CSSProperties, type KeyboardEvent } from "react";
+import { comfortStyles, type VisualComfort } from "./comfort";
 
 export interface StoryPage {
   page: number;
@@ -19,13 +20,16 @@ export interface KidQStoryReaderProps {
   credits?: string | null;
   attribution?: { text: string | null } | null;
   onFinished?: () => void;
+  /** Visual Comfort Mode for the illustrations: a warm, softer picture. Off by default. */
+  comfort?: VisualComfort;
   className?: string;
 }
 
 const BACK_KEYS = new Set(["Escape", "Backspace", "BrowserBack", "GoBack"]);
 const BACK_KEY_CODES = new Set([10009, 461]);
 
-export function KidQStoryReader({ title, pages, credits, attribution, onFinished, className }: KidQStoryReaderProps) {
+export function KidQStoryReader({ title, pages, credits, attribution, onFinished, comfort: comfortMode, className }: KidQStoryReaderProps) {
+  const comfort = comfortStyles(comfortMode);
   // 0 … pages.length - 1 are the story pages; pages.length is "The end" with the credits.
   const [index, setIndex] = useState(0);
   const atEnd = index >= pages.length;
@@ -62,13 +66,16 @@ export function KidQStoryReader({ title, pages, credits, attribution, onFinished
         ) : (
           <>
             {page.image_url ? (
-              <img
-                src={page.image_url}
-                srcSet={page.image_small_url ? `${page.image_small_url} 428w, ${page.image_url} 708w` : undefined}
-                sizes="(max-width: 600px) 100vw, 708px"
-                alt={`Illustration, page ${page.page} of ${title}`}
-                style={styles.image}
-              />
+              <div style={styles.picture}>
+                <img
+                  src={page.image_url}
+                  srcSet={page.image_small_url ? `${page.image_small_url} 428w, ${page.image_url} 708w` : undefined}
+                  sizes="(max-width: 600px) 100vw, 708px"
+                  alt={`Illustration, page ${page.page} of ${title}`}
+                  style={{ ...styles.image, ...comfort?.picture }}
+                />
+                {comfort ? <div aria-hidden="true" style={{ ...comfort.tint, borderRadius: 12 }} /> : null}
+              </div>
             ) : null}
             <p style={styles.text}>{page.text}</p>
           </>
@@ -105,6 +112,8 @@ const styles: Record<string, CSSProperties> = {
     background: "#fffdf8",
     border: "1px solid rgba(36,53,47,.15)",
   },
+  // Holds the comfort tint over the illustration.
+  picture: { position: "relative" },
   // A fixed box, so pages don't jump as you turn them; contain shows the whole illustration.
   image: { width: "100%", height: "min(52vh, 460px)", objectFit: "contain", borderRadius: 12, background: "#f4efe4" },
   text: { margin: 0, fontSize: 22, lineHeight: 1.5, color: "#24352f" },

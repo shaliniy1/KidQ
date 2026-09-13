@@ -1,10 +1,11 @@
 // Recompute an item's content score from all its assessments and keep the fast-read
-// projection on content_items (score, confidence, critical flag, publish blockers) in step.
-// Call inside the same transaction as whatever changed the inputs.
+// projection on content_items (score, confidence, learning value, critical flag, publish
+// blockers) in step. Call inside the same transaction as whatever changed the inputs.
 import type { Db } from "../db/pool";
-import { computeKidqScore, publishBlockers, type KidqScoreResult, type ScoringConfig } from "../domain/scoring";
+import { computeKidqScore, publishBlockers, rejectionFindings, type KidqScoreResult, type ScoringConfig } from "../domain/scoring";
 import { loadAssessments } from "../repositories/assessments";
 import { getActiveScoringConfig } from "../repositories/config";
+import { recordDecision, type Decision } from "../repositories/decisions";
 
 const toNumber = (value: unknown) => (value === null || value === undefined ? null : Number(value));
 
@@ -51,7 +52,13 @@ export async function rescoreItem(db: Db, contentItemId: string, config?: Scorin
       result.version,
       result.score,
       result.confidence,
-      JSON.stringify({ components: result.components, safetyFlags: result.safetyFlags, lowConfidence: result.lowConfidence }),
+      JSON.stringify({
+        components: result.components,
+        safetyFlags: result.safetyFlags,
+        exclusions: result.exclusions,
+        lowConfidence: result.lowConfidence,
+        learning: result.learning,
+      }),
       result.missing,
       result.blockedBySafety,
       result.reason,
@@ -59,9 +66,32 @@ export async function rescoreItem(db: Db, contentItemId: string, config?: Scorin
   );
   await db.query(
     `UPDATE content_items SET kidq_score = $2, kidq_confidence = $3, kidq_score_version = $4,
-       has_critical_flag = $5, publish_blockers = $6, updated_at = now()
+       has_critical_flag = $5, publish_blockers = $6, learning_value = $7, updated_at = now()
      WHERE id = $1`,
-    [contentItemId, result.score, result.confidence, result.version, result.blockedBySafety, blockers],
+    [contentItemId, result.score, result.confidence, result.version, result.blockedBySafety, blockers, result.learning.value],
   );
   return result;
+}
+
+/**
+ * KidQ checks after an AI review (docs/recommendation/README.md "Publish policy"): a confirmed
+ * problem gets a SYSTEM rejection, or unpublishes an item that was live. Any admin can restore
+ * either; an item an admin deliberately kept in review stays there, its problem shown as a blocker.
+ */
+export async function applyKidqChecks(db: Db, contentItemId: string, result: KidqScoreResult): Promise<Decision | null> {
+  const findings = rejectionFindings(result);
+  if (findings.length === 0) return null;
+  const item = (
+    await db.query(
+      `SELECT ci.current_status,
+         (SELECT decision_source FROM publication_decisions WHERE content_item_id = ci.id ORDER BY decided_at DESC LIMIT 1) AS last_source
+       FROM content_items ci WHERE ci.id = $1 FOR UPDATE`,
+      [contentItemId],
+    )
+  ).rows[0];
+  if (!item || item.current_status === "REJECTED") return null;
+  if (item.current_status !== "APPROVED" && item.last_source === "ADMIN") return null;
+  const decision: Decision = item.current_status === "APPROVED" ? "MANUAL_REVIEW_REQUIRED" : "REJECTED";
+  await recordDecision(db, contentItemId, { decision, reason: `KidQ checks: ${findings.join("; ")}.`, decidedBy: "kidq-checks", source: "SYSTEM" });
+  return decision;
 }

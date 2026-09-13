@@ -33,32 +33,36 @@ Every error has the same shape: `{ "error": { "code": "NOT_READY", "message": "�
 
 Every list returns the same `ContentCard`. Render it; don't recompute anything in it.
 
-- `content_score` — how KidQ evaluated the item: `score` (0–100 or null), `confidence`, the `breakdown` (label, score, weight, AI/ADMIN source, evidence, mm:ss timestamps), `reason`, `missing`, `safety_flags`, `evaluated_by`, `reviewed_at`.
+- `content_score` — how calm and safe KidQ found the item: `score` (0–100 or null), `confidence`, the `breakdown` (label, score, weight, AI/ADMIN source, evidence, mm:ss timestamps, `capped_by`), `reason`, `missing`, `safety_flags`, `evaluated_by`, `reviewed_at`.
   - The breakdown has four parts for videos and three for picture books (no audio). Render whatever parts arrive, with their labels.
+  - `capped_by` names the failed check that capped a part, e.g. `rapid_visual_cuts`.
   - **Parents** see the score, the bars, the reason and "reviewed by KidQ".
   - **Admins** also see the evidence and timestamps.
+- `learning` — what the child can learn or do, apart from the score: `value` (0–100 or null) and `areas` ("Thinking", "Language", "Feelings & friends", "Doing").
+- `expert_review` — null until someone reviews the item. Show `label` as it is, e.g. "Recommended by 3 KidQ experts". Unverified reviews come through as "public reviews" and are never called experts.
+- `category` is the primary category; `categories` lists every category the item fits (at most three), primary first.
 - `player` — how to play the item:
   - `{ provider: "youtube", video_id, embed_url, params }` or `{ provider: "html5", media_url, mime_type }`
   - `{ provider: "story", page_count }` — a picture book: load its pages with `GET /content-items/:id/story` and show them in `KidQStoryReader`
   - `null` means **not playable**, e.g. a parent submission still awaiting review
 - `attribution` — show `text` on screen whenever `required` is true (CC BY and similar).
 - `thumbnails` — every size, so TVs load large images and phones small ones.
-- `age.groups` — derived groups, one or more of `0_2`, `2_4`, `4_6`.
+- `age.groups` — derived groups, one or more of `0_2`, `2_3`, `3_4`, `4_5`, `5_6`.
 
 ## Admin app flows
 
 | Screen | Calls |
 |---|---|
 | Dashboard | `GET /dashboard` |
-| Content Library | `GET /content-items?state=&age_group=&category=&source=&flagged=&min_score=&q=&sort=&limit=&offset=` |
+| Content Library | `GET /content-items?state=&age_group=&category=&source=&flagged=&min_score=&q=&sort=&limit=&offset=` (`category` matches any of an item's categories) |
 | Review queue | `GET /review-queue` (parent requests first) |
 | Add content | `POST /ingestion-runs` (`mode: "urls"` or `"search"`) → poll `GET /ingestion-runs/:id` |
 | Content detail | `GET /content-items/:id`: card, README canonical `record`, assessments with criteria, decisions, edits, expert reviews, and `story` (pages and credits) for picture books |
 | Edit text | `PATCH /content-items/:id` |
 | Sliders / rubric | `POST /content-items/:id/assessments` (HUMAN — outranks the AI) |
 | Tags | `PATCH /content-items/:id/classification`, `POST /content-items/bulk-classification` |
-| Publish | `POST /content-items/:id/publication-decisions` (`APPROVED`, `REJECTED`, or `MANUAL_REVIEW_REQUIRED` to unpublish); `POST /publication-decisions/bulk` |
-| Expert review | `POST /content-items/:id/expert-reviews` (show "per public sources" unless `verified`) |
+| Publish | `POST /content-items/:id/publication-decisions` (`APPROVED`, `REJECTED`, or `MANUAL_REVIEW_REQUIRED` to unpublish); `POST /publication-decisions/bulk`. Publishing over KidQ's checks needs `override_critical_flag: true` and a reason of 15+ characters; the 422 error code is `CRITICAL_FLAG` or `KIDQ_CHECKS` |
+| Expert review | `POST /content-items/:id/expert-reviews`. A KidQ panel review needs no `source_url`; set `verified` only once KidQ has checked the reviewer's credentials. Parents see `expert_review.label` |
 | Re-run AI | `POST /content-items/:id/reanalyze` |
 | Score everything the AI hasn't reviewed | `POST /content-items/bulk-reanalyze` with `{ "scope": "UNSCORED" }`; progress in `GET /dashboard` → `ai` |
 | Preview for a child | `POST /recommendations/preview` |
@@ -87,6 +91,7 @@ Use `packages/kidq-player` (`KidQPlayer` for video, `KidQStoryReader` for pictur
   - Show a KidQ card on pause and at the end, over YouTube's suggestions.
 - **HTML5** (NASA, Wikimedia): a plain `<video>` with the same KidQ controls. Show the attribution line.
 - **Picture books**: one page at a time with big page buttons (arrow keys and TV Back turn pages), illustrations loaded from the source, and the book's full credits after the last page — their license requires it.
+- **Visual Comfort Mode**: pass `comfort="warm"` or `"warmer"` to `KidQPlayer` or `KidQStoryReader` for a warm, softer picture, for example in the evening. It works on every source, YouTube included, because it's an amber layer drawn over the picture on the device. Call it "Visual Comfort Mode"; don't make blue-light health claims (architecture doc §21).
 - **Never show** YouTube descriptions or links to children. Show the KidQ title and `kidq_summary` instead.
 - **Playback errors**: on YouTube error 100 / 101 / 150 / 153, call `POST /content-items/:id/playback-errors` with `{ code }`. The API re-checks with YouTube before hiding anything.
 - **Known limits**: YouTube can't be fully white-labelled. Ads chosen by the video owner may still play, and "Made for Kids" videos get non-personalised ads only.

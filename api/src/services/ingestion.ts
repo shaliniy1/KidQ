@@ -8,6 +8,7 @@ import { redactText } from "../connectors/http";
 import type { ConnectorBatch, DiscoveryHints, DiscoveryQuery, ItemError, NormalizedRecord, RightsEvidence, SourceSystemId } from "../connectors/types";
 import { fetchYouTubeVideos, parseYouTubeId } from "../connectors/youtube";
 import { getPool, withTransaction, type Db } from "../db/pool";
+import { prescreen } from "../domain/analysis/prescreen";
 import { enqueueJob } from "../repositories/jobs";
 
 export type IngestionQuery =
@@ -104,6 +105,13 @@ export async function executeIngestionRun(runId: string) {
       counts.rejected += batch.rejected;
       errors.push(...batch.errors);
       for (const record of batch.records) {
+        // Discovered items pass the pre-screen first; links an admin or a parent added don't.
+        const screen = query.mode === "search" ? prescreen(record) : ({ ok: true } as const);
+        if (!screen.ok) {
+          counts.rejected += 1;
+          errors.push({ externalId: record.externalId, code: screen.code, message: screen.reason, retryable: false });
+          continue;
+        }
         try {
           const outcome = await upsertRecord(record, runId, query.priority ?? 0);
           counts[outcome.result] += 1;

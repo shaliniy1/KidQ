@@ -28,12 +28,10 @@ const schema = z.object({
   // one model family so scores stay comparable; list only the scoring model to turn fallbacks off.
   AI_FALLBACK_MODELS: z.string().default("gemini-3.7-flash,gemini-3.6-flash"),
   AI_DAILY_VIDEO_SECONDS_CAP: z.coerce.number().int().positive().default(27_000),
-  AI_PROMPT_VERSION: z.string().default("1"),
   // Free tier costs nothing; set paid-tier prices to record estimated spend per assessment.
   AI_INPUT_USD_PER_MTOK: z.coerce.number().min(0).default(0),
   AI_OUTPUT_USD_PER_MTOK: z.coerce.number().min(0).default(0),
   AI_MAX_MEDIA_BYTES: z.coerce.number().int().positive().default(100 * 1024 * 1024),
-  KIDQ_RUBRIC_VERSION: z.string().default("2"),
 });
 
 // Treat `KEY=` lines in .env files as unset so defaults apply.
@@ -67,9 +65,7 @@ export const env = {
     .map((model) => model.trim())
     .filter(Boolean),
   aiDailyVideoSecondsCap: parsed.AI_DAILY_VIDEO_SECONDS_CAP,
-  aiPromptVersion: parsed.AI_PROMPT_VERSION,
   aiInputUsdPerMTok: parsed.AI_INPUT_USD_PER_MTOK,
   aiOutputUsdPerMTok: parsed.AI_OUTPUT_USD_PER_MTOK,
   aiMaxMediaBytes: parsed.AI_MAX_MEDIA_BYTES,
-  rubricVersion: parsed.KIDQ_RUBRIC_VERSION,
 };

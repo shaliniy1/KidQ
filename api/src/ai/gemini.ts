@@ -10,6 +10,8 @@ export interface GeminiPart {
   text?: string;
   file_data?: { file_uri: string; mime_type?: string };
   inline_data?: { mime_type: string; data: string };
+  /** Frames sampled per second of `file_data` video (Gemini's default is 1). */
+  video_metadata?: { fps?: number };
 }
 
 export interface GeminiUsage {

@@ -287,13 +287,18 @@ function toCandidate(row: Row): CandidateInput {
     ageMin: toNumber(row.age_min),
     ageMax: toNumber(row.age_max),
     category: row.category,
+    categories: row.categories?.length ? row.categories : row.category ? [row.category] : [],
     interests: row.interests ?? [],
     developmentGoals: row.development_goals ?? [],
     regulationGoals: row.regulation_goals ?? [],
     durationSeconds: row.duration_seconds,
     creator: row.channel_or_creator,
     kidqScore: toNumber(row.kidq_score),
-    expert: row.expert_total > 0 ? { recommend: row.expert_recommend, total: row.expert_total } : null,
+    learningValue: toNumber(row.learning_value),
+    expert:
+      row.expert_total > 0
+        ? { recommend: row.expert_recommend, total: row.expert_total, verifiedRecommend: row.expert_verified_recommend ?? 0, verifiedTotal: row.expert_verified ?? 0 }
+        : null,
   };
 }
 
@@ -306,6 +311,9 @@ function friendlyWhy(taxonomy: Taxonomy, card: ContentCard, ranked: ReturnType<t
   if (ranked.matched.developmentGoals.length) why.push(`Supports: ${list("development_goal", ranked.matched.developmentGoals)}`);
   if (ranked.matched.regulationGoals.length) why.push(`Helps with: ${list("regulation_goal", ranked.matched.regulationGoals)}`);
   if (ranked.matched.category && card.category) why.push(`Favourite category: ${label("category", card.category)}`);
+  if (card.expert_review && card.expert_review.verified_recommend > 0) why.push(card.expert_review.label);
+  if ((card.content_score?.score ?? 0) >= 85) why.push("Calm and gentle");
+  if (card.learning.areas.length) why.push(`Learning: ${card.learning.areas.join(", ")}`);
   return why;
 }
 

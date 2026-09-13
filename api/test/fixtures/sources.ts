@@ -72,10 +72,45 @@ export function youtubeVideo(id: string, overrides: { embeddable?: boolean; titl
 
 type Criterion = { key: string; result: "PASS" | "FAIL" | "UNKNOWN"; evidence: string; timestamps: string[] };
 
-export function agentOutput(overrides: { scores?: [number, number, number, number]; criteria?: Criterion[]; confidence?: number } = {}) {
+const pass = (key: string, evidence: string): Criterion => ({ key, result: "PASS", evidence, timestamps: [] });
+// A full review of a calm video: every check that needs watching and listening is answered.
+const CALM_VIDEO_CHECKS: Criterion[] = [
+  pass("rapid_visual_cuts", "Long, slow shots."),
+  pass("flashing_or_excessive_contrast", "Soft colours and no flashing."),
+  pass("loud_or_jarring_audio", "Quiet, even music."),
+  pass("cluttered_visuals", "One object on screen at a time."),
+  pass("frightening_imagery", "Nothing scary."),
+  pass("slow_deliberate_pacing", "Time to follow each count."),
+  pass("gentle_soothing_audio", "Gentle narration."),
+  pass("simple_uncluttered_visuals", "Plain backgrounds."),
+];
+const CALM_VIDEO_OBSERVATIONS = {
+  cuts_per_minute: 6,
+  motion: "LOW",
+  palette: "SOFT_NATURAL",
+  flashing_moments: [],
+  loudness: "QUIET_EVEN",
+  sudden_loud_moments: [],
+  speech_pace: "SLOW",
+  music: "CALM",
+  on_screen_text: "SOME",
+  clutter: "LOW",
+  intended_audience: "YOUNG_CHILDREN",
+};
+
+export function agentOutput(
+  overrides: {
+    scores?: [number, number, number, number];
+    criteria?: Criterion[];
+    confidence?: number;
+    observations?: Record<string, unknown>;
+    classification?: Record<string, unknown>;
+  } = {},
+) {
   const [content, pacing, visual, audio] = overrides.scores ?? [96, 78, 89, 87];
   const component = (score: number, evidence: string) => ({ score, evidence, timestamps: ["00:42"], self_confidence: overrides.confidence ?? 0.9 });
   return JSON.stringify({
+    observations: { ...CALM_VIDEO_OBSERVATIONS, ...overrides.observations },
     components: {
       CONTENT_LANGUAGE: component(content, "Gentle narration; no unsafe language."),
       PACING: component(pacing, "Slow scene changes, about six cuts per minute."),
@@ -85,15 +120,18 @@ export function agentOutput(overrides: { scores?: [number, number, number, numbe
     criteria: overrides.criteria ?? [
       { key: "clear_learning_objective", result: "PASS", evidence: "Counts from one to five on screen.", timestamps: ["00:10"] },
       { key: "physical_violence", result: "PASS", evidence: "No violence is shown.", timestamps: [] },
+      ...CALM_VIDEO_CHECKS,
     ],
     classification: {
       age_min: 2,
       age_max: 4,
       category: "maths",
+      also_fits: [],
       interests: ["numbers"],
       development_goals: ["cognitive"],
       regulation_goals: ["calm"],
       language: "en",
+      ...overrides.classification,
     },
     learning_objective: "Count objects from one to five.",
     kidq_summary: "A calm counting video with gentle music. Children count along from one to five. Extra sentence is dropped.",
@@ -148,12 +186,20 @@ export function storyAgentOutput(scores: [number, number, number] = [92, 85, 88]
   const [content, pacing, visual] = scores;
   const component = (score: number, evidence: string) => ({ score, evidence, timestamps: [], self_confidence: 0.9 });
   return JSON.stringify({
+    observations: { palette: "SOFT_NATURAL", clutter: "LOW", intended_audience: "YOUNG_CHILDREN" },
     components: {
       CONTENT_LANGUAGE: component(content, "A gentle story about waiting for rain (p. 1–2)."),
       PACING: component(pacing, "One or two short sentences per page, with repetition (p. 1)."),
       VISUAL_COMFORT: component(visual, "Soft, uncluttered illustrations (p. 2)."),
     },
-    criteria: [{ key: "physical_violence", result: "PASS", evidence: "No violence on any page.", timestamps: [] }],
+    criteria: [
+      pass("physical_violence", "No violence on any page."),
+      pass("flashing_or_excessive_contrast", "Soft watercolour pages (p. 1–2)."),
+      pass("cluttered_visuals", "One scene per page."),
+      pass("frightening_imagery", "Nothing scary."),
+      pass("simple_uncluttered_visuals", "Manu is clear on every page."),
+      pass("empathy_and_kindness", "Manu's parents help him get ready (p. 1)."),
+    ],
     classification: {
       age_min: 2,
       age_max: 6,

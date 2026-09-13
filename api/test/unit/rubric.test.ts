@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CRITICAL_KEYS, RUBRIC } from "../../src/domain/rubric";
+import { CRITICAL_KEYS, EXCLUDE_KEYS, RUBRIC } from "../../src/domain/rubric";
 
 // Copied from docs/content-curation/README.md ("Filter-out criteria" / "Filter-in criteria").
 const README_FILTER_OUT = [
@@ -43,6 +43,27 @@ describe("rubric registry", () => {
       "physical_violence",
       "verbal_or_emotional_aggression",
     ]);
+  });
+
+  it("gives every filter-out criterion a tier: safety withholds, exclude rejects, flag only shows", () => {
+    expect(RUBRIC.filter((c) => c.group === "FILTER_OUT").every((c) => c.tier !== null && c.area === null)).toBe(true);
+    expect([...EXCLUDE_KEYS].sort()).toEqual([
+      "developmental_mismatch",
+      "direct_advertising",
+      "endless_or_open_loop",
+      "flashing_or_excessive_contrast",
+      "franchise_led_promotion",
+      "loud_or_jarring_audio",
+      "rapid_visual_cuts",
+      "unboxing_or_toy_review",
+    ]);
+    expect(RUBRIC.filter((c) => c.critical).every((c) => c.tier === "SAFETY")).toBe(true);
+  });
+
+  it("counts every filter-in criterion toward a learning area, except the comfort ones the score covers", () => {
+    const noArea = RUBRIC.filter((c) => c.group === "FILTER_IN" && c.area === null).map((c) => c.key).sort();
+    expect(noArea).toEqual(["age_band_fit", "gentle_soothing_audio", "simple_uncluttered_visuals", "slow_deliberate_pacing"]);
+    expect(new Set(RUBRIC.flatMap((c) => (c.area ? [c.area] : [])))).toEqual(new Set(["THINKING", "LANGUAGE", "FEELINGS", "DOING"]));
   });
 
   it("marks the README evidence-boundary criteria as audiovisual-only", () => {

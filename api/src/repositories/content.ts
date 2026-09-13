@@ -2,7 +2,8 @@
 // player), the admin list/queue, and the admin detail with the README canonical record.
 import type { Db } from "../db/pool";
 import { AGE_GROUPS, ageBandsFor } from "../domain/age";
-import { RUBRIC } from "../domain/rubric";
+import { expertLabel } from "../domain/experts";
+import { LEARNING_AREA_LABELS, RUBRIC, type LearningArea } from "../domain/rubric";
 import { resolvedCriteria, type AssessorType, type ComponentResult, type SafetyFlag } from "../domain/scoring";
 import type { ListContentQuery } from "../http/schemas";
 import { loadAssessments } from "./assessments";
@@ -12,14 +13,15 @@ export const YOUTUBE_PLAYER_PARAMS = { controls: 0, disablekb: 1, fs: 0, iv_load
 
 const CARD_SELECT = `
   SELECT v.*, ks.components AS score_detail, ks.reason AS score_reason, ks.missing AS score_missing,
-    er.recommend AS expert_recommend, er.total AS expert_total, er.verified AS expert_verified,
+    er.recommend AS expert_recommend, er.total AS expert_total, er.verified AS expert_verified, er.verified_recommend AS expert_verified_recommend,
     (SELECT count(*)::int FROM library_items li WHERE li.content_item_id = v.id AND li.state = 'REQUESTED') AS parent_requests,
     (SELECT jsonb_array_length(s.story->'pages') FROM source_records s WHERE s.id = v.source_record_id) AS story_page_count
   FROM content_records_v v
   LEFT JOIN LATERAL (SELECT components, reason, missing FROM kidq_scores
                      WHERE content_item_id = v.id ORDER BY created_at DESC LIMIT 1) ks ON true
   LEFT JOIN LATERAL (SELECT count(*) FILTER (WHERE recommendation = 'RECOMMEND')::int AS recommend, count(*)::int AS total,
-                            count(*) FILTER (WHERE verified)::int AS verified
+                            count(*) FILTER (WHERE verified)::int AS verified,
+                            count(*) FILTER (WHERE verified AND recommendation = 'RECOMMEND')::int AS verified_recommend
                      FROM expert_reviews WHERE content_item_id = v.id) er ON true`;
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -56,6 +58,7 @@ function toContentScore(row: Row) {
       source: sourceLabel(component.source),
       evidence: component.evidence,
       timestamps: component.timestamps,
+      capped_by: component.cap?.criterion ?? null,
     })),
     reason: row.score_reason ?? "",
     missing: row.score_missing ?? [],
@@ -80,6 +83,17 @@ function toPlayer(row: Row) {
   return null;
 }
 
+function toLearning(row: Row) {
+  const areas = ((row.score_detail?.learning?.areas ?? []) as LearningArea[]).map((area) => LEARNING_AREA_LABELS[area] ?? area);
+  return { value: toNumber(row.learning_value), areas };
+}
+
+function toExpertReview(row: Row) {
+  if (!(row.expert_total > 0)) return null;
+  const counts = { recommend: row.expert_recommend, total: row.expert_total, verified: row.expert_verified, verifiedRecommend: row.expert_verified_recommend ?? 0 };
+  return { recommend: counts.recommend, total: counts.total, verified: counts.verified, verified_recommend: counts.verifiedRecommend, label: expertLabel(counts) };
+}
+
 export function toCard(row: Row) {
   const ageMin = toNumber(row.age_min);
   const ageMax = toNumber(row.age_max);
@@ -96,11 +110,13 @@ export function toCard(row: Row) {
     thumbnail_url: row.thumbnail_url ?? null,
     age: { min: ageMin, max: ageMax, groups: ageBandsFor(ageMin, ageMax) },
     category: row.category ?? null,
+    categories: (row.categories?.length ? row.categories : row.category ? [row.category] : []) as string[],
     interests: row.interests ?? [],
     development_goals: row.development_goals ?? [],
     regulation_goals: row.regulation_goals ?? [],
     content_score: toContentScore(row),
-    expert_review: row.expert_total > 0 ? { recommend: row.expert_recommend, total: row.expert_total, verified: row.expert_verified } : null,
+    learning: toLearning(row),
+    expert_review: toExpertReview(row),
     player: toPlayer(row),
     attribution: {
       text: row.attribution_text ?? null,
@@ -156,7 +172,8 @@ export async function listAdminContent(db: Db, filters: ListContentQuery, extraW
     where.push(sql(`$${params.length}`));
   };
   if (filters.state) add((p) => `v.studio_state = ${p}`, filters.state);
-  if (filters.category) add((p) => `v.category = ${p}`, filters.category);
+  // Any of an item's categories matches, so a counting picture book shows under Maths too.
+  if (filters.category) add((p) => `(v.category = ${p} OR ${p} = ANY(v.categories))`, filters.category);
   if (filters.source) add((p) => `v.source = ${p}`, filters.source);
   if (filters.flagged) add((p) => `v.has_critical_flag = ${p}`, filters.flagged === "true");
   if (filters.min_score !== undefined) add((p) => `v.kidq_score >= ${p}`, filters.min_score);
@@ -168,6 +185,7 @@ export async function listAdminContent(db: Db, filters: ListContentQuery, extraW
       (p) => `(v.title ILIKE ${p}
         OR v.channel_or_creator ILIKE ${p}
         OR v.kidq_summary ILIKE ${p}
+        OR replace(array_to_string(v.categories, ' '), '_', ' ') ILIKE ${p}
         OR replace(v.category, '_', ' ') ILIKE ${p}
         OR replace(v.content_type, '_', ' ') ILIKE ${p}
         OR array_to_string(v.interests, ' ') ILIKE ${p}

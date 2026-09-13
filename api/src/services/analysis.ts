@@ -1,6 +1,6 @@
 // ANALYZE job: rule pre-checks → AI scoring agent → content score → analysis status.
 // Classification suggestions never overwrite what an admin set (HUMAN > MODEL > RULE).
-import { runScoringAgent, type AgentTarget } from "../ai/scoring-agent";
+import { PROMPT_VERSION, runScoringAgent, type AgentTarget } from "../ai/scoring-agent";
 import type { DiscoveryHints } from "../connectors/types";
 import { getPool, withTransaction, type Db } from "../db/pool";
 import { ageBandsFor } from "../domain/age";
@@ -9,14 +9,14 @@ import { RUBRIC_VERSION } from "../domain/rubric";
 import { COMPONENTS } from "../domain/scoring";
 import { hasModelAssessment, insertAssessment, recordedRuleResult } from "../repositories/assessments";
 import { listTaxonomy } from "../repositories/taxonomy";
-import { rescoreItem } from "./scoring";
+import { applyKidqChecks, rescoreItem } from "./scoring";
 
 export type AnalysisResult = { status: "ASSESSED" | "ANALYSIS_INCOMPLETE" } | { status: "DEFERRED"; retryAt: Date; reason: string };
 
 async function loadTarget(db: Db, contentItemId: string) {
   const row = (
     await db.query(
-      `SELECT ci.id, ci.content_type, ci.title, ci.description, ci.language, ci.duration_seconds, ci.keywords,
+      `SELECT ci.id, ci.content_type, ci.title, ci.description, ci.language, ci.duration_seconds, ci.keywords, ci.current_status,
          sr.source_system_id, sr.external_id, sr.media_url, sr.media_mime_type, sr.creator, sr.metadata_hash, sr.story,
          ra.allows_media_storage
        FROM content_items ci
@@ -43,7 +43,7 @@ async function loadTarget(db: Db, contentItemId: string) {
     contentType: row.content_type,
     story: row.story ?? null,
   };
-  return { target, language: row.language as string | null, keywords: (row.keywords ?? []) as string[] };
+  return { target, language: row.language as string | null, keywords: (row.keywords ?? []) as string[], rejected: row.current_status === "REJECTED" };
 }
 
 /** Apply suggested tags unless a higher-precedence source already set them. */
@@ -61,7 +61,7 @@ export async function applySuggestedClassification(
        language = COALESCE($9, language),
        learning_objective = CASE WHEN ${editedField("learning_objective")} THEN learning_objective ELSE COALESCE($10, learning_objective) END,
        kidq_summary = CASE WHEN ${editedField("kidq_summary")} THEN kidq_summary ELSE COALESCE($11, kidq_summary) END,
-       classification_source = $12, updated_at = now()
+       classification_source = $12, categories = $13, updated_at = now()
      WHERE id = $1 AND (classification_source IS NULL OR classification_source = 'RULE' OR (classification_source = 'MODEL' AND $12 = 'MODEL'))`,
     [
       contentItemId,
@@ -76,6 +76,7 @@ export async function applySuggestedClassification(
       suggestion.learningObjective,
       suggestion.kidqSummary,
       source,
+      suggestion.categories,
     ],
   );
 }
@@ -91,6 +92,7 @@ async function recordAgentGap(contentItemId: string, reason: string) {
       contentItemId,
       assessorType: "MODEL",
       assessorName: "kidq-gemini-scoring-agent",
+      promptVersion: PROMPT_VERSION,
       rubricVersion: RUBRIC_VERSION,
       result: "MANUAL_REVIEW_REQUIRED",
       summary: `AI review not completed: ${reason}`,
@@ -106,17 +108,15 @@ export async function analyzeItem(contentItemId: string, options: { hints?: Disc
   const pool = getPool();
   await setStatus(contentItemId, "ANALYSING");
   try {
-    const { target, language, keywords } = await loadTarget(pool, contentItemId);
+    const { target, language, keywords, rejected } = await loadTarget(pool, contentItemId);
 
     // 1. Deterministic pre-checks: free, instant, and never an approval. They run once per version of
     //    the source metadata, so a deferred or repeated analysis doesn't stack duplicate results.
-    let ruleFlagged: boolean;
+    //    A text flag doesn't stop here: words like "fight" mislead, so the AI confirms or clears it.
     const recorded = await recordedRuleResult(pool, contentItemId, target.metadataHash, RUBRIC_VERSION);
-    if (recorded) {
-      ruleFlagged = recorded === "REJECTED";
-    } else {
+    if (!recorded) {
       const rules = analyzeWithRules(
-        { title: target.title, description: target.description, tags: keywords, language, contentType: target.contentType },
+        { title: target.title, description: target.description, tags: keywords, language, contentType: target.contentType, source: target.sourceSystemId },
         options.hints ?? {},
       );
       await withTransaction(async (client) => {
@@ -126,7 +126,7 @@ export async function analyzeItem(contentItemId: string, options: { hints?: Disc
           assessorName: "kidq-rule-prechecks",
           rubricVersion: RUBRIC_VERSION,
           inputHash: target.metadataHash,
-          result: rules.skipAiReason ? "REJECTED" : "MANUAL_REVIEW_REQUIRED",
+          result: rules.flaggedCritical ? "REJECTED" : "MANUAL_REVIEW_REQUIRED",
           summary: rules.summary,
           audiovisualInspected: false,
           scores: rules.scores,
@@ -136,11 +136,10 @@ export async function analyzeItem(contentItemId: string, options: { hints?: Disc
         await applySuggestedClassification(client, contentItemId, rules.classification, "RULE");
         await rescoreItem(client, contentItemId);
       });
-      ruleFlagged = Boolean(rules.skipAiReason);
     }
 
-    // A rule-level critical flag waits for an admin instead of spending AI quota ("Re-analyze" forces it).
-    if (ruleFlagged && !options.force) {
+    // A rejected item isn't worth the free daily AI quota; an admin's "Re-analyze" (force) still reviews it.
+    if (rejected && !options.force) {
       await setStatus(contentItemId, "ASSESSED");
       return { status: "ASSESSED" };
     }
@@ -157,7 +156,7 @@ export async function analyzeItem(contentItemId: string, options: { hints?: Disc
         await withTransaction(async (client) => {
           await insertAssessment(client, outcome.assessment);
           await applySuggestedClassification(client, contentItemId, outcome.classification, "MODEL");
-          await rescoreItem(client, contentItemId);
+          await applyKidqChecks(client, contentItemId, await rescoreItem(client, contentItemId));
         });
         await setStatus(contentItemId, "ASSESSED");
         return { status: "ASSESSED" };
