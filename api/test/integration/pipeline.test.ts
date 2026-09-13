@@ -4,6 +4,7 @@ import { pacificDay } from "../../src/ai/scoring-agent";
 import { runMigrations } from "../../src/db/migrate";
 import { closePool, getPool } from "../../src/db/pool";
 import { recordDecision } from "../../src/repositories/decisions";
+import { reanalyze } from "../../src/services/admin";
 import { createIngestionRun, getIngestionRun } from "../../src/services/ingestion";
 import { drainQueue } from "../../src/services/worker";
 import {
@@ -319,6 +320,24 @@ describe("content pipeline (fixtures, real Postgres)", () => {
 
     expect(geminiCalls(apis)).toBe(1);
     expect(await item()).toMatchObject({ title: "Calm counting to ten", current_status: "REJECTED", analysis_status: "ASSESSED" });
+  });
+
+  it("scores an item with the AI once: a source change keeps the score, an admin's re-analyze replaces it", async () => {
+    const apis = fakeApis();
+    apis.youtube.set(VIDEO, youtubeVideo(VIDEO));
+    apis.gemini.push(agentOutput());
+    installFakeApis(apis);
+    await importUrls([VIDEO]);
+
+    apis.youtube.set(VIDEO, youtubeVideo(VIDEO, { title: "Calm counting to ten" }));
+    await importUrls([VIDEO]);
+    expect(geminiCalls(apis)).toBe(1);
+    expect(await item()).toMatchObject({ title: "Calm counting to ten", analysis_status: "ASSESSED" });
+
+    apis.gemini.push(agentOutput());
+    await reanalyze((await item()).id);
+    await drainQueue();
+    expect(geminiCalls(apis)).toBe(2);
   });
 
   it("refuses automated approvals at the database level", async () => {

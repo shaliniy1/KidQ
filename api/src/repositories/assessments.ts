@@ -102,6 +102,21 @@ export async function loadAssessments(db: Db, contentItemId: string): Promise<As
   }));
 }
 
+// Scored once (docs/recommendation/README.md): prompt v2 is the first KidQ keeps. An item with an AI
+// attempt from v2 on isn't sent again automatically; one the AI actually watched keeps that score.
+export const FIRST_KEPT_PROMPT = 2;
+/** An AI attempt with a kept prompt, for queries whose assessments alias is `a`. */
+export const KEPT_PROMPT_ATTEMPT_SQL = `a.assessor_type = 'MODEL' AND a.prompt_version ~ '^[0-9]+$' AND a.prompt_version::int >= ${FIRST_KEPT_PROMPT}`;
+
+/** True once the AI has watched the item with a kept prompt: its score stays until an admin re-analyzes. */
+export async function hasKeptAiScore(db: Db, contentItemId: string): Promise<boolean> {
+  const { rowCount } = await db.query(
+    `SELECT 1 FROM assessments a WHERE a.content_item_id = $1 AND a.audiovisual_inspected AND ${KEPT_PROMPT_ATTEMPT_SQL} LIMIT 1`,
+    [contentItemId],
+  );
+  return (rowCount ?? 0) > 0;
+}
+
 /** Result of the rule checks already recorded for this exact source metadata and rubric, if any. */
 export async function recordedRuleResult(db: Db, contentItemId: string, inputHash: string, rubricVersion: string): Promise<string | null> {
   const { rows } = await db.query<{ result: string }>(

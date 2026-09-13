@@ -2052,6 +2052,99 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/content-pool": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** What parents can be shown: published items per age band and category, thin spots, and published items that can't be recommended */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Success */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            published: number;
+                            /** @description Published items that pass every check and can be recommended */
+                            eligible: number;
+                            thin_below: number;
+                            bands: {
+                                age_band: string;
+                                total: number;
+                                categories: {
+                                    category: string;
+                                    count: number;
+                                    thin: boolean;
+                                }[];
+                            }[];
+                            /** @description Published but never recommended: NOT_PLAYABLE, SAFETY_FLAG, NOT_SCORED, NO_AGE, NO_CATEGORY or NO_GOAL */
+                            not_reaching_parents: {
+                                /** Format: uuid */
+                                id: string;
+                                title: string;
+                                problems: string[];
+                            }[];
+                        };
+                    };
+                };
+                /** @description Validation failed */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not signed in */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Wrong role */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/taxonomy": {
         parameters: {
             query?: never;

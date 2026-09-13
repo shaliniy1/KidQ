@@ -72,18 +72,23 @@ const MAX_AGE = 6;
 // An item whose learning value nobody judged ranks as if it were middling, not as if it had none.
 const NEUTRAL_LEARNING = 50;
 
-/** Admin approval, safety, a score and complete tags are all required before anything is recommended. */
+export type EligibilityProblem = "NOT_APPROVED" | "NOT_PLAYABLE" | "SAFETY_FLAG" | "NOT_SCORED" | "NO_AGE" | "NO_CATEGORY" | "NO_GOAL";
+
+/** Why an item can't be recommended; empty when it can. Admin approval, safety, a score and complete tags are all required. */
+export function eligibilityProblems(candidate: CandidateInput): EligibilityProblem[] {
+  const problems: EligibilityProblem[] = [];
+  if (!candidate.approved) problems.push("NOT_APPROVED");
+  if (!candidate.playable) problems.push("NOT_PLAYABLE");
+  if (candidate.blocked) problems.push("SAFETY_FLAG");
+  if (candidate.kidqScore === null) problems.push("NOT_SCORED");
+  if (candidate.ageMin === null || candidate.ageMax === null) problems.push("NO_AGE");
+  if (!candidate.category) problems.push("NO_CATEGORY");
+  if (candidate.developmentGoals.length === 0 && candidate.regulationGoals.length === 0) problems.push("NO_GOAL");
+  return problems;
+}
+
 export function isEligible(candidate: CandidateInput): boolean {
-  return (
-    candidate.approved &&
-    candidate.playable &&
-    !candidate.blocked &&
-    candidate.kidqScore !== null &&
-    candidate.ageMin !== null &&
-    candidate.ageMax !== null &&
-    Boolean(candidate.category) &&
-    (candidate.developmentGoals.length > 0 || candidate.regulationGoals.length > 0)
-  );
+  return eligibilityProblems(candidate).length === 0;
 }
 
 const baseLanguage = (code: string) => code.toLowerCase().split(/[-_]/)[0];

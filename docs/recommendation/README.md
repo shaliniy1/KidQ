@@ -157,6 +157,7 @@ The score measures how calm and safe an item is. What a child can learn is measu
     - Each score records its model. If every model is busy, the item waits a few minutes without using up a retry.
   - Parent requests are scored first.
   - **Schedule**: on QA, the daily `drain-jobs` GitHub workflow processes queued work at 08:15 UTC (13:45 IST), just after the quota resets.
+- **Scored once**: every item is scored by the AI once, with prompt v2 or later, and keeps that score. A change at the source or a new prompt version doesn't re-score it; only an admin's "Re-analyze" does.
 - **Scoring the backlog**: items the AI hasn't reviewed with the current prompt go to the AI in bulk from the dashboard ("Score N items with AI", `POST /content-items/bulk-reanalyze`), shortest first. Rejected items are skipped: a rejected item never uses AI quota unless an admin re-analyses it (`POST /content-items/:id/reanalyze`).
 - **Cache**: no new call when content hash, rubric version, prompt version and model are all unchanged.
 - **Audit**: every call records model, snapshot, prompt and rubric versions, tokens and estimated cost (README "Model assessment record").

@@ -81,6 +81,7 @@ th { color: var(--ink-soft); font-size: 12px; letter-spacing: 0.04em; text-trans
 .status-published { background: var(--sage-tint); color: #356f55; }
 .status-draft { background: rgba(91, 109, 100, 0.12); color: var(--ink-soft); }
 .status-review { background: var(--gold-tint); color: #95601c; }
+.status-confirm { background: var(--sage-tint); color: #356f55; }
 .status-changes { background: var(--rose-tint); color: var(--coral-deep); }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .chip { padding: 3px 9px; border: 1px solid var(--line); border-radius: 999px; background: var(--cream); font-size: 12px; }
@@ -117,12 +118,13 @@ th { color: var(--ink-soft); font-size: 12px; letter-spacing: 0.04em; text-trans
 .notice-error { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 10px; background: var(--rose-tint); color: var(--coral-deep); font-weight: 650; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 
-.summary-strip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border: 1px solid var(--line); border-radius: 16px; background: var(--paper); overflow: hidden; }
+.summary-strip { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); border: 1px solid var(--line); border-radius: 16px; background: var(--paper); overflow: hidden; }
 .summary-item { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 92px; padding: 18px 20px; border-right: 1px solid var(--line); text-decoration: none; }
 .summary-item:last-child { border-right: 0; }
 .summary-item span { color: var(--ink-soft); font-weight: 650; }
 .summary-item strong { font-size: 28px; }
 .summary-item:hover { background: rgba(79, 141, 111, 0.06); }
+.summary-confirm { background: rgba(82, 123, 103, 0.045); }
 .next-action { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 24px; border-radius: 16px; background: var(--paper); border: 1px solid var(--line); }
 .next-action h2, .next-action p { margin: 0; }
 .next-action .muted { margin-top: 6px; }
@@ -161,6 +163,10 @@ th { color: var(--ink-soft); font-size: 12px; letter-spacing: 0.04em; text-trans
 .file-drop input { position: absolute; width: 1px; height: 1px; opacity: 0; }
 .file-drop span { max-width: 100%; color: var(--ink-soft); font-size: 12px; overflow-wrap: anywhere; }
 .storage-note { margin: -4px 0 0 !important; font-size: 12px; text-align: center; }
+.classification-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; padding-top: 4px; }
+.cover-picker { position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 8px 14px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 11px; }
+.cover-picker input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.cover-picker span { color: var(--sage); font-size: 13px; font-weight: 700; text-align: right; }
 .fetched-summary { display: flex; align-items: center; gap: 22px; padding: 16px 18px; border: 1px solid var(--line); border-radius: 16px; background: var(--paper); }
 .fetched-total { display: flex; align-items: center; gap: 12px; padding-right: 22px; border-right: 1px solid var(--line); }
 .fetched-total span { color: var(--ink-soft); font-weight: 650; }
@@ -179,8 +185,9 @@ th { color: var(--ink-soft); font-size: 12px; letter-spacing: 0.04em; text-trans
   .two-col { grid-template-columns: 1fr; }
   .main { padding: 20px 16px 48px; }
   .summary-strip { grid-template-columns: 1fr 1fr; }
-  .summary-item:nth-child(2) { border-right: 0; }
-  .summary-item:nth-child(-n+2) { border-bottom: 1px solid var(--line); }
+  .summary-item { border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+  .summary-item:nth-child(even) { border-right: 0; }
+  .summary-item:last-child { grid-column: 1 / -1; border-right: 0; border-bottom: 0; }
   .content-title { max-width: 240px; }
   .content-row .type-col, .content-row .age-col, .content-row .duration-col,
   thead .type-col, thead .age-col, thead .duration-col { display: none; }
@@ -202,6 +209,7 @@ th { color: var(--ink-soft); font-size: 12px; letter-spacing: 0.04em; text-trans
   .method-tabs button { flex: 1 0 auto; padding-inline: 13px; }
   .add-panel { min-height: 0; padding: 20px 16px; }
   .add-submit { width: 100%; }
+  .classification-fields { grid-template-columns: 1fr; }
   .fetched-total { width: 100%; border-right: 0; }
   .source-totals { width: 100%; }
 }

@@ -90,7 +90,7 @@ function Library() {
           }}
         >
           <span aria-hidden="true">⌕</span>
-          <input aria-label="Search content" placeholder="Search by title, category, keyword, type or age…" value={search} onChange={(event) => setSearch(event.target.value)} />
+          <input aria-label="Search content" placeholder="Search by title, category, keyword or age…" value={search} onChange={(event) => setSearch(event.target.value)} />
           {search && <button type="button" className="clear-search" aria-label="Clear search" onClick={() => setSearch("")}>×</button>}
       </form>
 
@@ -106,8 +106,9 @@ function Library() {
       <div className="library-controls">
         <select aria-label="Status" value={filters.state ?? ""} onChange={(event) => setFilter("state", event.target.value)}>
           <option value="">All statuses</option>
-          <option value="PENDING_ANALYSIS">Draft</option>
-          <option value="READY_TO_APPROVE">Ready to publish</option>
+          <option value="PENDING_ANALYSIS">Pending review</option>
+          <option value="ANALYSIS_INCOMPLETE">Review in progress</option>
+          <option value="READY_TO_APPROVE">Needs confirmation</option>
           <option value="NEEDS_ATTENTION">Needs changes</option>
           <option value="APPROVED">Published</option>
           <option value="REJECTED">Rejected</option>

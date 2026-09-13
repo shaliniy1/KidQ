@@ -167,6 +167,38 @@ describe("API", () => {
     expect(reviews.n).toBe(2);
   });
 
+  it("shows a published item to parents of matching children, and to a child once their parent adds it", async () => {
+    const counting = await importVideo("AAAAAAAAAAA"); // Maths, ages 2–4, English
+    const forOlder = await importVideo("BBBBBBBBBBB", [agentOutput({ classification: { category: "maths", age_min: 4, age_max: 6 } })], "Counting to a hundred");
+    const hindi = await importVideo("HHHHHHHHHHH", [agentOutput({ classification: { language: "hi" } })], "Ginti gaana");
+    const song = await importVideo("GGGGGGGGGGG", [agentOutput({ classification: { category: "music_rhymes" } })], "Slow lullaby");
+    await importVideo("UUUUUUUUUUU", [agentOutput()], "Counting to three"); // never published
+    for (const id of [counting, forOlder, hindi, song]) await publish(id, { decision: "APPROVED", reason: "Calm and clear." }).expect(201);
+
+    const ids = async (childId: string) =>
+      (await request(app).get(`/children/${childId}/recommendations`).set("Authorization", PARENT_A)).body.items.map((item: { card: { id: string } }) => item.card.id);
+    // A 3–4 child (age 3.5) who reads English: not the 4–6 video, the Hindi one or the unpublished one.
+    const surprise = await createChild(PARENT_A);
+    expect((await ids(surprise)).sort()).toEqual([counting, song].sort());
+    // "Let me choose: Maths" narrows it to Maths.
+    const mathsOnly = await createChild(PARENT_A, { content_mix: "CHOSEN", preferred_categories: ["maths"] });
+    expect(await ids(mathsOnly)).toEqual([counting]);
+
+    const pool = (await request(app).get("/content-pool").set("Authorization", ADMIN)).body;
+    expect(pool).toMatchObject({ published: 4, eligible: 4, not_reaching_parents: [] });
+    const band = pool.bands.find((b: { age_band: string }) => b.age_band === "3_4");
+    expect(band.categories.find((c: { category: string }) => c.category === "maths")).toEqual({ category: "maths", count: 2, thin: true });
+
+    // The child sees nothing until the parent adds it; then it plays; unpublishing takes it away again.
+    const library = async () => (await request(app).get(`/children/${mathsOnly}/library`).set("Authorization", PARENT_A)).body.items;
+    expect(await library()).toEqual([]);
+    await request(app).post(`/children/${mathsOnly}/library`).set("Authorization", PARENT_A).send({ content_item_id: counting });
+    expect((await library())[0].card.player).toMatchObject({ provider: "youtube", video_id: "AAAAAAAAAAA" });
+    await publish(counting, { decision: "MANUAL_REVIEW_REQUIRED", reason: "Another look." }).expect(201);
+    expect(await library()).toEqual([]);
+    expect(await ids(mathsOnly)).toEqual([]);
+  });
+
   it("gives a child with only an age a mixed feed", async () => {
     const counting = await importVideo("AAAAAAAAAAA");
     const moreCounting = await importVideo("BBBBBBBBBBB", [agentOutput()], "Counting to ten");
