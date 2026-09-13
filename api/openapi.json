@@ -835,6 +835,124 @@
           "why",
           "card"
         ]
+      },
+      "Session": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "child_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "minutes": {
+            "type": "number"
+          },
+          "started_at": {
+            "type": "string"
+          },
+          "ended_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "outcome": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "COMPLETED",
+              "EXITED",
+              null
+            ]
+          },
+          "short_by_minutes": {
+            "type": "number",
+            "description": "How far the child's library fell short of the chosen time; 0 when it filled it"
+          },
+          "slots": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "slot": {
+                  "type": "number"
+                },
+                "break_after": {
+                  "type": "string",
+                  "enum": [
+                    "MOVEMENT",
+                    "QUIET",
+                    "WIND_DOWN"
+                  ],
+                  "description": "The break after this slot; the last is always WIND_DOWN"
+                },
+                "items": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "position": {
+                        "type": "number"
+                      },
+                      "outcome": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "enum": [
+                          "COMPLETED",
+                          "SKIPPED",
+                          "EXITED",
+                          null
+                        ]
+                      },
+                      "watched_seconds": {
+                        "type": [
+                          "number",
+                          "null"
+                        ]
+                      },
+                      "card": {
+                        "$ref": "#/components/schemas/ContentCard"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "position",
+                      "outcome",
+                      "watched_seconds",
+                      "card"
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "slot",
+                "break_after",
+                "items"
+              ]
+            }
+          }
+        },
+        "required": [
+          "id",
+          "child_id",
+          "minutes",
+          "started_at",
+          "ended_at",
+          "outcome",
+          "short_by_minutes",
+          "slots"
+        ]
       }
     },
     "parameters": {}
@@ -6403,6 +6521,397 @@
                   "required": [
                     "items"
                   ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/children/{id}/sessions": {
+      "post": {
+        "summary": "Start a Session: builds the slot-by-slot queue from the child's library for the chosen minutes and starts it at once",
+        "tags": [
+          "Sessions"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "minutes": {
+                    "type": "integer",
+                    "minimum": 15,
+                    "maximum": 180,
+                    "description": "15, 30, 45, 60 or 90; any other length snaps to 30-minute blocks"
+                  }
+                },
+                "required": [
+                  "minutes"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Session"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "summary": "The handoff log: this child's recent sessions, what was watched and how each ended",
+        "tags": [
+          "Sessions"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Session"
+                      }
+                    }
+                  },
+                  "required": [
+                    "items"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sessions/{id}/items/{itemId}": {
+      "patch": {
+        "summary": "Record how one video went: COMPLETED, SKIPPED or EXITED",
+        "tags": [
+          "Sessions"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "itemId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "outcome": {
+                    "type": "string",
+                    "enum": [
+                      "COMPLETED",
+                      "SKIPPED",
+                      "EXITED"
+                    ]
+                  },
+                  "watched_seconds": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 86400
+                  }
+                },
+                "required": [
+                  "outcome"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Session"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sessions/{id}/end": {
+      "post": {
+        "summary": "End the session: COMPLETED after the wind-down, or EXITED early",
+        "tags": [
+          "Sessions"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "outcome": {
+                    "type": "string",
+                    "enum": [
+                      "COMPLETED",
+                      "EXITED"
+                    ],
+                    "description": "COMPLETED: the wind-down finished. EXITED: the child left early; there's no resume"
+                  }
+                },
+                "required": [
+                  "outcome"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Session"
                 }
               }
             }

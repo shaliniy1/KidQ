@@ -199,6 +199,38 @@ describe("API", () => {
     expect(await ids(mathsOnly)).toEqual([]);
   });
 
+  it("starts a session from the child's library only, logs how it went, and keeps families apart", async () => {
+    const counting = await importVideo("AAAAAAAAAAA");
+    const song = await importVideo("GGGGGGGGGGG", [agentOutput({ classification: { category: "music_rhymes" } })], "Slow lullaby");
+    const notAdded = await importVideo("BBBBBBBBBBB", [agentOutput()], "Counting to ten");
+    for (const id of [counting, song, notAdded]) await publish(id, { decision: "APPROVED", reason: "Calm and clear." }).expect(201);
+    const childId = await createChild(PARENT_A);
+    for (const id of [counting, song]) await request(app).post(`/children/${childId}/library`).set("Authorization", PARENT_A).send({ content_item_id: id });
+
+    const started = await request(app).post(`/children/${childId}/sessions`).set("Authorization", PARENT_A).send({ minutes: 45 });
+    expect(started.status).toBe(201);
+    const session = started.body;
+    const queued = session.slots.flatMap((slot: { items: Array<{ card: { id: string } }> }) => slot.items.map((item) => item.card.id));
+    // Two 3:20 videos fill one slot: only what the parent added, and the session ends on the wind-down.
+    expect(queued.sort()).toEqual([counting, song].sort());
+    expect(session.slots.map((slot: { break_after: string }) => slot.break_after)).toEqual(["WIND_DOWN"]);
+    expect(session.short_by_minutes).toBe(38);
+    expect((await request(app).get(`/children/${childId}`).set("Authorization", PARENT_A)).body.session_minutes).toBe(45);
+
+    const first = session.slots[0].items[0];
+    const watched = await request(app).patch(`/sessions/${session.id}/items/${first.id}`).set("Authorization", PARENT_A).send({ outcome: "COMPLETED", watched_seconds: 200 });
+    expect(watched.body.slots[0].items[0]).toMatchObject({ outcome: "COMPLETED", watched_seconds: 200 });
+    expect((await request(app).post(`/sessions/${session.id}/end`).set("Authorization", PARENT_A).send({ outcome: "EXITED" })).body.outcome).toBe("EXITED");
+    expect((await request(app).post(`/sessions/${session.id}/end`).set("Authorization", PARENT_A).send({ outcome: "COMPLETED" })).status).toBe(409);
+
+    const log = (await request(app).get(`/children/${childId}/sessions`).set("Authorization", PARENT_A)).body.items;
+    expect(log).toHaveLength(1);
+    expect(log[0]).toMatchObject({ id: session.id, minutes: 45, outcome: "EXITED" });
+
+    expect((await request(app).get(`/children/${childId}/sessions`).set("Authorization", PARENT_B)).status).toBe(404);
+    expect((await request(app).patch(`/sessions/${session.id}/items/${first.id}`).set("Authorization", PARENT_B).send({ outcome: "SKIPPED" })).status).toBe(404);
+  });
+
   it("gives a child with only an age a mixed feed", async () => {
     const counting = await importVideo("AAAAAAAAAAA");
     const moreCounting = await importVideo("BBBBBBBBBBB", [agentOutput()], "Counting to ten");
