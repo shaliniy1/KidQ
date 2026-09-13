@@ -31,16 +31,20 @@ aged 0–6 can't read one.
 by default. Child mode draws its own control and drives playback through the
 handle's existing `play()` / `pause()`.
 
-### [ ] 3. Confirm what parent attribution means
-"Picked by Mumma / Papa / Mumma & Papa" stays in the design. Which was meant?
+### [x] 3. Confirm what parent attribution means
+**Settled: one family label.** It reads "Mumma & Papa" everywhere — never a
+different parent per video.
 
-- **Per item** — different videos credited to different parents, as the
-  prototype shows. Needs a "who added this" field on the library entry, and a
-  family to have more than one parent figure.
-- **One family label** for the session — closer to display copy, far cheaper.
+**This removes the ask rather than creating one.** No "who added this" field on
+the library entry, and no second parent figure on the family: one account per
+family with a single `parent_name` is already enough. The prototype now carries
+the label on the *session* rather than on each video, which is the shape the API
+can back today.
 
-Onboarding currently takes a single `parent_name` on one account per family, so
-either way something has to change.
+The only thing left is where the string comes from. It is hardcoded in the
+prototype; presumably it should be derived from the family's own `parent_name`,
+or be a household display name the parent sets, rather than assuming every
+family says "Mumma & Papa".
 
 ---
 
