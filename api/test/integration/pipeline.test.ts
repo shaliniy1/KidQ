@@ -106,7 +106,7 @@ describe("content pipeline (fixtures, real Postgres)", () => {
 
     const record = await item();
     expect(record.analysis_status).toBe("ANALYSIS_INCOMPLETE");
-    expect(record.studio_state).toBe("ANALYSIS_INCOMPLETE");
+    expect(record.studio_state).toBe("NEEDS_ATTENTION");
     expect(record.publish_blockers).toContain("MISSING_COMPONENTS");
     const gap = (await pool.query("SELECT summary FROM assessments WHERE assessor_type = 'MODEL'")).rows[0];
     expect(gap.summary).toMatch(/^AI review not completed/);

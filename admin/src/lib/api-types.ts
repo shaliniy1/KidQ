@@ -304,7 +304,7 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
-                    state?: "PENDING_ANALYSIS" | "ANALYSING" | "READY_TO_APPROVE" | "NEEDS_ATTENTION" | "ANALYSIS_INCOMPLETE" | "FAILED" | "APPROVED" | "REJECTED";
+                    state?: "PENDING_ANALYSIS" | "READY_TO_APPROVE" | "NEEDS_ATTENTION" | "APPROVED" | "REJECTED";
                     age_group?: "0_2" | "2_3" | "3_4" | "4_5" | "5_6";
                     category?: string;
                     source?: "youtube" | "nasa_images" | "wikimedia_commons" | "storyweaver";
@@ -3426,7 +3426,7 @@ export interface components {
         };
         AdminContent: components["schemas"]["ContentCard"] & {
             /** @enum {string} */
-            studio_state: "PENDING_ANALYSIS" | "ANALYSING" | "READY_TO_APPROVE" | "NEEDS_ATTENTION" | "ANALYSIS_INCOMPLETE" | "FAILED" | "APPROVED" | "REJECTED";
+            studio_state: "PENDING_ANALYSIS" | "READY_TO_APPROVE" | "NEEDS_ATTENTION" | "APPROVED" | "REJECTED";
             analysis_status: string;
             /** @enum {string} */
             current_status: "APPROVED" | "REJECTED" | "MANUAL_REVIEW_REQUIRED";

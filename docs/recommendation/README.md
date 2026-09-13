@@ -27,14 +27,15 @@ Admin or parent adds content (URLs or discovery queries)
 - `content_items.current_status` changes only through `publication_decisions`.
 - **Studio states** (`content_records_v.studio_state`):
 
-  | State | Meaning |
-  |---|---|
-  | `PENDING_ANALYSIS`, `ANALYSING` | Waiting for, or in, the rule checks and AI scoring |
-  | `READY_TO_APPROVE` | Every publish check passes |
-  | `NEEDS_ATTENTION` | Something to check or fix: see the publish policy |
-  | `ANALYSIS_INCOMPLETE` | The AI couldn't score it; an admin rates it |
-  | `FAILED` | A pipeline step failed after its retries |
-  | `APPROVED`, `REJECTED` | A decision: an admin's, or a KidQ-checks rejection (`decision_source = SYSTEM`) an admin can reverse |
+  | State | Admin label | Meaning |
+  |---|---|---|
+  | `PENDING_ANALYSIS` | Draft | Waiting for, or in, the rule checks and AI review |
+  | `READY_TO_APPROVE` | Ready to publish | Every check passed; one click publishes |
+  | `NEEDS_ATTENTION` | Needs changes | An admin must act: `publish_blockers` says what to fix, and `analysis_status` shows when the AI couldn't review the item (`ANALYSIS_INCOMPLETE`) or the pipeline failed (`FAILED`) |
+  | `APPROVED` | Published | Live for parents |
+  | `REJECTED` | Rejected | Rejected by an admin, or by KidQ checks (`decision_source = SYSTEM`); an admin can restore it |
+
+  `analysis_status` (QUEUED, ANALYSING, ASSESSED, ANALYSIS_INCOMPLETE, FAILED) and `current_status` (APPROVED, REJECTED, MANUAL_REVIEW_REQUIRED) are internal; screens show only the studio state. Five states since 2026-09-13: the dropped three are one-to-one parts of these.
 
 - **Unpublish**: a decision of `MANUAL_REVIEW_REQUIRED`. The item leaves recommendations and libraries immediately.
 

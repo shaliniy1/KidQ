@@ -14,16 +14,8 @@ const sum = (values: number[]) => values.reduce((total, value) => total + value,
 const sumsToOne = (record: Record<string, number>) => Math.abs(sum(Object.values(record)) - 1) < 0.001;
 
 export const CONTENT_TYPES = ["VIDEO", "ACTIVITY", "STORYBOOK", "INTERACTIVE_CONTENT"] as const;
-export const STUDIO_STATES = [
-  "PENDING_ANALYSIS",
-  "ANALYSING",
-  "READY_TO_APPROVE",
-  "NEEDS_ATTENTION",
-  "ANALYSIS_INCOMPLETE",
-  "FAILED",
-  "APPROVED",
-  "REJECTED",
-] as const;
+// What the admin sees (docs/recommendation/README.md "Admin gate"). analysis_status and current_status stay internal.
+export const STUDIO_STATES = ["PENDING_ANALYSIS", "READY_TO_APPROVE", "NEEDS_ATTENTION", "APPROVED", "REJECTED"] as const;
 export const DECISIONS = ["APPROVED", "REJECTED", "MANUAL_REVIEW_REQUIRED"] as const;
 const RUBRIC_KEYS = RUBRIC.map((criterion) => criterion.key) as [string, ...string[]];
 

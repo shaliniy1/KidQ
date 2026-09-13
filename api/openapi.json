@@ -573,11 +573,8 @@
                 "type": "string",
                 "enum": [
                   "PENDING_ANALYSIS",
-                  "ANALYSING",
                   "READY_TO_APPROVE",
                   "NEEDS_ATTENTION",
-                  "ANALYSIS_INCOMPLETE",
-                  "FAILED",
                   "APPROVED",
                   "REJECTED"
                 ]
@@ -1440,11 +1437,8 @@
               "type": "string",
               "enum": [
                 "PENDING_ANALYSIS",
-                "ANALYSING",
                 "READY_TO_APPROVE",
                 "NEEDS_ATTENTION",
-                "ANALYSIS_INCOMPLETE",
-                "FAILED",
                 "APPROVED",
                 "REJECTED"
               ]

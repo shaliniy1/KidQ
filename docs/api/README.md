@@ -48,6 +48,18 @@ Every list returns the same `ContentCard`. Render it; don't recompute anything i
 - `thumbnails` — every size, so TVs load large images and phones small ones.
 - `age.groups` — derived groups, one or more of `0_2`, `2_3`, `3_4`, `4_5`, `5_6`.
 
+## Content statuses
+
+Admin screens show `studio_state`, one of five. Show one tile or filter per state, so a tile's count always matches its list.
+
+| `studio_state` | Label | What the admin does |
+|---|---|---|
+| `PENDING_ANALYSIS` | Draft | Nothing yet: rule checks and the AI review are queued or running |
+| `READY_TO_APPROVE` | Ready to publish | Publish (single or bulk) |
+| `NEEDS_ATTENTION` | Needs changes | Fix what `publish_blockers` lists, or publish over KidQ's checks with a reason |
+| `APPROVED` | Published | Unpublish if needed |
+| `REJECTED` | Rejected | Restore if KidQ checks got it wrong |
+
 ## Admin app flows
 
 | Screen | Calls |

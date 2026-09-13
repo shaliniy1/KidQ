@@ -206,7 +206,7 @@ export async function listAdminContent(db: Db, filters: ListContentQuery, extraW
 
 /** Items an admin should act on; parent requests first. */
 export async function listReviewQueue(db: Db, limit: number, offset: number) {
-  const whereSql = "WHERE v.studio_state IN ('READY_TO_APPROVE', 'NEEDS_ATTENTION', 'ANALYSIS_INCOMPLETE', 'FAILED')";
+  const whereSql = "WHERE v.studio_state IN ('READY_TO_APPROVE', 'NEEDS_ATTENTION')";
   const total = (await db.query(`SELECT count(*)::int AS n FROM content_records_v v ${whereSql}`)).rows[0].n as number;
   const rows = (
     await db.query(`SELECT * FROM (${CARD_SELECT} ${whereSql}) q ORDER BY q.parent_requests DESC, q.created_at, q.id LIMIT $1 OFFSET $2`, [limit, offset])
