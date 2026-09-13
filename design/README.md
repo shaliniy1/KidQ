@@ -208,6 +208,7 @@ to settle design questions, not architecture.
 
 | Path | What |
 |---|---|
+| `OPEN-ITEMS.md` | Everything still unresolved, with an owner against each |
 | `concept.md` | Product concept, principles, guardrails |
 | `brand.md` | Design system — tokens, type scale, motion tiers, geometry |
 | `prototype/` | The runnable prototype |
