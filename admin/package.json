@@ -1,0 +1,28 @@
+{
+  "name": "admin",
+  "version": "0.1.0",
+  "private": true,
+  "description": "KidQ Admin Content Studio",
+  "scripts": {
+    "dev": "next dev --port 3001",
+    "build": "next build",
+    "start": "next start -p ${PORT:-3001}",
+    "typecheck": "tsc --noEmit",
+    "gen:api": "openapi-typescript ../api/openapi.json -o src/lib/api-types.ts"
+  },
+  "dependencies": {
+    "@kidq/player": "*",
+    "@supabase/supabase-js": "^2.116.0",
+    "next": "16.3.4",
+    "openapi-fetch": "^0.17.0",
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "openapi-typescript": "^7.13.0",
+    "typescript": "^5"
+  }
+}

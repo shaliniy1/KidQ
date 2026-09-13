@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "KidQ",
-  description: "KidQ",
+  title: "KidQ — A calmer place to be curious",
+  description: "Thoughtfully chosen stories, activities, and gentle learning for children from birth to six.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

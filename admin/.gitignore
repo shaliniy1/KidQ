@@ -1,0 +1,9 @@
+# Next.js build output and generated files
+/.next/
+/out/
+next-env.d.ts
+*.tsbuildinfo
+
+# Local env files (only .env.example is committed)
+.env*.local
+.env

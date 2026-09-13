@@ -1,0 +1,73 @@
+# Runs on every PR and push to main, so work from different people merges safely.
+# Merging to main auto-deploys QA on Render; keep this green.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  api:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: kidq
+          POSTGRES_PASSWORD: kidq
+          POSTGRES_DB: kidq_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgresql://kidq:kidq@localhost:5432/kidq_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck -w api
+      - run: npm test -w api
+      - name: API contract is committed and current
+        run: npm run openapi:check -w api
+      - run: npm run build -w api
+
+  web:
+    runs-on: ubuntu-latest
+    env:
+      NEXT_PUBLIC_API_URL: http://localhost:4000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - run: npm ci
+      # Next generates route types (LayoutProps, PageProps) under web/.next/types; a bare `tsc`
+      # before that can't see them, so generate them first.
+      - run: cd web && npx next typegen && npx tsc --noEmit
+      - run: npm run build -w web
+
+  admin:
+    runs-on: ubuntu-latest
+    env:
+      NEXT_PUBLIC_API_URL: http://localhost:4000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - run: npm ci
+      - name: Typed API client matches the API contract
+        run: npm run gen:api -w admin && git diff --exit-code admin/src/lib/api-types.ts
+      - run: npm run typecheck -w admin
+      - run: npx tsc -p packages/kidq-player
+      - run: npm run build -w admin
