@@ -953,6 +953,296 @@
           "short_by_minutes",
           "slots"
         ]
+      },
+      "ParentAnalytics": {
+        "type": "object",
+        "properties": {
+          "child_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "period": {
+            "type": "string",
+            "enum": [
+              "today",
+              "7d",
+              "30d"
+            ]
+          },
+          "timezone": {
+            "type": "string"
+          },
+          "range": {
+            "type": "object",
+            "properties": {
+              "start": {
+                "type": "string"
+              },
+              "end": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "start",
+              "end"
+            ],
+            "description": "Local days, inclusive"
+          },
+          "has_data": {
+            "type": "boolean"
+          },
+          "overview": {
+            "type": "object",
+            "properties": {
+              "screen_minutes": {
+                "type": "integer",
+                "description": "Videos actually playing on screen"
+              },
+              "videos_watched": {
+                "type": "integer"
+              },
+              "activities_completed": {
+                "type": "integer"
+              },
+              "vs_previous": {
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "properties": {
+                  "minutes_diff": {
+                    "type": "integer",
+                    "description": "Negative is less"
+                  },
+                  "compared_with": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "minutes_diff",
+                  "compared_with"
+                ],
+                "description": "Only when both periods have screen time"
+              }
+            },
+            "required": [
+              "screen_minutes",
+              "videos_watched",
+              "activities_completed",
+              "vs_previous"
+            ]
+          },
+          "daily": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "date": {
+                  "type": "string"
+                },
+                "minutes": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "date",
+                "minutes"
+              ]
+            }
+          },
+          "categories": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "key": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "minutes": {
+                  "type": "integer"
+                },
+                "percent": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "key",
+                "label",
+                "minutes",
+                "percent"
+              ]
+            },
+            "description": "Videos and activities; past the top five is \"other\""
+          },
+          "engaged": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "key": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "minutes": {
+                  "type": "integer"
+                },
+                "videos": {
+                  "type": "integer"
+                },
+                "activities": {
+                  "type": "integer"
+                },
+                "average_completion": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "key",
+                "label",
+                "minutes",
+                "videos",
+                "activities",
+                "average_completion"
+              ]
+            },
+            "description": "Up to three, from watch time, completion, repeats and variety; a category needs two plays"
+          },
+          "top_content": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "card": {
+                  "$ref": "#/components/schemas/ContentCard"
+                },
+                "minutes": {
+                  "type": "integer"
+                },
+                "completion": {
+                  "type": "integer"
+                },
+                "times_watched": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "card",
+                "minutes",
+                "completion",
+                "times_watched"
+              ]
+            }
+          },
+          "completion": {
+            "type": "object",
+            "properties": {
+              "started": {
+                "type": "integer"
+              },
+              "completed": {
+                "type": "integer",
+                "description": "90% or more"
+              },
+              "partly_watched": {
+                "type": "integer",
+                "description": "25–90%"
+              },
+              "stopped_early": {
+                "type": "integer",
+                "description": "Under 25%"
+              }
+            },
+            "required": [
+              "started",
+              "completed",
+              "partly_watched",
+              "stopped_early"
+            ]
+          },
+          "pattern": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "part": {
+                  "type": "string",
+                  "enum": [
+                    "MORNING",
+                    "AFTERNOON",
+                    "EVENING",
+                    "OTHER"
+                  ]
+                },
+                "label": {
+                  "type": "string"
+                },
+                "hours": {
+                  "type": "string"
+                },
+                "minutes": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "part",
+                "label",
+                "hours",
+                "minutes"
+              ]
+            }
+          },
+          "split": {
+            "type": "object",
+            "properties": {
+              "video_minutes": {
+                "type": "integer"
+              },
+              "activity_minutes": {
+                "type": "integer"
+              },
+              "video_percent": {
+                "type": "integer"
+              },
+              "activity_percent": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "video_minutes",
+              "activity_minutes",
+              "video_percent",
+              "activity_percent"
+            ]
+          },
+          "insights": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "At most two factual sentences, only once there's enough to go on"
+          }
+        },
+        "required": [
+          "child_id",
+          "period",
+          "timezone",
+          "range",
+          "has_data",
+          "overview",
+          "daily",
+          "categories",
+          "engaged",
+          "top_content",
+          "completion",
+          "pattern",
+          "split",
+          "insights"
+        ]
       }
     },
     "parameters": {}
@@ -4920,6 +5210,11 @@
                     "minLength": 1,
                     "maxLength": 80
                   },
+                  "timezone": {
+                    "type": "string",
+                    "maxLength": 64,
+                    "description": "IANA time zone from the browser, e.g. Asia/Kolkata: it decides the child's \"today\" in analytics"
+                  },
                   "language": {
                     "type": "string",
                     "minLength": 2,
@@ -4984,6 +5279,9 @@
                         "language": {
                           "type": "string"
                         },
+                        "timezone": {
+                          "type": "string"
+                        },
                         "created_at": {
                           "type": "string"
                         },
@@ -4994,6 +5292,7 @@
                       "required": [
                         "name",
                         "language",
+                        "timezone",
                         "created_at",
                         "updated_at"
                       ]
@@ -5084,6 +5383,9 @@
                         "language": {
                           "type": "string"
                         },
+                        "timezone": {
+                          "type": "string"
+                        },
                         "created_at": {
                           "type": "string"
                         },
@@ -5094,6 +5396,7 @@
                       "required": [
                         "name",
                         "language",
+                        "timezone",
                         "created_at",
                         "updated_at"
                       ]
@@ -5180,6 +5483,11 @@
                     "type": "string",
                     "minLength": 2,
                     "maxLength": 10
+                  },
+                  "timezone": {
+                    "type": "string",
+                    "maxLength": 64,
+                    "description": "IANA time zone from the browser, e.g. Asia/Kolkata: it decides the child's \"today\" in analytics"
                   }
                 }
               }
@@ -5203,6 +5511,9 @@
                         "language": {
                           "type": "string"
                         },
+                        "timezone": {
+                          "type": "string"
+                        },
                         "created_at": {
                           "type": "string"
                         },
@@ -5213,6 +5524,7 @@
                       "required": [
                         "name",
                         "language",
+                        "timezone",
                         "created_at",
                         "updated_at"
                       ]
@@ -6912,6 +7224,860 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Session"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/children/{id}/events": {
+      "post": {
+        "summary": "Record viewing events (up to 50 per batch); a resent event is not counted twice",
+        "tags": [
+          "Analytics"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "events": {
+                    "type": "array",
+                    "items": {
+                      "oneOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "event_name": {
+                              "type": "string",
+                              "enum": [
+                                "video_started"
+                              ]
+                            },
+                            "client_event_id": {
+                              "type": "string",
+                              "format": "uuid",
+                              "description": "Made by the app; resending the same event is a no-op"
+                            },
+                            "occurred_at": {
+                              "type": "string",
+                              "format": "date-time"
+                            },
+                            "session_id": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "content_id": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "play_id": {
+                              "type": "string",
+                              "format": "uuid",
+                              "description": "One playback, from start to exit; a replay is a new play"
+                            },
+                            "recommendation_source": {
+                              "type": "string",
+                              "enum": [
+                                "PARENT_PLAYLIST",
+                                "KIDQ_RECOMMENDATION",
+                                "CATEGORY_BROWSE",
+                                "CONTINUE_WATCHING",
+                                "RECENTLY_WATCHED"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "event_name",
+                            "client_event_id",
+                            "occurred_at",
+                            "content_id",
+                            "play_id"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "event_name": {
+                              "type": "string",
+                              "enum": [
+                                "video_progress"
+                              ]
+                            },
+                            "client_event_id": {
+                              "type": "string",
+                              "format": "uuid",
+                              "description": "Made by the app; resending the same event is a no-op"
+                            },
+                            "occurred_at": {
+                              "type": "string",
+                              "format": "date-time"
+                            },
+                            "session_id": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "content_id": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "play_id": {
+                              "type": "string",
+                              "format": "uuid",
+                              "description": "One playback, from start to exit; a replay is a new play"
+                            },
+                            "position_seconds": {
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 86400
+                            },
+                            "progress_percent": {
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 100
+                            },
+                            "active_seconds": {
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 86400,
+                              "description": "Time actually playing and on screen since this play's previous event: never paused, buffering or a hidden tab"
+                            }
+                          },
+                          "required": [
+                            "event_name",
+                            "client_event_id",
+                            "occurred_at",
+                            "content_id",
+                            "play_id",
+                            "position_seconds",
+                            "progress_percent",
+                            "active_seconds"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Sent at 25, 50, 75 and 90%"
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "event_name": {
+                              "type": "string",
+                              "enum": [
+                                "video_paused"
+                              ]
+                            },
+                            "client_event_id": {
+                              "type": "string",
+                              "format": "uuid",
+                              "description": "Made by the app; resending the same event is a no-op"
+                            },
+                            "occurred_at": {
+                              "type": "string",
+                              "format": "date-time"
+                            },
+                            "session_id": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "content_id": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "play_id": {
+                              "type": "string",
+                              "format": "uuid",
+                              "description": "One playback, from start to exit; a replay is a new play"
+                            },
+                            "position_seconds": {
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 86400
+                            },
+                            "progress_percent": {
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 100
+                            },
+                            "active_seconds": {
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 86400,
+                              "description": "Time actually playing and on screen since this play's previous event: never paused, buffering or a hidden tab"
+                            }
+                          },
+                          "required": [
+                            "event_name",
+                            "client_event_id",
+                            "occurred_at",
+                            "content_id",
+                            "play_id",
+                            "position_seconds",
+                            "progress_percent",
+                            "active_seconds"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "event_name": {
+                              "type": "string",
+                              "enum": [
+                                "video_resumed"
+                              ]
+                            },
+                            "client_event_id": {
+                              "type": "string",
+                              "format": "uuid",
+                              "description": "Made by the app; resending the same event is a no-op"
+                            },
+                            "occurred_at": {
+                              "type": "string",
+                              "format": "date-time"
+                            },
+                            "session_id": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "content_id": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "play_id": {
+                              "type": "string",
+                              "format": "uuid",
+                              "description": "One playback, from start to exit; a replay is a new play"
+                            },
+                            "position_seconds": {
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 86400
+                            },
+                            "pause_duration_seconds": {
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 86400
+                            }
+                          },
+                          "required": [
+                            "event_name",
+                            "client_event_id",
+                            "occurred_at",
+                            "content_id",
+                            "play_id",
+                            "position_seconds",
+                            "pause_duration_seconds"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "event_name": {
+                              "type": "string",
+                              "enum": [
+                                "video_completed"
+                              ]
+                            },
+                            "client_event_id": {
+                              "type": "string",
+                              "format": "uuid",
+                              "description": "Made by the app; resending the same event is a no-op"
+                            },
+                            "occurred_at": {
+                              "type": "string",
+                              "format": "date-time"
+                            },
+                            "session_id": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "content_id": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "play_id": {
+                              "type": "string",
+                              "format": "uuid",
+                              "description": "One playback, from start to exit; a replay is a new play"
+                            },
+                            "position_seconds": {
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 86400
+                            },
+                            "progress_percent": {
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 100
+                            },
+                            "active_seconds": {
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 86400,
+                              "description": "Time actually playing and on screen since this play's previous event: never paused, buffering or a hidden tab"
+                            }
+                          },
+                          "required": [
+                            "event_name",
+                            "client_event_id",
+                            "occurred_at",
+                            "content_id",
+                            "play_id",
+                            "position_seconds",
+                            "progress_percent",
+                            "active_seconds"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Once per play, at 90% or more"
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "event_name": {
+                              "type": "string",
+                              "enum": [
+                                "video_exited"
+                              ]
+                            },
+                            "client_event_id": {
+                              "type": "string",
+                              "format": "uuid",
+                              "description": "Made by the app; resending the same event is a no-op"
+                            },
+                            "occurred_at": {
+                              "type": "string",
+                              "format": "date-time"
+                            },
+                            "session_id": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "content_id": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "play_id": {
+                              "type": "string",
+                              "format": "uuid",
+                              "description": "One playback, from start to exit; a replay is a new play"
+                            },
+                            "position_seconds": {
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 86400
+                            },
+                            "progress_percent": {
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 100
+                            },
+                            "active_seconds": {
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 86400,
+                              "description": "Time actually playing and on screen since this play's previous event: never paused, buffering or a hidden tab"
+                            }
+                          },
+                          "required": [
+                            "event_name",
+                            "client_event_id",
+                            "occurred_at",
+                            "content_id",
+                            "play_id",
+                            "position_seconds",
+                            "progress_percent",
+                            "active_seconds"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "event_name": {
+                              "type": "string",
+                              "enum": [
+                                "video_replayed"
+                              ]
+                            },
+                            "client_event_id": {
+                              "type": "string",
+                              "format": "uuid",
+                              "description": "Made by the app; resending the same event is a no-op"
+                            },
+                            "occurred_at": {
+                              "type": "string",
+                              "format": "date-time"
+                            },
+                            "session_id": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "content_id": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "play_id": {
+                              "type": "string",
+                              "format": "uuid",
+                              "description": "One playback, from start to exit; a replay is a new play"
+                            }
+                          },
+                          "required": [
+                            "event_name",
+                            "client_event_id",
+                            "occurred_at",
+                            "content_id",
+                            "play_id"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Sent with the new play's video_started; times watched is counted by the API"
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "event_name": {
+                              "type": "string",
+                              "enum": [
+                                "content_clicked"
+                              ]
+                            },
+                            "client_event_id": {
+                              "type": "string",
+                              "format": "uuid",
+                              "description": "Made by the app; resending the same event is a no-op"
+                            },
+                            "occurred_at": {
+                              "type": "string",
+                              "format": "date-time"
+                            },
+                            "session_id": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "content_id": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "position": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 1000
+                            },
+                            "recommendation_source": {
+                              "type": "string",
+                              "enum": [
+                                "PARENT_PLAYLIST",
+                                "KIDQ_RECOMMENDATION",
+                                "CATEGORY_BROWSE",
+                                "CONTINUE_WATCHING",
+                                "RECENTLY_WATCHED"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "event_name",
+                            "client_event_id",
+                            "occurred_at",
+                            "content_id",
+                            "position",
+                            "recommendation_source"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "event_name": {
+                              "type": "string",
+                              "enum": [
+                                "recommendation_clicked"
+                              ]
+                            },
+                            "client_event_id": {
+                              "type": "string",
+                              "format": "uuid",
+                              "description": "Made by the app; resending the same event is a no-op"
+                            },
+                            "occurred_at": {
+                              "type": "string",
+                              "format": "date-time"
+                            },
+                            "session_id": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "content_id": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "position": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 1000
+                            },
+                            "recommendation_reason": {
+                              "type": "string",
+                              "maxLength": 160
+                            }
+                          },
+                          "required": [
+                            "event_name",
+                            "client_event_id",
+                            "occurred_at",
+                            "content_id",
+                            "position",
+                            "recommendation_reason"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "event_name": {
+                              "type": "string",
+                              "enum": [
+                                "session_started"
+                              ]
+                            },
+                            "client_event_id": {
+                              "type": "string",
+                              "format": "uuid",
+                              "description": "Made by the app; resending the same event is a no-op"
+                            },
+                            "occurred_at": {
+                              "type": "string",
+                              "format": "date-time"
+                            },
+                            "session_id": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "device_type": {
+                              "type": "string",
+                              "enum": [
+                                "PHONE",
+                                "TABLET",
+                                "TV",
+                                "DESKTOP"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "event_name",
+                            "client_event_id",
+                            "occurred_at",
+                            "session_id",
+                            "device_type"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "event_name": {
+                              "type": "string",
+                              "enum": [
+                                "session_ended"
+                              ]
+                            },
+                            "client_event_id": {
+                              "type": "string",
+                              "format": "uuid",
+                              "description": "Made by the app; resending the same event is a no-op"
+                            },
+                            "occurred_at": {
+                              "type": "string",
+                              "format": "date-time"
+                            },
+                            "session_id": {
+                              "type": "string",
+                              "format": "uuid"
+                            }
+                          },
+                          "required": [
+                            "event_name",
+                            "client_event_id",
+                            "occurred_at",
+                            "session_id"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "event_name": {
+                              "type": "string",
+                              "enum": [
+                                "activity_started"
+                              ]
+                            },
+                            "client_event_id": {
+                              "type": "string",
+                              "format": "uuid",
+                              "description": "Made by the app; resending the same event is a no-op"
+                            },
+                            "occurred_at": {
+                              "type": "string",
+                              "format": "date-time"
+                            },
+                            "session_id": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "activity_id": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "play_id": {
+                              "type": "string",
+                              "format": "uuid",
+                              "description": "One playback, from start to exit; a replay is a new play"
+                            }
+                          },
+                          "required": [
+                            "event_name",
+                            "client_event_id",
+                            "occurred_at",
+                            "activity_id",
+                            "play_id"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "event_name": {
+                              "type": "string",
+                              "enum": [
+                                "activity_completed"
+                              ]
+                            },
+                            "client_event_id": {
+                              "type": "string",
+                              "format": "uuid",
+                              "description": "Made by the app; resending the same event is a no-op"
+                            },
+                            "occurred_at": {
+                              "type": "string",
+                              "format": "date-time"
+                            },
+                            "session_id": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "activity_id": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "play_id": {
+                              "type": "string",
+                              "format": "uuid",
+                              "description": "One playback, from start to exit; a replay is a new play"
+                            },
+                            "active_seconds": {
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 86400,
+                              "description": "Time actually playing and on screen since this play's previous event: never paused, buffering or a hidden tab"
+                            }
+                          },
+                          "required": [
+                            "event_name",
+                            "client_event_id",
+                            "occurred_at",
+                            "activity_id",
+                            "play_id",
+                            "active_seconds"
+                          ],
+                          "additionalProperties": false
+                        }
+                      ]
+                    },
+                    "minItems": 1,
+                    "maxItems": 50
+                  }
+                },
+                "required": [
+                  "events"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "accepted": {
+                      "type": "number"
+                    },
+                    "duplicates": {
+                      "type": "number",
+                      "description": "Already recorded; not counted again"
+                    },
+                    "ignored": {
+                      "type": "number",
+                      "description": "Unknown item, another child's play, or older than 7 days"
+                    }
+                  },
+                  "required": [
+                    "accepted",
+                    "duplicates",
+                    "ignored"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/children/{id}/analytics": {
+      "get": {
+        "summary": "The Parent Analytics page: screen time, categories, most watched, completion and a few factual insights",
+        "tags": [
+          "Analytics"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "today",
+                "7d",
+                "30d"
+              ],
+              "default": "7d"
+            },
+            "required": false,
+            "name": "period",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParentAnalytics"
                 }
               }
             }

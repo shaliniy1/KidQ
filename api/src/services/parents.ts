@@ -91,7 +91,7 @@ export function toChild(row: Row) {
 type Child = ReturnType<typeof toChild>;
 
 function toParent(row: Row) {
-  return { name: row.name as string, language: row.language as string, created_at: toIso(row.created_at), updated_at: toIso(row.updated_at) };
+  return { name: row.name as string, language: row.language as string, timezone: row.timezone as string, created_at: toIso(row.created_at), updated_at: toIso(row.updated_at) };
 }
 
 function columnsOf(row: Row): ChildColumns {
@@ -211,10 +211,11 @@ export async function onboard(user: AuthUser, body: OnboardingBody) {
   return withTransaction(async (client) => {
     const parent = (
       await client.query(
-        `INSERT INTO parent_profiles (parent_user_id, name, language) VALUES ($1, $2, $3)
-         ON CONFLICT (parent_user_id) DO UPDATE SET name = EXCLUDED.name, language = EXCLUDED.language, updated_at = now()
+        `INSERT INTO parent_profiles (parent_user_id, name, language, timezone) VALUES ($1, $2, $3, COALESCE($4, 'UTC'))
+         ON CONFLICT (parent_user_id) DO UPDATE SET name = EXCLUDED.name, language = EXCLUDED.language,
+           timezone = COALESCE($4, parent_profiles.timezone), updated_at = now()
          RETURNING *`,
-        [user.id, body.parent_name, body.language],
+        [user.id, body.parent_name, body.language, body.timezone ?? null],
       )
     ).rows[0];
     await assertRoomFor(client, user.id, body.children.length);
@@ -234,8 +235,8 @@ export async function updateMe(user: AuthUser, patch: MePatchBody) {
   const db = getPool();
   if (patch.language) assertKnownKeys(await listTaxonomy(db), { languages: [patch.language] });
   const { rowCount } = await db.query(
-    "UPDATE parent_profiles SET name = COALESCE($2, name), language = COALESCE($3, language), updated_at = now() WHERE parent_user_id = $1",
-    [user.id, patch.name ?? null, patch.language ?? null],
+    "UPDATE parent_profiles SET name = COALESCE($2, name), language = COALESCE($3, language), timezone = COALESCE($4, timezone), updated_at = now() WHERE parent_user_id = $1",
+    [user.id, patch.name ?? null, patch.language ?? null, patch.timezone ?? null],
   );
   if (!rowCount) throw notOnboarded();
   return getMe(user);

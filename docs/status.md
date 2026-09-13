@@ -19,6 +19,7 @@ When something below changes, update it; delete any line that is no longer true.
     - ranking inputs: relevance, KidQ score, learning value, and fit (age and session length);
     - category variety, which also makes the default feed for a child whose parent gave only an age;
     - plus the parent library and parent URL submissions.
+  - parent analytics (API): viewing events, deduplicated and with screen time capped by the server; a per-play rollup; `GET /children/:id/analytics` for every section of the page.
   - sessions (spec §2–5): Start a Session builds ~15-minute slots of whole videos from the child's library only, with breaks and a calm last slot; each video's outcome and the handoff log are recorded.
   - calibration report (`npm run eval:scoring -w api`) and the re-curation script (`npm run recurate -w api`)
   - OpenAPI contract at `/openapi.json` and `/docs`

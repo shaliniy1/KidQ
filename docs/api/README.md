@@ -97,6 +97,12 @@ Admin screens show `studio_state`, one of five. Show one tile or filter per stat
    - After each video: `PATCH /sessions/:id/items/:itemId` with `{ outcome: "COMPLETED" | "SKIPPED" | "EXITED", watched_seconds }`.
    - `POST /sessions/:id/end` with `{ outcome: "COMPLETED" | "EXITED" }`. There's no resume; a new session starts fresh.
    - Handoff log: `GET /children/:id/sessions` (the last 20, newest first).
+7. **Analytics** (the Parent Analytics page):
+   - Set the parent's `timezone` (IANA, from the browser) at `POST /onboarding` or `PATCH /me`. It decides the child's "today" and morning / afternoon / evening.
+   - Send viewing events in batches: `POST /children/:id/events` with `{ events }` (up to 50). Each has a `client_event_id` (uuid) and `occurred_at`; a resent event isn't counted twice. Build them with `web/src/features/analytics` (`useWatchTracker` + `KidQPlayer`'s `onPlayback`) rather than by hand.
+   - Screen time is each event's `active_seconds`: only while the picture plays and the page is visible. The API caps each report at the wall-clock time since the play's previous event, and a play at its video's length + 10%.
+   - `GET /children/:id/analytics?period=today|7d|30d` returns every section of the page. Show its numbers and sentences as given.
+   - Privacy: no IP, user agent, advertising ID or free text is stored. Raw events are pruned after 13 months; the per-play rollup stays.
 
 ## KidQ Player rules
 
