@@ -125,10 +125,46 @@ designed. Worth confirming which was meant before building either.
 
 **Conflicts to resolve**
 
-1. **Playback.** The prototype uses a raw `<video>` with `ended` and `timeupdate`
-   driving the sun. Real playback must go through `packages/kidq-player`, and
-   YouTube runs in an iframe. **The port needs equivalent progress and ended
-   signals out of `KidQPlayer`** — the entire sky-as-clock depends on them.
+1. **Playback through `KidQPlayer`.** Checked against
+   `packages/kidq-player/src/index.tsx`. The sky-as-clock survives the port, but
+   needs two small additive changes to the player. Neither breaks `admin/`.
+
+   **a. Progress is tracked but not exposed.** The player already keeps `time`
+   and `duration` in state, normalised across both providers — YouTube polled
+   every 500ms (`getCurrentTime`/`getDuration`), HTML5 via native `onTimeUpdate`
+   — and renders them in its own seek bar. But `KidQPlayerProps` only exposes
+   `onEnded` and `onError`, and `KidQPlayerHandle` only `play`/`pause`/`seekTo`,
+   so a parent component can neither receive nor poll position.
+
+   500ms is ample for a sun crossing a 30-minute arc. The ask is just to surface
+   what is already computed:
+
+   ```ts
+   onProgress?: (time: number, duration: number) => void;
+   ```
+
+   fired wherever `setTime` / `setDuration` already run. `onEnded` covers the
+   rest of what the session needs.
+
+   **b. The built-in control bar conflicts with child mode.** The player always
+   renders play/pause, **a clickable seek bar**, a **`0:12 / 3:45` time readout**
+   and mute, with no prop to restrict them. Three problems for a child:
+
+   - **Scrubbing.** Child mode is play/pause only, no skip — a clickable seek
+     bar hands the child scrubbing.
+   - **The numeric clock.** The sun exists precisely because a child aged 0–6
+     can't read one. `0:12 / 3:45` is the thing it replaces.
+   - Child mode draws one large brand-styled pause control on the player, not a
+     control strip.
+
+   Cleanest fix is a prop to suppress the default chrome — child mode then draws
+   its own controls and drives playback through the existing handle, which
+   already has `play()` and `pause()`. Something like `chrome={false}` or
+   `controls="none"`, admin keeping today's behaviour by default.
+
+   **Already aligned, worth noting:** `endCard` is annotated "later: the break
+   activity", which is exactly this design's break seam; and TV Back keys
+   (Tizen `10009`, webOS `461`) are handled in the player already.
 2. **Casting.** This design assumed Google Cast in the MVP, with the child's
    device as sender. `docs/api/README.md` instead ships a thin hosted wrapper per
    TV platform and notes YouTube embeds need a real web origin. The cast screen
