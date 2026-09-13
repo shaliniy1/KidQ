@@ -53,6 +53,7 @@ jobs:
       # Next generates route types (LayoutProps, PageProps) under web/.next/types; a bare `tsc`
       # before that can't see them, so generate them first.
       - run: cd web && npx next typegen && npx tsc --noEmit
+      - run: npm test -w web
       - run: npm run build -w web
 
   admin:
