@@ -41,10 +41,9 @@ family with a single `parent_name` is already enough. The prototype now carries
 the label on the *session* rather than on each video, which is the shape the API
 can back today.
 
-The only thing left is where the string comes from. It is hardcoded in the
-prototype; presumably it should be derived from the family's own `parent_name`,
-or be a household display name the parent sets, rather than assuming every
-family says "Mumma & Papa".
+**The string is fixed for the MVP**, decided rather than pending: not derived
+from `parent_name`, not settable by the parent. Logged as item 23 so the cost is
+visible, but nothing here is blocking.
 
 ---
 
@@ -122,6 +121,16 @@ name chosen at runtime. Accepted trade: warmth and accent vary by device and are
 outside our control, and some platforms fetch voices over the network. Recorded
 voice in Indian English is a **post-MVP upgrade, not a blocker** — it would give
 every child the same voice on every device.
+
+### [ ] 23. "Mumma & Papa" is wrong for some households
+Post-MVP. The label is a fixed string, so every family reads "Mumma & Papa"
+whatever their household actually is — a single parent, grandparents raising a
+child, or a family who say Amma and Appa. In a product whose whole emotional
+core is the child feeling a parent's presence, naming the wrong person works
+against that.
+
+Making it settable needs nothing new from the API: onboarding already collects
+`parent_name`, and a household display name would sit beside it.
 
 ### [ ] 21. No way to turn the voice off
 Speech plays automatically with no preference to disable it, and there is no
