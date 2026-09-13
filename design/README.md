@@ -146,21 +146,32 @@ designed. Worth confirming which was meant before building either.
    fired wherever `setTime` / `setDuration` already run. `onEnded` covers the
    rest of what the session needs.
 
-   **b. The built-in control bar conflicts with child mode.** The player always
-   renders play/pause, **a clickable seek bar**, a **`0:12 / 3:45` time readout**
-   and mute, with no prop to restrict them. Three problems for a child:
+   **b. The built-in control bar has to be suppressible in child mode.** The
+   player always renders play/pause, **a clickable seek bar**, a
+   **`0:12 / 3:45` time readout** and mute, with no prop to restrict them.
 
-   - **Scrubbing.** Child mode is play/pause only, no skip — a clickable seek
-     bar hands the child scrubbing.
+   **Decided: child mode is play/pause only.** That is a product decision, not a
+   styling preference, and it rules out two of those:
+
+   - **The seek bar.** No skipping and no scrubbing. A child should not be able
+     to jump around inside a video their parent chose.
    - **The numeric clock.** The sun exists precisely because a child aged 0–6
-     can't read one. `0:12 / 3:45` is the thing it replaces.
-   - Child mode draws one large brand-styled pause control on the player, not a
-     control strip.
+     can't read one. `0:12 / 3:45` is the thing it replaces, so showing both
+     undercuts the entire metaphor. This one is a display rather than a control,
+     but it goes for the same reason.
 
-   Cleanest fix is a prop to suppress the default chrome — child mode then draws
-   its own controls and drives playback through the existing handle, which
-   already has `play()` and `pause()`. Something like `chrome={false}` or
-   `controls="none"`, admin keeping today's behaviour by default.
+   Child mode also draws one large brand-styled pause control on the player
+   itself, not a control strip beneath it.
+
+   The ask: a prop to suppress the default chrome — `chrome={false}` or
+   `controls="none"` — with admin keeping today's behaviour by default. Child
+   mode then draws its own control and drives playback through the existing
+   handle, which already has `play()` and `pause()`.
+
+   *Fallback if that prop is unwelcome:* child mode could hide the bar with CSS
+   from a wrapper. It would work, but the bar is styled inline and would stay
+   focusable for TV remotes unless separately handled, so it is fragile and
+   worse for accessibility. The prop is the better answer.
 
    **Already aligned, worth noting:** `endCard` is annotated "later: the break
    activity", which is exactly this design's break seam; and TV Back keys
