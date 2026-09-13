@@ -53,24 +53,42 @@ visible, but nothing here is blocking.
 Agent with its activity library" as a next slice. This design is that surface,
 so these are offered as input rather than raised as gaps.
 
-### [ ] 4. A session, distinct from the library
-An ordered, finite, parent-chosen list for *today*. The child UI needs the
-order, because autoplay picks the next video with no child input.
+### [x] 4. A session, distinct from the library
+Shipped in PR #4: `POST /children/:id/sessions` returns a started session with
+ordered `slots`.
 
-### [ ] 5. Per-video duration
-The sun's position, "N min left" and break placement all compute from real
-minutes. Estimates would visibly drift across a 30-minute session.
+### [x] 5. Per-video duration
+Shipped: slots hold whole videos, and `PATCH /sessions/:id/items/:itemId` records
+`watched_seconds`, which is what the sun needs.
 
-### [ ] 6. Break slots on the session
-Which slots exist and which activity fills each. Current design: exactly two,
-at the 1/3 and 2/3 marks of the session's minutes, each snapping to the nearest
-video boundary so a break never interrupts a video.
+### [~] 6. Break slots on the session
+Shipped as `break_after` per slot (`MOVEMENT` / `QUIET` / `WIND_DOWN`), and the
+"nearest video boundary" rule matches this design exactly. **But the cadence
+disagrees — see item 24.**
 
 ### [ ] 7. Yesterday's session
-Powers the replay path on the no-session screen.
+Powers the replay path on the no-session screen. `GET /children/:id/sessions`
+returns the log; whether a past session can be replayed as a new one is unclear,
+and "there's no resume" suggests not.
 
 ### [ ] 8. "What's next" cards
 Shown after the session ends. Currently invented, with no source.
+
+### [ ] 24. Break cadence, and the missing wind-down
+Both specs give a 30-minute session two breaks, but place them differently.
+
+| | This design | Sessions API |
+|---|---|---|
+| Rule | 1/3 and 2/3 of the minutes | one per 15 minutes |
+| 30 min | ~10 and ~20 min | ~15 min, then a terminal wind-down |
+| Final break | none | mandatory `WIND_DOWN` |
+
+The real gap: **child mode has no wind-down break.** Its ending is the sunset
+and the all-done screen — which do wind-down work, but are not a break slot and
+the child does not act in them. Either the design grows a wind-down break before
+sunset, or the API's terminal slot maps onto the existing ending.
+
+`MOVE` and `SETTLE` map onto `MOVEMENT` and `QUIET`; only the third type is new.
 
 ### [ ] 9. Reconcile casting
 This design assumed Google Cast in the MVP, with the child's device as sender.

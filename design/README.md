@@ -87,21 +87,46 @@ before anyone ports a component.
 | The pool a session draws from | `GET /children/:id/library` |
 | Video poster | `card.thumbnails` |
 
-**Not in the API yet — and on the roadmap**
+**Now supported by the sessions API (PR #4)**
 
-`docs/status.md` lists "the session queue with break slots, and the Orange Break
-Agent with its activity library" as a next slice. That is exactly this design's
-core, so these are offered as input to that work rather than as gaps to paper
-over:
+This design was written before `POST /children/:id/sessions` existed. Most of
+what it needed has since shipped, and the two specs agree more than they differ:
 
-- **A session** — an ordered, finite, parent-chosen list for *today*, distinct
-  from the library. The child UI needs the order, since autoplay picks the next
-  video with no child input.
-- **Per-video duration.** The sun's position, "N min left" and break placement
-  are all computed from real minutes. Estimates would visibly drift.
-- **Break slots** in the session, and which activity fills each one.
-- **Yesterday's session**, for the replay path on the no-session screen.
-- **"What's next"** cards — currently invented.
+| Prototype needs | Sessions API |
+|---|---|
+| An ordered, finite session for today | `slots` on the started session |
+| Per-video duration | whole videos per slot; `watched_seconds` per item |
+| Break slots | `break_after` on each slot |
+| Session log | `GET /children/:id/sessions` |
+
+One rule matches exactly, which is worth saying out loud: *"a break triggers at
+the nearest video boundary at or after the target minute"* (assembly rule 3) is
+the same rule this prototype implements, arrived at separately.
+
+Still unbacked: **yesterday's session**, for the replay path on the no-session
+screen, and the **"what's next"** cards, which are currently invented.
+
+**Break cadence disagrees — this one needs a decision**
+
+Both specs give a 30-minute session two breaks, but in different places, and
+only one of them ends the session with a break.
+
+| | This design | Sessions API |
+|---|---|---|
+| Rule | 1/3 and 2/3 of the session's minutes | one break per 15 minutes |
+| 30-min session | breaks at ~10 and ~20 min | break at ~15 min, then a terminal wind-down |
+| Final break | none — the last video runs to sunset | **mandatory `WIND_DOWN`** |
+| Types | `MOVE`, `SETTLE` | `MOVEMENT`, `QUIET`, `WIND_DOWN` |
+
+The gap that matters is the last row but one: **the prototype has no wind-down
+break at all.** Its ending is the sunset and the all-done screen, which already
+do wind-down work, but they are not a break slot and the child does not act in
+them. Either the design grows a wind-down break before sunset, or the API's
+terminal slot maps onto the existing ending. That is a joint call, not one this
+document should make.
+
+`MOVE` and `SETTLE` map cleanly onto `MOVEMENT` and `QUIET`; only the third type
+is new to us.
 
 **Confirmed requirement: parent attribution**
 
