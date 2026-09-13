@@ -103,22 +103,38 @@ over:
 - **Yesterday's session**, for the replay path on the no-session screen.
 - **"What's next"** cards — currently invented.
 
+**Confirmed requirement: parent attribution**
+
+Showing who picked a video — "Picked by Mumma", "Picked by Papa", "Mumma & Papa
+picked 4 videos" — is wanted, and stays in the design. It carries real weight
+here: the heart icon and the picker's name are how the child feels a parent's
+presence in the session, which is the emotional core of the whole product.
+
+There is nothing to render it from today. Onboarding takes a single
+`parent_name` on one account per family, so this needs a data answer. One
+question decides how big that answer is:
+
+- If attribution is **per item** — different videos credited to different
+  parents, as the prototype shows — then a library entry needs to record who
+  added it, and the family needs a notion of more than one parent figure.
+- If it is **one family label** for the whole session, it is close to display
+  copy and needs far less.
+
+The prototype currently does the per-item version, since that is what was
+designed. Worth confirming which was meant before building either.
+
 **Conflicts to resolve**
 
-1. **Per-video attribution.** The design says "Picked by Mumma", "Mumma & Papa".
-   The API has one parent account per family with a single `parent_name`, so
-   there is nothing to render this from today. Either the model grows a notion
-   of who picked an item, or the design drops to a single parent voice.
-2. **Playback.** The prototype uses a raw `<video>` with `ended` and `timeupdate`
+1. **Playback.** The prototype uses a raw `<video>` with `ended` and `timeupdate`
    driving the sun. Real playback must go through `packages/kidq-player`, and
    YouTube runs in an iframe. **The port needs equivalent progress and ended
    signals out of `KidQPlayer`** — the entire sky-as-clock depends on them.
-3. **Casting.** This design assumed Google Cast in the MVP, with the child's
+2. **Casting.** This design assumed Google Cast in the MVP, with the child's
    device as sender. `docs/api/README.md` instead ships a thin hosted wrapper per
    TV platform and notes YouTube embeds need a real web origin. The cast screen
    in the prototype is a visual mock only, so nothing is blocked — but the two
    directions should be reconciled before that screen is built for real.
-4. **TV remote focus.** The integration guide requires every control to be
+3. **TV remote focus.** The integration guide requires every control to be
    focusable and arrow-key operable with no hover-only UI. The prototype uses
    hover affordances and assumes pointer or touch. Focus states need adding
    during the port.
