@@ -72,6 +72,11 @@
   let timers = [];
   let reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const later = (fn, ms) => { const id = setTimeout(fn, reducedMotion ? Math.min(ms, 200) : ms); timers.push(id); return id; };
+  // Phase timing for activity breaks. Unlike later(), this does NOT clamp under
+  // reduced motion: a 1.5s hold in a break is the activity itself, not a
+  // transition, and crushing it to 200ms would run the whole break in ~1.6s.
+  // Still pushed into `timers`, so clearTimers() and showScreen() cancel it.
+  const hold = (fn, ms) => { const id = setTimeout(fn, ms); timers.push(id); return id; };
   const clearTimers = () => { timers.forEach(clearTimeout); timers = []; };
   const safePlay = (m) => { if (!m) return; m.currentTime = 0; m.play().catch(() => {}); };
   const attemptPlay = (m) => { m.play().catch(() => { later(() => m.play().catch(() => {}), 200); }); };
@@ -144,9 +149,9 @@
      day is winding down) — the same arc the sun itself travels.             */
   const BREAK_GAMES = {
     move:   ["find"],
-    settle: ["breathe"]
+    settle: ["breathe", "follow"]
     // next round: "tree" (stand like a tree) joins move;
-    //             "count" and "eyes" join settle
+    //             "count" joins settle
   };
 
   // Returns the two break points as fractions of the session's total minutes.
@@ -424,12 +429,16 @@
   }
 
   /* ---------- playtime seam + activity breaks ---------- */
+  // A ternary only ever reaches two games. Every new break must land here or it
+  // silently runs breathing.
+  const BREAK_START = { find: startFind, breathe: startBreathing, follow: startFollow };
+
   function startPlaytimeSeam(forceGame) {
     video.pause();
     showScreen("screen-playtime");
     const game = forceGame || gameForBreak(state.breaksTaken);
     if (!forceGame) state.breaksTaken += 1;
-    later(() => (game === "find" ? startFind() : startBreathing()), 1600);
+    hold(() => (BREAK_START[game] || startBreathing)(), 1600);
   }
 
   /* --- SETTLE: breathe with the sun (sourced Lottie character) --- */
@@ -550,6 +559,11 @@
     safePlay(chime);
     later(startChoice, 1900);
   });
+
+  /* --- SETTLE: follow the ball with your eyes --- */
+  function startFollow() {
+    showScreen("screen-follow");
+  }
 
   /* ---------- after-break choice (within the parent's picks) ---------- */
   const choiceScreen = $("#screen-choice");
@@ -698,7 +712,7 @@
     clearTimers();
     video.pause();
     if (!state.session) prepSession("aarav");
-    (b.dataset.break === "find" ? startFind : startBreathing)();
+    (BREAK_START[b.dataset.break] || startBreathing)();
   }));
 
   $$("[data-sky]").forEach((b) => b.addEventListener("click", () => {

@@ -366,6 +366,9 @@ button{font-family:inherit; -webkit-tap-highlight-color:transparent}
   color-mix(in srgb, var(--find-colour,#FFC64D) 55%, transparent) 0%, transparent 70%)}
 #screen-find.celebrate .kq-findhead{animation:pop .7s cubic-bezier(.34,1.56,.64,1)}
 
+/* ---------- SETTLE: follow the ball ---------- */
+#screen-follow .kq-centercol{gap:20px}
+
 /* ---------- after-break choice ---------- */
 .kq-pickhead{font-family:var(--disp); font-weight:800; font-size:30px; line-height:1.15;
   color:var(--ink); text-wrap:balance}
