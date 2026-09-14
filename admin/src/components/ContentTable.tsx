@@ -9,9 +9,11 @@ interface Props {
   selected: Set<string>;
   onToggle: (id: string) => void;
   onToggleAll: (ids: string[], checked: boolean) => void;
+  searchQuery?: string;
+  loading?: boolean;
 }
 
-export function ContentTable({ items, selected, onToggle, onToggleAll }: Props) {
+export function ContentTable({ items, selected, onToggle, onToggleAll, searchQuery, loading = false }: Props) {
   const taxonomy = useTaxonomy();
   if (items.length === 0) return <p className="muted">Nothing matches these filters.</p>;
   const allSelected = items.every((item) => selected.has(item.id));
@@ -21,9 +23,29 @@ export function ContentTable({ items, selected, onToggle, onToggleAll }: Props) 
     const remainder = seconds % 60;
     return `${minutes}:${String(remainder).padStart(2, "0")}`;
   };
+  const searchMatch = (item: AdminContent) => {
+    const query = searchQuery?.trim().toLocaleLowerCase();
+    if (!query) return null;
+    const secondaryCategory = item.categories
+      .filter((category) => category !== item.category)
+      .map((category) => labelFor(taxonomy, "category", category))
+      .find((category) => category.toLocaleLowerCase().includes(query));
+    if (secondaryCategory) return `Matched category: ${secondaryCategory}`;
+    const interest = item.interests.map((value) => labelFor(taxonomy, "interest", value)).find((value) => value.toLocaleLowerCase().includes(query));
+    if (interest) return `Matched interest: ${interest}`;
+    const visibleValues = [item.title, item.creator, item.kidq_summary, item.category && labelFor(taxonomy, "category", item.category), item.content_type]
+      .filter(Boolean)
+      .map((value) => String(value).toLocaleLowerCase());
+    if (visibleValues.some((value) => value.includes(query))) return null;
+    return "Matched in keywords or learning metadata";
+  };
   return (
-    <div className="table-wrap">
-      <table>
+    <div className={`table-wrap content-table-wrap${loading ? " is-loading" : ""}`}>
+      <label className="mobile-select-all">
+        <input type="checkbox" checked={allSelected} onChange={(event) => onToggleAll(items.map((item) => item.id), event.target.checked)} />
+        Select all {items.length} items on this page
+      </label>
+      <table className="content-table">
         <thead>
           <tr>
             <th>
@@ -45,7 +67,7 @@ export function ContentTable({ items, selected, onToggle, onToggleAll }: Props) 
               </td>
               <td>
                 <div className="row" style={{ flexWrap: "nowrap" }}>
-                  {item.thumbnail_url ? <img className="thumb" src={item.thumbnail_url} alt="" /> : <div className="thumb" />}
+                  {item.thumbnail_url ? <img className="thumb" src={item.thumbnail_url} alt={`${item.title} thumbnail`} /> : <div className="thumb" aria-hidden="true" />}
                   <div>
                     <Link href={`/content/${item.id}`} className="content-title">
                       {item.title}
@@ -57,6 +79,7 @@ export function ContentTable({ items, selected, onToggle, onToggleAll }: Props) 
                     <div className="compact-meta">
                       {item.category ? labelFor(taxonomy, "category", item.category) : "No category"} · {item.age.groups.length ? `Age ${item.age.groups.map((group) => group.replace("_", "–")).join(", ")}` : "Age not set"} · {duration(item.duration_seconds)}
                     </div>
+                    {searchMatch(item) && <div className="search-match">{searchMatch(item)}</div>}
                   </div>
                 </div>
               </td>

@@ -91,6 +91,9 @@ export function simpleStatus(item: { studio_state: string; current_status: strin
 
 export const BLOCKER_LABELS: Record<string, string> = {
   CRITICAL_FLAG: "Complete the safety check",
+  EXCLUDED: "Review the exclusion check",
+  LOW_SCORE: "Content score is below the publishing range",
+  BORDERLINE_SCORE: "Confirm the borderline content score",
   MISSING_COMPONENTS: "Complete the content review",
   LOW_AI_CONFIDENCE: "Check the suggested details",
   MISSING_AGE: "Choose an age group",
