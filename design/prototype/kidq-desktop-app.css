@@ -95,6 +95,32 @@ button{font-family:inherit; -webkit-tap-highlight-color:transparent}
 .seed{position:absolute; left:50%; top:50%; width:4px; height:4px; border-radius:50%;
   background:#FAF4E8; opacity:0; transform:translate(-50%,-50%) scale(0)}
 .s1{opacity:1; transform:translate(-50%,-50%) scale(1)}
+@keyframes seed-hold-left{
+  0%{transform:translate(-50%,-50%) scale(1) translate(0,0); animation-timing-function:ease-out}
+  68%{transform:translate(-50%,-50%) scale(1) translate(0,0)}
+  100%{transform:translate(-50%,-50%) scale(1) translate(-.55em,-.65em)}
+}
+@keyframes seed-in-left{
+  0%{opacity:0; transform:translate(-50%,-50%) scale(0); animation-timing-function:ease-out}
+  10%{opacity:1; transform:translate(-50%,-50%) scale(1); animation-timing-function:linear}
+  70%{opacity:1; transform:translate(-50%,-50%) scale(1); animation-timing-function:ease-out}
+  100%{opacity:1; transform:translate(-50%,-50%) scale(1) translate(-.55em,-.65em)}
+}
+@keyframes seed-in-right{
+  0%{opacity:0; transform:translate(-50%,-50%) scale(0); animation-timing-function:ease-out}
+  10%{opacity:1; transform:translate(-50%,-50%) scale(1); animation-timing-function:linear}
+  70%{opacity:1; transform:translate(-50%,-50%) scale(1); animation-timing-function:ease-out}
+  100%{opacity:1; transform:translate(-50%,-50%) scale(1) translate(.55em,-.65em)}
+}
+@keyframes seed-twinkle{0%,100%{opacity:1}50%{opacity:.25}}
+#screen-splash.go .s1{animation:seed-hold-left 1.40s ease-out 0s forwards,
+                                seed-twinkle 3.4s ease-in-out 1.40s infinite}
+#screen-splash.go .s2{animation:seed-in-left 1.52s ease-out 0s forwards,
+                                seed-twinkle 3.4s ease-in-out 1.52s infinite}
+#screen-splash.go .s3{animation:seed-in-right 1.52s ease-out .12s forwards,
+                                seed-twinkle 3.4s ease-in-out 1.64s infinite}
+#screen-splash.go .s4{animation:seed-in-right 1.52s ease-out .24s forwards,
+                                seed-twinkle 3.4s ease-in-out 1.76s infinite}
 #screen-splash.go .balloon{animation:inflate .95s cubic-bezier(.22,1,.36,1) both, bob2 3.4s ease-in-out 1.4s infinite}
 #screen-splash.go .b2{animation-delay:.12s, 1.55s}
 #screen-splash.go .b3{animation-delay:.24s, 1.7s}
