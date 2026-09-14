@@ -108,7 +108,7 @@ Scale in use (size / weight / face):
 
 | Element | Spec |
 |---|---|
-| Greeting ("Good morning, Aarav!") | 40 / 800 / Baloo, line-height 1.08 |
+| Greeting ("Hi, Aarav!") | 40 / 800 / Baloo, line-height 1.08 |
 | Night greeting / All done | 36–38 / 800 / Baloo, cream |
 | Break headline ("Smell the flower…") | 29 / 800 / Baloo, ink |
 | Now-playing title (cast) | 23 / 700 / Baloo |
@@ -209,7 +209,11 @@ Scale in use (size / weight / face):
 Warm, short, spoken to the child in second person. Parents get quiet
 factual labels. Never nagging, never gamified.
 
-- Greetings are time-aware: "Good morning, Aarav!" / "Good night, Aarav!"
+- The session-start greeting is time-neutral, not time-aware — a session
+  can start any time of day, so "Good morning, Aarav!" is wrong the
+  moment it's tapped in the afternoon or evening. Use "Hi, Aarav!"
+  instead. The ending greeting stays time-bound ("Good night, Aarav!"),
+  since it only ever appears once the day's session is actually over.
 - Instructions are one line, verb-first: "Tap the sun to start your day",
   "Keep your head still — follow me with your eyes!"
 - The parent's presence is always credited: "Mumma picked 3 videos".

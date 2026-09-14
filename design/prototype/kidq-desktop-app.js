@@ -322,7 +322,7 @@
     sunrise.classList.remove("risen", "tapped");
     $("#screen-all-done").classList.remove("hifived");
     $("#whatsnext").classList.remove("in", "choose");
-    $("#sunrise-greet").innerHTML = `Good morning,<br>${state.profile.name}!`;
+    $("#sunrise-greet").innerHTML = `Hi,<br>${state.profile.name}!`;
     const s = state.session;
     $("#sunrise-heartline").innerHTML = s.replay
       ? `<b>Yesterday's videos, one more time</b> · ${s.totalMinutes} min`
