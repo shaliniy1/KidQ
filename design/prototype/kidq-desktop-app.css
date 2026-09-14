@@ -776,6 +776,22 @@ button{font-family:inherit; -webkit-tap-highlight-color:transparent}
   .kq-qcard,.kq-qend{width:120px; height:68px; border-radius:14px}
   .kq-qname{max-width:120px}
   #watch-queue{--stripcard:120px}
+  /* #screen-watching.wide's tablet-tier rules (601-1099px, above) are scoped
+     with ID+class+class specificity, which beats this tier's plain-class
+     rules regardless of source order - so once wide became the default
+     state rather than an opt-in toggle, those tablet values leaked into
+     this 1100px+ tier too (OPEN-ITEMS item 37). Two of the leaked values
+     (arcwrap height, content top) pushed the player's own box up into the
+     arc's territory - not just tight against the sun, genuinely overlapping
+     it, confirmed by a design review. Reset those two back to this tier's
+     own intended values (matching the plain, non-wide rules just above),
+     and give --playerw a fresh, deliberately-budgeted big-player formula
+     instead of inheriting the leaked one - the leaked formula's height
+     budget (100vh-305) assumed the leaked top:92px; restoring top:148px
+     needs 56px more reserved, so the budget becomes 100vh-361. */
+  #screen-watching.wide .kq-arcwrap{height:150px}
+  #screen-watching.wide .kq-content{top:148px; gap:11px;
+    --playerw:min(88cqw, 1040px, max(440px, calc((100vh - 361px) * 16 / 9)))}
   .kq-bigpause{width:84px; height:84px}
   .kq-whotitle{font-size:46px}
   .kq-whorow{gap:56px}
