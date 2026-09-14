@@ -645,10 +645,60 @@
     return ms;
   }
 
+  /* THE CATCH (spec 13.3). Interaction is an enhancement, exactly like speech:
+     a tap advances the game, and where no tap can come - a television - or none
+     does come, the sun pops on its own. hold(), not later(): the wait is the
+     activity's own pacing. The race between tap and timer is settled by onCatch
+     nulling itself first, so the loser finds nothing to run. */
+  const CATCH_WAIT_MS = 4500; // touch devices: never stuck
+  const FAR_CATCH_MS  = 2000; // TV: a beat - no tap is coming
+  let onCatch = null, catchTimer = 0;
+
+  function land(i, done) {
+    followHero.classList.add("landed");
+    followHero.setAttribute("aria-disabled", "false");
+    // Item 15's rule, wrapper/keyboard path: focus lands on the sun wherever
+    // the sun is the action. Enter/Space then fire the button's click.
+    followHero.focus({ preventScroll: true });
+    onCatch = () => {
+      onCatch = null;
+      clearTimeout(catchTimer);
+      followHero.classList.remove("landed");
+      followHero.setAttribute("aria-disabled", "true");
+      pop(followHero);
+      plip();
+      followDots[i]?.classList.add("on");
+      hold(done, 620); // let the pop land before the fade to the next leg
+    };
+    catchTimer = hold(() => { if (onCatch) onCatch(); },
+      appEl.dataset.context === "far" ? FAR_CATCH_MS : CATCH_WAIT_MS);
+  }
+  followHero.addEventListener("click", () => { if (onCatch) onCatch(); });
+
+  /* The catch sound: two quick soft sine notes, Web Audio, no asset. Enhancement
+     only - wrapped so a missing/blocked AudioContext costs nothing. The chime
+     stays celebration-only, matching find. */
+  let plipCtx = null;
+  function plip() {
+    try {
+      plipCtx = plipCtx || new (window.AudioContext || window.webkitAudioContext)();
+      if (plipCtx.state === "suspended") plipCtx.resume();
+      const t = plipCtx.currentTime;
+      [659, 880].forEach((f, i) => {
+        const o = plipCtx.createOscillator(), g = plipCtx.createGain();
+        o.type = "sine"; o.frequency.value = f;
+        g.gain.setValueAtTime(0.0001, t + i * .09);
+        g.gain.exponentialRampToValueAtTime(.16, t + i * .09 + .02);
+        g.gain.exponentialRampToValueAtTime(.0001, t + i * .09 + .24);
+        o.connect(g); g.connect(plipCtx.destination);
+        o.start(t + i * .09); o.stop(t + i * .09 + .26);
+      });
+    } catch (e) { /* silence is fine */ }
+  }
+
   const FOLLOW_LEGS = ["across", "updown", "diagonal"];
   const followDots = $$("#follow-dots i");
   const FADE_MS = 300, BEAT_MS = 400;
-  const STILL_HOLD_MS = 2000;
 
   // The sun ends each leg where it began, so it must be repositioned for the
   // next one. A jump cut reads as a glitch and breaks the pursuit; an untracked
@@ -672,7 +722,7 @@
       movePass(leg.to, ms);
       hold(() => {
         movePass(leg.from, ms);
-        hold(() => { followDots[i]?.classList.add("on"); done(); }, ms);
+        hold(() => land(i, done), ms);
       }, ms);
     });
   }
@@ -682,6 +732,11 @@
     followDots.forEach((d) => d.classList.remove("on"));
     followHero.classList.remove("gone");
     followScreen.classList.remove("celebrate");
+    // A resize or motion-toggle restart can arrive mid-landing: clear the catch
+    // state so a stale onCatch can never fire against the new run.
+    onCatch = null;
+    followHero.classList.remove("landed");
+    followHero.setAttribute("aria-disabled", "true");
     $("#follow-headline").innerHTML = '<span class="m-full">Follow the sun!</span><span class="m-reduced">Where\'s the sun?</span>';
     showScreen("screen-follow");
     hold(() => say("Follow the sun with your eyes. Tap it when it stops!"), 600);
@@ -694,15 +749,13 @@
     const r = followField.getBoundingClientRect();
     const d = followHero.getBoundingClientRect().width;
     placeHidden({ x: (r.width - d) / 2, y: (r.height - d) / 2 }, () => {
-      hold(() => {
-        followScreen.classList.add("celebrate");
-        $("#follow-headline").innerHTML = '<span class="m-full">You did it! ✨</span><span class="m-reduced">You did it! ✨</span>';
-        say("You did it!");
-        safePlay(chime);
-        // hold, not later: later would fire this at 200ms under reduced motion
-        // and cut the celebration off mid-word.
-        hold(startChoice, 1900);
-      }, STILL_HOLD_MS);
+      followScreen.classList.add("celebrate");
+      $("#follow-headline").innerHTML = '<span class="m-full">You did it! ✨</span><span class="m-reduced">You did it! ✨</span>';
+      say("You did it!");
+      safePlay(chime);
+      // hold, not later: later would fire this at 200ms under reduced motion
+      // and cut the celebration off mid-word.
+      hold(startChoice, 1900);
     });
   }
 
