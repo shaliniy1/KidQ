@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { assembleSession, sessionMinutes, type SessionCandidate } from "../../src/domain/session";
+import { assignBreaks, describeBreak, type BreakActivity } from "../../src/domain/session/breaks";
 
 let counter = 0;
 const video = (minutes: number, overrides: Partial<SessionCandidate> = {}): SessionCandidate => {
@@ -61,5 +62,38 @@ describe("sessionMinutes", () => {
   it("keeps presets and snaps custom lengths to 30-minute blocks", () => {
     expect([15, 30, 45, 60, 90].map(sessionMinutes)).toEqual([15, 30, 45, 60, 90]);
     expect([20, 100, 130].map(sessionMinutes)).toEqual([30, 90, 120]);
+  });
+});
+
+describe("assignBreaks", () => {
+  const activity = (key: string, breakType: BreakActivity["breakType"], variants: string[] = []): BreakActivity => ({
+    id: key,
+    key,
+    title: key,
+    instruction: "Find 3 {variant} things!",
+    spokenInstruction: "Find 3 {variant} things.",
+    durationSeconds: 30,
+    breakType,
+    variants,
+  });
+  const library = [
+    activity("breathe_with_the_sun", "QUIET"),
+    activity("count_to_ten", "QUIET"),
+    activity("find_three", "MOVEMENT", ["red", "blue", "green"]),
+    activity("stand_like_a_tree", "MOVEMENT"),
+    activity("sunset", "WIND_DOWN", ["STANDARD", "CALM", "SLEEP"]),
+  ];
+  const slots = (...kinds: BreakActivity["breakType"][]) => kinds.map((breakAfter, index) => ({ slot: index + 1, breakAfter }));
+
+  it("matches each break's type, never repeats in a session, and ends on the sunset", () => {
+    const breaks = assignBreaks(slots("MOVEMENT", "QUIET", "MOVEMENT", "QUIET", "WIND_DOWN"), library, { recentKeys: [], windDown: "SLEEP", seed: 0 });
+    expect(breaks.map((assigned) => assigned.activity.key)).toEqual(["find_three", "breathe_with_the_sun", "stand_like_a_tree", "count_to_ten", "sunset"]);
+    expect(describeBreak(breaks[0].activity, breaks[0].variant)).toMatchObject({ variant: "red", spoken_instruction: "Find 3 red things." });
+    expect(describeBreak(breaks[4].activity, breaks[4].variant).spoken_instruction).toContain("sleep");
+  });
+
+  it("puts last session's activities last and rotates the variant between sessions", () => {
+    expect(assignBreaks(slots("MOVEMENT"), library, { recentKeys: ["find_three"], windDown: "STANDARD", seed: 0 })[0].activity.key).toBe("stand_like_a_tree");
+    expect(assignBreaks(slots("MOVEMENT"), library, { recentKeys: [], windDown: "STANDARD", seed: 1 })[0].variant).toBe("blue");
   });
 });

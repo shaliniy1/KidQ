@@ -19,6 +19,7 @@ When something below changes, update it; delete any line that is no longer true.
     - ranking inputs: relevance, KidQ score, learning value, and fit (age and session length);
     - category variety, which also makes the default feed for a child whose parent gave only an age;
     - plus the parent library and parent URL submissions.
+  - child mode (API, for the `design/` prototype): a break activity on every slot (find 3 things, stand like a tree, breathe, count to 10, follow my eyes; the sunset as the final wind-down), today's live session, replay, the sun's progress and where each video stopped.
   - parent spec v5 (API): the seven parent categories over the admin ones (Animation dropped), break interval, time-of-day session mode with AI session-mode tags (prompt v3, tagged once), "today, lean toward…", the KidQ check badge on cards, and the Add-a-Video preview.
   - parent analytics (API): viewing events, deduplicated and with screen time capped by the server; a per-play rollup; `GET /children/:id/analytics` for every section of the page.
   - sessions (spec §2–5): Start a Session builds ~15-minute slots of whole videos from the child's library only, with breaks and a calm last slot; each video's outcome and the handoff log are recorded.

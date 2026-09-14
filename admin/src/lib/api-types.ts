@@ -3538,7 +3538,7 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Record how one video went: COMPLETED, SKIPPED or EXITED */
+        /** Record how one video went (COMPLETED, SKIPPED or EXITED) and where it stopped */
         patch: {
             parameters: {
                 query?: never;
@@ -3553,8 +3553,11 @@ export interface paths {
                 content: {
                     "application/json": {
                         /** @enum {string} */
-                        outcome: "COMPLETED" | "SKIPPED" | "EXITED";
+                        outcome?: "COMPLETED" | "SKIPPED" | "EXITED";
+                        /** @description Only ever grows: a smaller value is ignored */
                         watched_seconds?: number;
+                        /** @description Where the video stopped, for resuming it */
+                        position_seconds?: number;
                     };
                 };
             };
@@ -4207,6 +4210,156 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/children/{id}/sessions/current": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Child mode opens on this: today's live session, or null when the sun is still asleep */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Success */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            session: components["schemas"]["Session"] | null;
+                        };
+                    };
+                };
+                /** @description Validation failed */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not signed in */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Wrong role */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/sessions/{id}/replay": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Play an earlier session again as a new one: same videos and order, minus any no longer in the library */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Success */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Session"];
+                    };
+                };
+                /** @description Validation failed */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not signed in */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Wrong role */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/ready": {
         parameters: {
             query?: never;
@@ -4497,13 +4650,34 @@ export interface components {
              */
             wind_down: "STANDARD" | "CALM" | "SLEEP";
             lean_toward: string | null;
+            /** @description The chosen time: the sun's whole arc */
+            planned_seconds: number;
+            /** @description The queued videos' total length */
+            filled_seconds: number;
+            /** @description Watched so far, each video counted up to its length: rewatching never moves the sun on */
+            progress_seconds: number;
             slots: {
                 slot: number;
                 /**
-                 * @description The break after this slot; the last is always WIND_DOWN
+                 * @description The break after this slot; the last is always WIND_DOWN, shown in child mode as the sunset
                  * @enum {string}
                  */
                 break_after: "MOVEMENT" | "QUIET" | "WIND_DOWN";
+                break_activity: {
+                    /**
+                     * Format: uuid
+                     * @description The activity id, for activity_started / activity_completed events
+                     */
+                    id: string;
+                    key: string;
+                    title: string;
+                    instruction: string;
+                    /** @description Read aloud by the device voice (en-IN) */
+                    spoken_instruction: string;
+                    /** @description e.g. the colour for Find 3 things; for the sunset, the session's wind_down */
+                    variant: string | null;
+                    duration_seconds: number;
+                } | null;
                 items: {
                     /** Format: uuid */
                     id: string;
@@ -4511,6 +4685,8 @@ export interface components {
                     /** @enum {string|null} */
                     outcome: "COMPLETED" | "SKIPPED" | "EXITED" | null;
                     watched_seconds: number | null;
+                    /** @description Where the video last stopped */
+                    position_seconds: number | null;
                     card: components["schemas"]["ContentCard"];
                 }[];
             }[];

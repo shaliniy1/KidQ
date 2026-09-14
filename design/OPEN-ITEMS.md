@@ -10,7 +10,8 @@ Status: `[ ]` open · `[x]` done · `[~]` decided, not yet built
 
 ## Needs Shalini
 
-### [ ] 1. Expose playback progress from `KidQPlayer`
+### [x] 1. Expose playback progress from `KidQPlayer`
+**Done (PR #7):** `KidQPlayer`'s `onPlayback` reports `time` ticks with `position` and `duration`, which is this ask.
 The sky-as-clock needs position while a video plays. The player already tracks
 `time` and `duration`, normalised across providers (YouTube polled every 500ms,
 HTML5 via native `onTimeUpdate`), and renders them in its own seek bar — they
@@ -66,7 +67,8 @@ Shipped as `break_after` per slot (`MOVEMENT` / `QUIET` / `WIND_DOWN`), and the
 "nearest video boundary" rule matches this design exactly. **But the cadence
 disagrees — see item 24.**
 
-### [ ] 7. Yesterday's session
+### [x] 7. Yesterday's session
+**Backend done:** `POST /sessions/:id/replay` starts a new session with the same videos and order (the old one is never resumed). `GET /children/:id/sessions/current` returns today's live session, or `null` for the no-session screen.
 Powers the replay path on the no-session screen. `GET /children/:id/sessions`
 returns the log; whether a past session can be replayed as a new one is unclear,
 and "there's no resume" suggests not.
@@ -74,7 +76,8 @@ and "there's no resume" suggests not.
 ### [ ] 8. "What's next" cards
 Shown after the session ends. Currently invented, with no source.
 
-### [ ] 24. Break cadence, and the missing wind-down
+### [x] 24. Break cadence, and the missing wind-down
+**Decided (Shalini, 2026-09-14):** the API's cadence stays (spec v5: a break per 10/15/20-minute interval, set per child). The final `WIND_DOWN` slot *is* child mode's sunset and all-done ending, and it now carries a `sunset` break activity whose line follows the session's wind-down.
 Both specs give a 30-minute session two breaks, but place them differently.
 
 | | This design | Sessions API |
@@ -220,7 +223,8 @@ Vanilla HTML/CSS/JS with one closure-scoped state machine → React components
 under the App Router. Layout is driven by container queries on `#app` at three
 tiers, with one element inventory at every size.
 
-### [ ] 17. Three more activity breaks
+### [~] 17. Three more activity breaks
+**Backend done:** the break library serves find 3 things, stand like a tree, breathe with the sun, count to 10 and follow me with your eyes. Each slot's `break_activity` says which one and what to say. The screens for the three new ones are still to build.
 Designed but not built: stand like a tree, count to 10 with eyes closed, follow
 me with your eyes. The cadence and rotation already support more entries with no
 other change.

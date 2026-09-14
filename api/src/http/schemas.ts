@@ -458,10 +458,13 @@ export const sessionStartBody = z.object({
   mode: z.enum(SESSION_MODES).optional().describe("Session mode; remembered as this child's default. Omit to use the remembered one"),
   lean_toward: z.string().max(60).optional().describe("\"Today, lean toward…\": a parent category key for this session only; never saved"),
 });
-export const sessionItemBody = z.object({
-  outcome: z.enum(["COMPLETED", "SKIPPED", "EXITED"]),
-  watched_seconds: z.number().int().min(0).max(86_400).optional(),
-});
+export const sessionItemBody = z
+  .object({
+    outcome: z.enum(["COMPLETED", "SKIPPED", "EXITED"]).optional(),
+    watched_seconds: z.number().int().min(0).max(86_400).optional().describe("Only ever grows: a smaller value is ignored"),
+    position_seconds: z.number().int().min(0).max(86_400).optional().describe("Where the video stopped, for resuming it"),
+  })
+  .refine((body) => Object.keys(body).length > 0, "Nothing to record");
 export const sessionEndBody = z.object({ outcome: z.enum(["COMPLETED", "EXITED"]).describe("COMPLETED: the wind-down finished. EXITED: the child left early; there's no resume") });
 export const sessionSchema = registry.register(
   "Session",
@@ -478,16 +481,31 @@ export const sessionSchema = registry.register(
     opener: z.object({ band: z.enum(TIME_BANDS) }).describe("The KidQ Agent's opener, played before slot 1 and outside the chosen minutes"),
     wind_down: z.enum(WIND_DOWNS).describe("How the last slot closes: SLEEP is the full sleep wind-down"),
     lean_toward: nullableString,
+    planned_seconds: z.number().describe("The chosen time: the sun's whole arc"),
+    filled_seconds: z.number().describe("The queued videos' total length"),
+    progress_seconds: z.number().describe("Watched so far, each video counted up to its length: rewatching never moves the sun on"),
     slots: z.array(
       z.object({
         slot: z.number(),
-        break_after: z.enum(["MOVEMENT", "QUIET", "WIND_DOWN"]).describe("The break after this slot; the last is always WIND_DOWN"),
+        break_after: z.enum(["MOVEMENT", "QUIET", "WIND_DOWN"]).describe("The break after this slot; the last is always WIND_DOWN, shown in child mode as the sunset"),
+        break_activity: z
+          .object({
+            id: z.uuid().describe("The activity id, for activity_started / activity_completed events"),
+            key: z.string(),
+            title: z.string(),
+            instruction: z.string(),
+            spoken_instruction: z.string().describe("Read aloud by the device voice (en-IN)"),
+            variant: nullableString.describe("e.g. the colour for Find 3 things; for the sunset, the session's wind_down"),
+            duration_seconds: z.number(),
+          })
+          .nullable(),
         items: z.array(
           z.object({
             id: z.uuid(),
             position: z.number(),
             outcome: z.enum(["COMPLETED", "SKIPPED", "EXITED"]).nullable(),
             watched_seconds: z.number().nullable(),
+            position_seconds: z.number().nullable().describe("Where the video last stopped"),
             card: contentCardSchema,
           }),
         ),
