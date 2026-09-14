@@ -627,19 +627,49 @@
     return ms;
   }
 
+  const FOLLOW_LEGS = ["across", "updown", "diagonal"];
+  const followDots = $$("#follow-dots i");
+  const FADE_MS = 300, BEAT_MS = 400;
+
+  // The ball ends each leg where it began, so it must be repositioned for the
+  // next one. A jump cut reads as a glitch and breaks the pursuit; an untracked
+  // glide is a fourth direction the child will try to follow. So: fade out,
+  // reposition while invisible, fade in, beat.
+  function placeHidden(pt, then) {
+    followBall.classList.add("gone");
+    hold(() => {
+      followBall.style.setProperty("--sweep", "0ms");
+      placeBall(pt);
+      followBall.offsetWidth;            // commit the jump before fading back in
+      followBall.classList.remove("gone");
+      hold(then, FADE_MS + BEAT_MS);
+    }, FADE_MS);
+  }
+
+  function runLeg(i, done) {
+    const leg = legGeometry(FOLLOW_LEGS[i]);
+    const ms = passMs(leg.travel);
+    placeHidden(leg.from, () => {
+      movePass(leg.to, ms);
+      hold(() => {
+        movePass(leg.from, ms);
+        hold(() => { followDots[i]?.classList.add("on"); done(); }, ms);
+      }, ms);
+    });
+  }
+
   function startFollow() {
     applyContext();
+    followDots.forEach((d) => d.classList.remove("on"));
+    followBall.classList.remove("gone");
     showScreen("screen-follow");
     hold(() => say("Follow the ball! Keep your head still, just your eyes."), 600);
-    const leg = legGeometry("across");
-    followBall.style.setProperty("--sweep", "0ms");
-    placeBall(leg.from);
-    hold(() => {
-      const ms = passMs(leg.travel);
-      movePass(leg.to, ms);
-      hold(() => movePass(leg.from, ms), ms);
-    }, 700);
+    let i = 0;
+    const next = () => { i += 1; if (i < FOLLOW_LEGS.length) runLeg(i, next); else endFollow(); };
+    runLeg(0, next);
   }
+
+  function endFollow() { /* Task 5 */ }
 
   /* ---------- after-break choice (within the parent's picks) ---------- */
   const choiceScreen = $("#screen-choice");
