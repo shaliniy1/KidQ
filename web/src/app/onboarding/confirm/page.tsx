@@ -81,7 +81,7 @@ export default function ConfirmPage() {
               <Button variant="primary" onClick={() => router.push("/session")}>
                 Start using KidQ
               </Button>
-              <Button variant="secondary" onClick={() => router.push(`/hub/${child.id}`)}>
+              <Button variant="secondary" onClick={() => router.push(`/hub/${child.id}?from=onboarding`)}>
                 Customize for {child.nickname}
               </Button>
               <button

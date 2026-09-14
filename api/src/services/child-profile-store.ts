@@ -9,6 +9,21 @@ export async function listChildren(uid: string): Promise<ChildProfile[]> {
   return Object.values(all).filter((child) => child.uid === uid);
 }
 
+export async function getChildById(childId: string): Promise<ChildProfile | null> {
+  const all = await children.readAll();
+  return all[childId] ?? null;
+}
+
+/**
+ * Ownership check every per-child route must use before reading or writing
+ * anything scoped to a childId path param — a childId is not proof of
+ * access on its own, only "owned by the requesting account" is.
+ */
+export async function assertChildOwnedBy(childId: string, uid: string): Promise<ChildProfile | null> {
+  const child = await getChildById(childId);
+  return child && child.uid === uid ? child : null;
+}
+
 /** Creates one child profile per input, in add order (mascotColor is already resolved client-side, see web/src/lib/mascot-colors.ts). */
 export async function createChildren(uid: string, inputs: CreateChildInput[]): Promise<ChildProfile[]> {
   const created: ChildProfile[] = [];
