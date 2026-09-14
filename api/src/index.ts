@@ -8,6 +8,7 @@ import authRoutes from "./routes/auth.routes";
 import consentRoutes from "./routes/consent.routes";
 import onboardingRoutes from "./routes/onboarding.routes";
 import curationSettingsRoutes from "./routes/curation-settings.routes";
+import curationNluRoutes from "./routes/curation-nlu.routes";
 
 const app = express();
 
@@ -20,6 +21,7 @@ app.use(authRoutes);
 app.use(consentRoutes);
 app.use(onboardingRoutes);
 app.use(curationSettingsRoutes);
+app.use(curationNluRoutes);
 
 app.listen(env.port, () => {
   console.log(`kidq-api listening on port ${env.port}`);

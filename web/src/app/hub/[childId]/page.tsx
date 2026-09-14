@@ -6,6 +6,7 @@ import type { User } from "firebase/auth";
 import { onAuthChange } from "@/services/auth";
 import { getCategories } from "@/services/parent-config";
 import { getCurationSettings, saveCurationSettings } from "@/services/curation-settings";
+import { readAndClearHubDraftPatch } from "@/lib/hub-draft-bridge";
 import {
   BREAK_INTERVAL_OPTIONS,
   BREAK_TYPES,
@@ -116,11 +117,15 @@ export default function HubPage() {
           getCurationSettings(user, childId),
         ]);
         setCategories(cats);
+        // A voice or guided-questions capture screen may have just handed
+        // back a patch (sessionStorage bridge, never the backend — ticket
+        // 05's "nothing persists until Done" stays true either way).
+        const incomingPatch = readAndClearHubDraftPatch(childId);
         setDraft({
-          interests: settings.interests,
-          contentMixMode: settings.contentMixMode,
-          contentMixCategories: settings.contentMixCategories,
-          regulationGoals: settings.regulationGoals,
+          interests: incomingPatch?.interests ?? settings.interests,
+          contentMixMode: incomingPatch?.contentMixMode ?? settings.contentMixMode,
+          contentMixCategories: incomingPatch?.contentMixCategories ?? settings.contentMixCategories,
+          regulationGoals: incomingPatch?.regulationGoals ?? settings.regulationGoals,
           durationDefault: settings.durationDefault,
           breakInterval: settings.breakInterval,
           breakType: settings.breakType,
@@ -195,6 +200,18 @@ export default function HubPage() {
         <h1 className="kq-heading" style={{ fontSize: "var(--kq-text-interactive)", color: "var(--kq-charcoal)" }}>
           Customize & curation
         </h1>
+
+        <p style={{ fontSize: "var(--kq-text-caption)", color: "var(--kq-text-secondary)" }}>
+          Tap through the fields below, or use a shortcut to fill them in for you:
+        </p>
+        <div style={{ display: "flex", gap: 10 }}>
+          <Button variant="secondary" onClick={() => router.push(`/hub/${childId}/voice`)}>
+            🎤 Talk or type to KidQ
+          </Button>
+          <Button variant="secondary" onClick={() => router.push(`/hub/${childId}/guided`)}>
+            Guided questions
+          </Button>
+        </div>
 
         <HubRow
           title="Interests"
