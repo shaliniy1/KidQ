@@ -434,3 +434,36 @@ screen at opacity 1 and only fade the incoming screen in on top of it,
 which needs a `z-index` bump on `.screen.active` (currently DOM order alone
 decides stacking, so "Restart full flow" — which re-shows splash after
 login — would stack backwards without one).
+
+## Surfaced by making the watching screen's wide mode the default, not yet tracked elsewhere
+
+### [ ] 37. `#screen-watching.wide`'s tablet-only rules now also apply at the 1100px+ tier, by accident
+`#screen-watching.wide`'s overrides (`kidq-desktop-app.css:725-733`) were
+written inside the `@container (min-width:601px)` block, meaning they were
+only ever exercised at the 601-1099px tablet tier while `wide` was an
+opt-in toggle — nobody had reason to click "make it bigger" and then
+resize past 1100px in the same sitting. Now that `wide` is the default
+state (item added 2026-09-14, commit `791e4d7`), those rules are live at
+*every* width ≥601px, including the 1100px+ tier, and because they're
+scoped `#screen-watching.wide .selector` (ID+2 classes), they beat that
+tier's own plain-class rules on specificity regardless of source order —
+confirmed by measurement: `.kq-arcwrap` reports **110px** tall at the wide
+tier, not the 150px `kidq-desktop-app.css:763` says it should be.
+
+**Deliberately not fixed as part of this discovery.** The tablet formula's
+`--playerw` is *also* one of the leaked properties, and it's what's
+actually giving the wide tier its bigger player (measured 640px, matching
+the tablet-tier's `min(94cqw,1100px,max(340px,(100vh-305)*16/9))` formula
+— not this tier's own `min(72cqw,980px,max(440px,(100vh-385)*16/9))`,
+which alone gives only 498px). A first attempt at resetting the leaked
+`.kq-arcwrap`/`.kq-content` properties back to this tier's intended values
+correctly restored the 150px arcwrap, but also reverted the player to
+498px — undoing the exact improvement item (wide-default) shipped. Left
+as-is; the sun-position fix (item logged in the commit history, not here)
+was tuned against the *actual* 110px/46px-sun geometry instead.
+
+**Real fix, when someone has time to do it properly:** decide on purpose
+whether the wide tier should use its own formula or the tablet one, name
+it once, and stop relying on an accidental specificity collision to get
+there — right now two different `--playerw` formulas exist for this tier
+and only one of them is reachable, silently.
