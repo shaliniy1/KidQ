@@ -372,15 +372,31 @@ button{font-family:inherit; -webkit-tap-highlight-color:transparent}
    the splash balloons' idiom (css:99-102) rebuilt for a disc in ink - there is
    no ink balloon to reuse. No cast shadow: a shadow implies a floor, and this
    ball is in the sky. */
+/* The ball is a CHARACTER, not a disc. Every other break hero on this app has a
+   face and a halo - the sun has rays, two eyes, a smile and a warm glow - and a
+   bare gradient circle with two dots reads as a hole punched in the sky rather
+   than as something alive. It gets the same vocabulary: a face, and a warm halo
+   that seats it in the sky instead of cutting through it.
+   The halo is a glow, never a cast shadow: a shadow implies a floor, and this
+   ball is in mid-air. Gold, so it belongs to the same world as the sun. */
 .kq-ball{position:absolute; left:0; top:0; border-radius:50%;
   width:var(--ball); height:var(--ball);
-  display:flex; align-items:center; justify-content:center; gap:calc(var(--ball) * .13);
+  display:flex; align-items:center; justify-content:center; gap:calc(var(--ball) * .15);
   background:radial-gradient(circle at 32% 24%,
     #7A7264 0%, #574F45 26%, #3A352E 58%, #2E2A24 82%, #221F1A 100%);
+  box-shadow:0 0 0 calc(var(--ball) * .10) rgba(240,167,46,.16),
+             0 0 calc(var(--ball) * .42) calc(var(--ball) * .10) rgba(240,167,46,.20);
   transition:transform var(--sweep, 2s) ease-in-out, opacity .3s ease;
   will-change:transform}
-.kq-ball .eye{width:calc(var(--ball) * .13); height:calc(var(--ball) * .13);
-  border-radius:50%; background:var(--cream); margin-top:calc(var(--ball) * -.08)}
+.kq-ball .eye{width:calc(var(--ball) * .14); height:calc(var(--ball) * .14);
+  border-radius:50%; background:var(--cream); margin-top:calc(var(--ball) * -.10)}
+/* the smile, drawn the way the sun's is: an arc, cream on ink, below the eyes */
+.kq-ball::after{content:""; position:absolute; left:50%; top:54%;
+  width:calc(var(--ball) * .38); height:calc(var(--ball) * .19);
+  transform:translateX(-50%);
+  border:0 solid var(--cream);
+  border-bottom-width:calc(var(--ball) * .06);
+  border-radius:0 0 50% 50% / 0 0 100% 100%}
 .kq-ball.gone{opacity:0}
 /* The field is sized, NOT stretched. An earlier version used flex:1 1 auto so it
    took all the column's leftover space - which fixed a too-flat field but ate the
@@ -394,7 +410,7 @@ button{font-family:inherit; -webkit-tap-highlight-color:transparent}
    flex column has zero width, and without min-height:0 the column will not let
    it shrink on a short viewport. Do NOT use cqh here - #app is
    container-type:inline-size, so cqh does not resolve against it. */
-.kq-followfield{flex:0 0 auto; align-self:stretch; height:min(70cqw,400px);
+.kq-followfield{flex:0 0 auto; align-self:stretch; height:min(64cqw,330px);
   position:relative}
 #screen-follow .kq-centercol{gap:20px}
 .kq-followsun{position:absolute; left:50%; top:50%; width:min(30cqw,132px);
