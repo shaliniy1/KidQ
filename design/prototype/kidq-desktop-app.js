@@ -841,6 +841,7 @@
   /* ---------- after-break choice (within the parent's picks) ---------- */
   const choiceScreen = $("#screen-choice");
   const choiceSun = $("#choice-sun");
+  const CHOICE_AUTO_MS = 4000; // item 25: choice screen self-advances if no tap. ~4s is a starting point to tune against a real child.
   function startChoice() {
     // No video left: the day is over, and the decided flow ends at the moon -
     // sunset, then the all-done screen. A choice screen with nothing to choose
@@ -874,6 +875,9 @@
       row.appendChild(wrap);
     });
     showScreen("screen-choice");
+    // No jingle: the jingle marks a child's choice, and this isn't one. A card tap
+    // runs startWatching -> showScreen -> clearTimers, which cancels this pending timer.
+    hold(() => { const next = unwatched()[0]; if (next) startWatching(next); }, CHOICE_AUTO_MS);
   }
   choiceSun.addEventListener("click", () => {
     if (!choiceScreen.classList.contains("active")) return;
