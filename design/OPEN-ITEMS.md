@@ -238,7 +238,7 @@ earlier "no switching before completion". Already flagged, and easy to revert.
 next" instead of the session strip, the old arc colour. Only worth doing if
 those frames are still referenced.
 
-### [ ] 25. Can a small child actually get out of a break?
+### [~] 25. Can a small child actually get out of a break?
 A break ends on "Tap the sun for your next video", and nothing continues until
 that tap lands. Raised as a doubt that a child at the younger end of 0–6 will
 reliably manage it, and that they are then stuck with no way forward.
@@ -282,6 +282,26 @@ Directions, not yet chosen:
    preference where `break_type` and `session_minutes` already live, so it is
    cheap on the API — but a setting is also a way of not deciding.
 
-Needs the user's call on direction before anything is built. Logged rather than
-resolved because 3 reverses a locked decision, and 1 and 2 change no principle
-but do need design.
+**Decided (user, 2026-09-14): direction 1+3 combined — the choice screen stays
+and auto-advances.** The break still ends on the choice screen, showing the
+session strip, the time left and what is next. A tap still wins: the sun plays
+the next video, a card plays that one instead. If neither comes within a few
+seconds, the next video starts on its own.
+
+This reverses "nothing plays without the tap", and the reversal was raised as a
+conflict and confirmed rather than assumed. `concept.md`, `design/README.md` and
+the comment above `startChoice` have all been amended, so no document still
+asserts the old rule. The principle that survives is narrower and, on reflection,
+the one that was actually load-bearing: **the interruption is the activity plus
+the choice screen** — not an indefinite wait that a three-year-old has no way out
+of.
+
+**Not yet built.** It is a change to `startChoice`, affecting all three breaks,
+and it is deliberately not being folded into the follow-the-ball plan mid-flight.
+Implementation notes for whoever picks it up:
+- the timer must use `hold()`, not `later()` — `later` clamps to 200ms under
+  reduced motion and would make the choice screen flash past;
+- it must be cancelled by any tap, and by `showScreen`/`clearTimers` like every
+  other timer on that screen;
+- the wait wants tuning against a real child, not a number chosen at a desk;
+  ~4s was the starting point discussed.

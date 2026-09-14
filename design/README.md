@@ -53,8 +53,14 @@ Behaviour worth knowing before porting:
   interrupts a video. Two videos gets one break, one video gets none.
 - **The sun tracks allotted time, not videos finished.** Switching videos never
   rewinds it; rewatching something finished never pushes it forward.
-- **Autoplay runs between videos, but never out of a break.** A break exists to
-  interrupt screen time, so coming back from one always takes a tap.
+- **Autoplay runs between videos, and now also out of a break, after a pause.**
+  A break exists to interrupt screen time, and the interruption is the activity
+  itself plus the choice screen that follows it — not an indefinite wait. The
+  child may tap the sun or pick a different video; if they do neither, the next
+  video starts after a few seconds. Changed deliberately: the old rule left a
+  young child with no way forward if they did not realise the tap was theirs to
+  make, and on a cast TV the device that can tap may be in another room
+  (tracker item 25).
 
 ## The seam: `KidQData`
 

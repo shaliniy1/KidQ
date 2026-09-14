@@ -396,9 +396,13 @@
   // after a short dip, with no tap. This is not feed autoplay - the list is
   // finite, parent-chosen, and still ends at sunset.
   //
-  // Breaks are the deliberate exception. Coming back from one always needs a tap
-  // (see startChoice), because a break exists to interrupt screen time, and
-  // sliding straight out of it into another video would undo that.
+  // Breaks used to be the exception, needing a tap to come back from. They no
+  // longer are: the choice screen after a break advances on its own after a few
+  // seconds if the child does not act (tracker item 25). The break still
+  // interrupts - the activity and the choice screen are the interruption - but a
+  // child who does not realise it is their move is no longer stranded, and on a
+  // cast TV the device that can tap may not even be in the room. A tap still
+  // wins: it picks the video, and picking a card picks a different one.
   //
   // No jingle here: the jingle marks a child's choice, and this isn't one. If the
   // child taps a different card during the dip, their startWatching clears this
