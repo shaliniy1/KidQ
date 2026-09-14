@@ -448,7 +448,7 @@ button{font-family:inherit; -webkit-tap-highlight-color:transparent}
 .kq-fsun.landed .frays, #screen-follow.celebrate .frays{display:block;
   animation:raysin .3s ease-out}
 @keyframes raysin{0%{transform:scale(.55); opacity:0}100%{transform:scale(1); opacity:1}}
-/* the ring: base geometry here; ringout on celebrate is already at css:424,
+/* the ring: base geometry here; ringout on celebrate is at css:502,
    and Task 9 adds the landing pulse on the same span */
 #screen-follow .ring1{position:absolute; inset:-12%; border-radius:50%;
   border:3px solid var(--sun); opacity:0; pointer-events:none}
