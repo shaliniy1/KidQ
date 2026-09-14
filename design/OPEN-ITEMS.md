@@ -108,15 +108,29 @@ all, and the only green-ish token is `teal`, which is the single UI accent and
 must not double as game content. So `brand.md` section 2 now carries a **game
 content colours** table.
 
-Deepening went with it. Measured against the day sky's three stops, blue
-`#6FA8DC` ran 1.98–2.38:1 and green `#5FA88A` 2.20–2.66:1, while red `#C2543F`
-already sat at 3.54–4.28:1 — one dark swatch and two pale ones, not a set. Blue
-is now `#3A75B0` (3.77–4.55:1) and green `#3F7F52` (3.76–4.54:1), which puts all
-three in one band above 3:1 on every stop. The graphical-object exception still
-means 3:1 is not *required* here; the argument for clearing it anyway is that a
-child with low vision has to see the swatch to play at all. Green was chosen as
-a true green rather than a deeper teal, so game content never reads as the UI
-accent.
+Retuning went with it, in two passes. The first only deepened blue and green to
+match red's contrast, and that was the wrong axis: the user flagged the red as
+looking dark, and measuring in OKLCH showed why. Red was in fact the *lightest*
+of the three (L 58.3 against 55.1 and 54.1) — what read as dark was **chroma**,
+0.146 against pure red's 0.258, at hue 32.6 which leans orange. Low saturation
+plus an orange lean is terracotta, and a child asked to say the colour out loud
+has to see red.
+
+So the set is now tuned as a set: one lightness (L≈58) and one chroma (0.165)
+across all three, which is what stops any one swatch reading as the dark one.
+Red `#CC4C40`, blue `#217AD8`, green `#049640`, at 3.02–4.24:1 across the day
+sky's three stops — still above 3:1 everywhere. Chroma deliberately stops short
+of the crayon primaries at 0.19+, which pass contrast just as well but go
+electric against this warm sky and cut against `brand.md`'s rule that the
+emotional arc is carried by sky colour rather than extra hues.
+
+The graphical-object exception still means 3:1 is not *required* here; the
+argument for clearing it anyway is that a child with low vision has to see the
+swatch to play at all. Green is a true green rather than a deeper teal, so game
+content never reads as the UI accent.
+
+Was for a while: blue `#3A75B0` and green `#3F7F52` (the first pass), and before
+that the pastels `#6FA8DC` at 1.98–2.38:1 and `#5FA88A` at 2.20–2.66:1.
 
 Still pointer-only in the sense that the colour is named in speech and shown as
 a swatch — see item 14 for dropping colour as the axis entirely.

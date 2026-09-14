@@ -65,18 +65,26 @@ Sky gradients (top → bottom, 390×844 frame):
 Game content colours (the find-a-colour break only — these name a colour to
 a child, so they are content, not UI, and never appear as a UI surface):
 
-| Colour | Hex | Contrast on the day sky |
-|---|---|---|
-| red | `#C2543F` | 3.54–4.28:1 |
-| blue | `#3A75B0` | 3.77–4.55:1 |
-| green | `#3F7F52` | 3.76–4.54:1 |
+| Colour | Hex | OKLCH | Contrast on the day sky |
+|---|---|---|---|
+| red | `#CC4C40` | L 58.8 · C 0.165 · H 28.5 | 3.51–4.24:1 |
+| blue | `#217AD8` | L 57.9 · C 0.165 · H 253.9 | 3.39–4.09:1 |
+| green | `#049640` | L 58.8 · C 0.165 · H 149.0 | 3.02–3.64:1 |
 
-Held to one band on purpose. A swatch is a graphical object, so 3:1 is not
-required of it — but a child has to see this one to play the game, so all three
-clear it against every stop of the day sky. There is no yellow: the sun is on
-that screen and is also the button. Green is a true green rather than a second
-teal, so game content never reads as the UI accent; red is deeper than the
-`heart` coral, which a 2–4 year old does not read as red.
+Tuned in OKLCH, not by eye. **One lightness and one chroma across all three**,
+so no swatch reads as "the dark one" — the failure the previous brick red had.
+A colour a child is asked to name out loud has to be unmistakably that colour,
+which is a question of chroma, not lightness: at C 0.146 and hue 32 the old red
+was terracotta. Chroma stops short of the crayon primaries (0.19 and up), which
+clear contrast fine but go electric against this warm sky and break the rule
+above that the emotional arc is carried by sky colour, not extra hues.
+
+A swatch is a graphical object, so 3:1 is not required of it — but a child has
+to see this one to play the game, so all three clear it against every stop of
+the day sky. There is no yellow: the sun is on that screen and is also the
+button. Green is a true green rather than a second teal, so game content never
+reads as the UI accent; red is deeper and less orange than the `heart` coral,
+which a 2–4 year old does not read as red.
 
 Supporting: arc/horizon stroke on day sky `#E4D6B8`; on sunrise sky
 `#FAF4E8` at 65% opacity; moon craters `#E4D6B8`; night cloud `#454179`.

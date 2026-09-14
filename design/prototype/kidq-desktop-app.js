@@ -499,19 +499,21 @@
   // them" button, so "find 3 yellow things" is answered by the screen itself - a
   // child can point at the sun and tap it in a second. This is the one break whose
   // whole point is to send them away from the screen.
-  // Red is #C2543F, not the coral heart token: coral doesn't read as red to a
-  // 2-4 year old learning colours, and this red clears 3:1 on the sky unaided.
-  // Blue and green are chosen to sit in the same contrast band as that red
-  // (3.5-3.8:1 worst case on the day sky) rather than the pastels they replaced,
-  // which sat at 2.0-2.7:1. A swatch is a graphical object, so 3:1 is not
-  // strictly required here - but a child with low vision has to see this one to
-  // play, so the set is held to it. Green is a true green, not a second teal:
-  // teal is the UI accent and must not read as game content.
+  // The set is tuned in OKLCH, not by eye. All three sit at L~58 and chroma
+  // 0.165, so no swatch reads as "the dark one" - the failure the old red had:
+  // at C=0.146 and hue 32 it was brick, not red, which a child is being asked
+  // to name out loud. Chroma stops short of the crayon primaries (0.19+), which
+  // clear contrast fine but go electric against this warm cream sky.
+  // Contrast is 3.02-4.24:1 across the day sky's three stops. A swatch is a
+  // graphical object, so 3:1 is not strictly required - but a child with low
+  // vision has to see this one to play, so the set is held to it.
+  // Green is a true green, not a second teal: teal is the UI accent and must
+  // not read as game content. No yellow - see the note above.
   // Documented in brand.md section 2 as game content colours.
   const FIND_COLOURS = [
-    { name: "red",   hex: "#C2543F" },
-    { name: "blue",  hex: "#3A75B0" },
-    { name: "green", hex: "#3F7F52" }
+    { name: "red",   hex: "#CC4C40" },
+    { name: "blue",  hex: "#217AD8" },
+    { name: "green", hex: "#049640" }
   ];
   let findRotation = Math.floor(Math.random() * FIND_COLOURS.length);
   function startFind() {
