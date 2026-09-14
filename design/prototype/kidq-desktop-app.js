@@ -960,6 +960,7 @@
     if (watching.classList.contains("active") && state.session) updateSky();
     if (choiceScreen.classList.contains("active") && state.session) positionSun(choiceSun, sessionProgress());
     positionSun($("#cast-sun"), 0.5);
+    if (followScreen.classList.contains("active")) { clearTimers(); startFollow(); }
   });
 
   startSplash();
