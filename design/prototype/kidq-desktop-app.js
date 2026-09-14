@@ -590,6 +590,7 @@
 
   const followField = $("#follow-field");
   const followBall  = $("#follow-ball");
+  const followScreen = $("#screen-follow");
   const MIN_PASS_MS = 1600; // a shorter pass reads as a flicker, not as a target
 
   // Corner-to-corner is NOT good enough for the diagonal: its angle is then at
@@ -643,6 +644,7 @@
   const FOLLOW_LEGS = ["across", "updown", "diagonal"];
   const followDots = $$("#follow-dots i");
   const FADE_MS = 300, BEAT_MS = 400;
+  const STILL_HOLD_MS = 2000;
 
   // The ball ends each leg where it began, so it must be repositioned for the
   // next one. A jump cut reads as a glitch and breaks the pursuit; an untracked
@@ -675,6 +677,7 @@
     applyContext();
     followDots.forEach((d) => d.classList.remove("on"));
     followBall.classList.remove("gone");
+    followScreen.classList.remove("celebrate");
     showScreen("screen-follow");
     hold(() => say("Follow the ball! Keep your head still, just your eyes."), 600);
     let i = 0;
@@ -682,7 +685,21 @@
     runLeg(0, next);
   }
 
-  function endFollow() { /* Task 5 */ }
+  function endFollow() {
+    const r = followField.getBoundingClientRect();
+    const d = followBall.getBoundingClientRect().width;
+    placeHidden({ x: (r.width - d) / 2, y: (r.height - d) / 2 }, () => {
+      hold(() => {
+        followScreen.classList.add("celebrate");
+        $("#follow-headline").textContent = "You did it! ✨";
+        say("You did it!");
+        safePlay(chime);
+        // hold, not later: later would fire this at 200ms under reduced motion
+        // and cut the celebration off mid-word.
+        hold(startChoice, 1900);
+      }, STILL_HOLD_MS);
+    });
+  }
 
   /* ---------- after-break choice (within the parent's picks) ---------- */
   const choiceScreen = $("#screen-choice");
