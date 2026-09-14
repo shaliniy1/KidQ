@@ -101,29 +101,57 @@ only one can be built.
 
 ## Ours — design and porting
 
-### [ ] 10. Document the game colours in brand.md
-The find-a-colour game uses blue `#6FA8DC` and green `#5FA88A`, neither of which
-appears in `brand.md`. Red was the `heart` coral token until it moved to
-`#C2543F`, a splash balloon stop. Either add a "game content colours" row to
-`brand.md` section 2, or move the fills onto documented tokens. Blue and green
-also sit at 2.31:1 and 2.57:1 against the sky; they don't have to clear 3:1
-(graphical-object exception) but going deeper would help low-vision children.
+### [x] 10. Document the game colours in brand.md
+**Done: documented, and both undocumented fills deepened.** Of the two options,
+moving the fills onto documented tokens was not open — there is no blue token at
+all, and the only green-ish token is `teal`, which is the single UI accent and
+must not double as game content. So `brand.md` section 2 now carries a **game
+content colours** table.
 
-### [ ] 11. Move the "Playtime!" pill out of the eyebrow slot
-On the breathing and find screens the pill sits directly above the `<h1>` with
-no other job, which is the eyebrow pattern a design standard in use here bans
-outright. `brand.md` classes it with the time and cast pills, i.e. a status
-pill, so the fix is to move it into the time-pill slot on those two screens
-rather than delete it. The seam screen's use is fine — there it is a mode badge
-above the sun. Also drift: CSS has 14px / padding 4×16, brand locks 13px / 3×14.
+Deepening went with it. Measured against the day sky's three stops, blue
+`#6FA8DC` ran 1.98–2.38:1 and green `#5FA88A` 2.20–2.66:1, while red `#C2543F`
+already sat at 3.54–4.28:1 — one dark swatch and two pale ones, not a set. Blue
+is now `#3A75B0` (3.77–4.55:1) and green `#3F7F52` (3.76–4.54:1), which puts all
+three in one band above 3:1 on every stop. The graphical-object exception still
+means 3:1 is not *required* here; the argument for clearing it anyway is that a
+child with low vision has to see the swatch to play at all. Green was chosen as
+a true green rather than a deeper teal, so game content never reads as the UI
+accent.
 
-### [ ] 12. Heading structure on the watching and cast screens
-`#screen-watching` and `#screen-cast` have no `<h1>` at all, only `<h4>`s, and
-`#screen-choice` puts an `<h4>` before its `<h1>`. Ten `<h1>`s across the
-document is fine — inactive screens are `visibility:hidden` and leave the
-accessibility tree, so exactly one is live at a time. The defect is the missing
-and out-of-order levels, plus `<h4>` being chosen for its size. "Aarav's watch
-time" should be the `h1`, the video title `h2`, styled by class not by level.
+Still pointer-only in the sense that the colour is named in speech and shown as
+a swatch — see item 14 for dropping colour as the axis entirely.
+
+### [x] 11. Move the "Playtime!" pill out of the eyebrow slot
+**Done, both halves.** On the breathing and find screens the pill has moved out
+of `.kq-centercol` and into the status-pill slot — top-right of the sky, the
+same absolute position the time pill holds on the watching, choice and cast
+screens. The position is now a shared rule (`.kq-timeleft, .kq-ptpill.slot`)
+carried through all three container tiers, so the two pills cannot drift apart
+in the slot. Each keeps its own fill. The seam screen keeps the pill in flow
+above the sun, untouched, because there it is a mode badge introducing the
+break rather than a status badge.
+
+The size drift is corrected to brand's 13px / 700 / padding 3×14. `brand.md`
+section on pills now documents the slot, both uses, and the rule that neither
+pill may sit directly above a heading.
+
+### [x] 12. Heading structure on the watching and cast screens
+**Done.** Every `<h4>` chosen for its size is gone. On watching and choice,
+"Aarav's watch time" is the `h1` and the video title the `h2`; on choice that
+also puts the levels in DOM order, since the header block precedes the
+headline. The styling moved off the tag onto classes — `.kq-head h4` became
+`.kq-head .name`, `.kq-now h4` became `.kq-now .title`, across all tiers — so
+nothing renders differently.
+
+The cast screen has no header block to promote, so its `h1` is the video title
+itself: that screen is *about* what is playing on the TV, and an invisible
+heading added only to satisfy the outline would be a crutch. It needs no `h2`.
+
+Checked across all twelve screens: each now opens with exactly one `h1` and
+skips no level. `#screen-all-done` carries two `h1`s in the markup, but
+`.kq-donehead.gn` is `display:none` until the hi-five, so one is live at a time.
+`#screen-splash` has no heading and keeps its `aria-label` — it is an opening
+animation, not a page.
 
 ### [x] 13. Spoken instruction on the activity breaks
 Done in the prototype. Find speaks its full instruction on entry including the

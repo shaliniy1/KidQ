@@ -170,13 +170,17 @@ button{font-family:inherit; -webkit-tap-highlight-color:transparent}
 .kq-sun.kq-sunpick .halo{animation:kq-halopulse 3s ease-in-out infinite}
 .kq-sun svg{position:relative; width:100%; height:100%}
 .kq-sun .rays line{stroke:var(--sun-deep); stroke-width:3.4; stroke-linecap:round; opacity:.55}
-.kq-timeleft{position:absolute; right:20px; top:262px; font-weight:600; font-size:13px;
+/* the status-pill slot: the time pill, and the Playtime pill on the two break
+   screens where it has no headline to sit above. Position is shared; each pill
+   keeps its own fill. */
+.kq-timeleft, .kq-ptpill.slot{position:absolute; right:20px; top:262px}
+.kq-timeleft{font-weight:600; font-size:13px;
   color:var(--ink-soft); background:rgba(250,244,232,.85); padding:3px 12px; border-radius:99px}
 .kq-head{position:absolute; top:24px; left:22px; display:flex; align-items:center; gap:11px}
 .kq-head .av{width:40px; height:40px; border-radius:50%; background:var(--teal); color:#fff;
   font-family:var(--disp); font-weight:800; font-size:18px; display:flex; align-items:center;
   justify-content:center; flex-shrink:0}
-.kq-head h4{font-family:var(--disp); font-weight:700; font-size:17px; color:var(--ink); line-height:1.15}
+.kq-head .name{font-family:var(--disp); font-weight:700; font-size:17px; color:var(--ink); line-height:1.15}
 .kq-head .sub{font-size:13px; color:var(--ink-soft); font-weight:500}
 .kq-content{position:static}
 .kq-player{position:absolute; left:20px; right:20px; top:310px; aspect-ratio:16/9;
@@ -222,7 +226,7 @@ button{font-family:inherit; -webkit-tap-highlight-color:transparent}
 .kq-daybar .knob{position:absolute; top:50%; width:20px; height:20px; transform:translate(-50%,-50%);
   border-radius:50%; background:var(--sun); border:3px solid #fff; box-shadow:0 2px 6px rgba(46,42,36,.3)}
 .kq-now{position:absolute; left:0; right:0; top:562px; text-align:center; padding:0 30px}
-.kq-now h4{font-family:var(--disp); font-weight:700; font-size:21px; color:var(--ink); line-height:1.2}
+.kq-now .title{font-family:var(--disp); font-weight:700; font-size:21px; color:var(--ink); line-height:1.2}
 .kq-now .sub{display:flex; justify-content:center; align-items:center; gap:8px; margin-top:6px;
   font-size:14.5px; font-weight:500; color:var(--ink-soft)}
 .kq-now .sub b{font-weight:700; color:var(--ink)}
@@ -258,8 +262,8 @@ button{font-family:inherit; -webkit-tap-highlight-color:transparent}
 .screen.paused .kq-castpill .paused-txt{display:inline}
 
 /* ---------- playtime seam ---------- */
-.kq-ptpill{font-weight:700; font-size:14px; color:var(--ink); background:var(--sun);
-  padding:4px 16px; border-radius:99px}
+.kq-ptpill{font-weight:700; font-size:13px; color:var(--ink); background:var(--sun);
+  padding:3px 14px; border-radius:99px}
 .kq-pthead{font-family:var(--disp); font-weight:800; font-size:34px; color:var(--ink)}
 
 /* ---------- breathing break ---------- */
@@ -554,7 +558,7 @@ button{font-family:inherit; -webkit-tap-highlight-color:transparent}
 /* base tier is a flex column too — real phone browsers vary in height,
    and the 844px-fixed absolute layout collides below ~700px */
 .kq-arcwrap{top:40px; height:150px}
-.kq-timeleft{top:118px; right:20px}
+.kq-timeleft, .kq-ptpill.slot{top:118px; right:20px}
 .kq-content{position:absolute; left:0; right:0; top:150px; bottom:0; display:flex;
   flex-direction:column; align-items:center; justify-content:center; gap:9px; padding:0 20px 12px;
   --playerw:min(100%, max(300px, calc((100vh - 330px) * 16 / 9)))}
@@ -572,11 +576,11 @@ button{font-family:inherit; -webkit-tap-highlight-color:transparent}
   .kq-castpill{top:18px}
   .kq-arcwrap{top:0; height:130px}
   .kq-sun{width:70px; height:70px}
-  .kq-timeleft{top:82px; right:32px}
+  .kq-timeleft, .kq-ptpill.slot{top:82px; right:32px}
   .kq-content{position:absolute; left:0; right:0; top:122px; bottom:0; display:flex;
     flex-direction:column; align-items:center; justify-content:center; gap:9px; padding:0 24px 14px}
   .kq-now{position:static; padding:0}
-  .kq-now h4{font-size:17px}
+  .kq-now .title{font-size:17px}
   .kq-now .sub{font-size:13px; margin-top:4px}
   /* player scales with the window: as wide as fits the height budget, never edge-to-edge */
   .kq-content{--playerw:min(84cqw, 760px, max(340px, calc((100vh - 337px) * 16 / 9)))}
@@ -597,7 +601,7 @@ button{font-family:inherit; -webkit-tap-highlight-color:transparent}
   #screen-watching.wide .kq-qcard{width:84px; height:47px; border-radius:10px}
   #screen-watching.wide .kq-qname{font-size:12px; margin-top:4px; max-width:84px}
   #screen-watching.wide #watch-queue{--stripcard:84px}
-  #screen-watching.wide .kq-now h4{font-size:16px}
+  #screen-watching.wide .kq-now .title{font-size:16px}
   #screen-watching.wide .kq-now .sub{font-size:12.5px; margin-top:2px}
   .kq-whotitle{font-size:38px}
   .kq-who .facewrap{width:124px; height:124px}
@@ -615,14 +619,16 @@ button{font-family:inherit; -webkit-tap-highlight-color:transparent}
 @container (min-width:1100px){
   .kq-head{top:26px; left:36px}
   .kq-head .av{width:46px; height:46px; font-size:19px}
-  .kq-head h4{font-size:19px}
+  .kq-head .name{font-size:19px}
   .kq-head .sub{font-size:14px}
   .kq-castpill{top:26px; font-size:15px; padding:10px 20px}
   .kq-arcwrap{height:150px}
   .kq-sun{width:92px; height:92px}
-  .kq-timeleft{top:100px; right:48px; font-size:14px; padding:5px 16px}
+  .kq-timeleft, .kq-ptpill.slot{top:100px; right:48px}
+  .kq-timeleft{font-size:14px; padding:5px 16px}
+  .kq-ptpill.slot{font-size:14px; padding:4px 16px}
   .kq-content{top:148px; gap:11px; padding:0 30px 22px}
-  .kq-now h4{font-size:21px}
+  .kq-now .title{font-size:21px}
   .kq-now .sub{font-size:14.5px; margin-top:6px}
   .kq-content{--playerw:min(72cqw, 980px, max(440px, calc((100vh - 385px) * 16 / 9)))}
   .kq-player{border-radius:24px}

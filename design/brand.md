@@ -62,6 +62,22 @@ Sky gradients (top → bottom, 390×844 frame):
 | Deep night (night-light) | `#2B2955` 0% → `#211F45` 48% → `#171530` 100% |
 | Dusk overlay (sunset moment) | `#9F8CCB` 0% → `#C9B8E8` 40% → `#F3B583` 100%, at 85% opacity over the day sky |
 
+Game content colours (the find-a-colour break only — these name a colour to
+a child, so they are content, not UI, and never appear as a UI surface):
+
+| Colour | Hex | Contrast on the day sky |
+|---|---|---|
+| red | `#C2543F` | 3.54–4.28:1 |
+| blue | `#3A75B0` | 3.77–4.55:1 |
+| green | `#3F7F52` | 3.76–4.54:1 |
+
+Held to one band on purpose. A swatch is a graphical object, so 3:1 is not
+required of it — but a child has to see this one to play the game, so all three
+clear it against every stop of the day sky. There is no yellow: the sun is on
+that screen and is also the button. Green is a true green rather than a second
+teal, so game content never reads as the UI accent; red is deeper than the
+`heart` coral, which a 2–4 year old does not read as red.
+
 Supporting: arc/horizon stroke on day sky `#E4D6B8`; on sunrise sky
 `#FAF4E8` at 65% opacity; moon craters `#E4D6B8`; night cloud `#454179`.
 
@@ -137,6 +153,12 @@ Scale in use (size / weight / face):
 - **Pills:** radius 99; time pill: `rgba(250,244,232,.85)` bg, ink-soft
   13/600, padding 3×12; Playtime pill: sun bg, ink 13/700, padding 3×14;
   cast pill: `rgba(255,255,255,.78)` bg, teal-deep 14/600, padding 9×18.
+  The time pill and the Playtime pill share one **status-pill slot**, top-right
+  of the sky. The Playtime pill takes that slot on the breathing and find
+  screens, where it is a status badge with no other job; on the playtime seam it
+  stays in flow above the sun, where it is a mode badge introducing the break.
+  Never place either pill directly above a heading — that is the eyebrow
+  pattern, which this design does not use.
 - **Player card:** 16:9, radius 24, soft shadow `0 12px 28px -16px
   rgba(46,42,36,.4)`, at (20, 310) width 350. Corner pause: 44 px cream
   circle, teal-deep icon, top-right 14,14. Playing bars: 3 teal bars

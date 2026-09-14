@@ -501,10 +501,17 @@
   // whole point is to send them away from the screen.
   // Red is #C2543F, not the coral heart token: coral doesn't read as red to a
   // 2-4 year old learning colours, and this red clears 3:1 on the sky unaided.
+  // Blue and green are chosen to sit in the same contrast band as that red
+  // (3.5-3.8:1 worst case on the day sky) rather than the pastels they replaced,
+  // which sat at 2.0-2.7:1. A swatch is a graphical object, so 3:1 is not
+  // strictly required here - but a child with low vision has to see this one to
+  // play, so the set is held to it. Green is a true green, not a second teal:
+  // teal is the UI accent and must not read as game content.
+  // Documented in brand.md section 2 as game content colours.
   const FIND_COLOURS = [
     { name: "red",   hex: "#C2543F" },
-    { name: "blue",  hex: "#6FA8DC" },
-    { name: "green", hex: "#5FA88A" }
+    { name: "blue",  hex: "#3A75B0" },
+    { name: "green", hex: "#3F7F52" }
   ];
   let findRotation = Math.floor(Math.random() * FIND_COLOURS.length);
   function startFind() {
