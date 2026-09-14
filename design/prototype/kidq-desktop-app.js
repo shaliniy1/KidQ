@@ -992,7 +992,15 @@
     document.documentElement.classList.toggle("reduce-motion", reducedMotion);
     e.currentTarget.setAttribute("aria-pressed", String(reducedMotion));
     e.currentTarget.textContent = reducedMotion ? "Motion reduced" : "Reduce motion";
-    if (followScreen.classList.contains("active")) { clearTimers(); startFollow(); }
+    // Never restart mid-ending: the break stays "active" through its own
+    // celebration AND through the silent hold startChoice/startSunset uses to
+    // reach the moon (neither calls showScreen), so a naive restart-if-active
+    // check would replay the whole break and, worse, cancel that pending
+    // transition, stranding the child on a follow screen that never moves on
+    // (final review I1).
+    if (followScreen.classList.contains("active") && !followScreen.classList.contains("celebrate")) {
+      clearTimers(); startFollow();
+    }
   });
   if (reducedMotion) {
     document.documentElement.classList.add("reduce-motion");
@@ -1000,11 +1008,24 @@
     $("#motion-toggle").textContent = "Motion reduced";
   }
 
+  // Debounced so a window drag doesn't restart the break once per resize
+  // event (M7); the celebrate guard mirrors the motion-toggle handler above
+  // and is what actually stops the ending-replay bug (I1) - re-checked inside
+  // the timeout too, since the 150ms wait can outlast the celebration itself.
+  let followResizeTimer = 0;
   window.addEventListener("resize", () => {
+    refreshContext();
     if (watching.classList.contains("active") && state.session) updateSky();
     if (choiceScreen.classList.contains("active") && state.session) positionSun(choiceSun, sessionProgress());
     positionSun($("#cast-sun"), 0.5);
-    if (followScreen.classList.contains("active")) { clearTimers(); startFollow(); }
+    if (followScreen.classList.contains("active") && !followScreen.classList.contains("celebrate")) {
+      clearTimeout(followResizeTimer);
+      followResizeTimer = setTimeout(() => {
+        if (followScreen.classList.contains("active") && !followScreen.classList.contains("celebrate")) {
+          clearTimers(); startFollow();
+        }
+      }, 150);
+    }
   });
 
   startSplash();
