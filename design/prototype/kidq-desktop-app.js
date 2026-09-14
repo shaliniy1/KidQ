@@ -682,7 +682,7 @@
   function plip() {
     try {
       plipCtx = plipCtx || new (window.AudioContext || window.webkitAudioContext)();
-      if (plipCtx.state === "suspended") plipCtx.resume();
+      if (plipCtx.state === "suspended") plipCtx.resume().catch(() => {});
       const t = plipCtx.currentTime;
       [659, 880].forEach((f, i) => {
         const o = plipCtx.createOscillator(), g = plipCtx.createGain();
