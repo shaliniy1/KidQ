@@ -411,8 +411,11 @@ screens share the same `.5s ease-out`, triggered in the same tick). With
 `s` = either curve — algebraically maxed at exactly **25%** (not an estimate;
 `s=0.5` is the peak by construction), reached where the shared ease-out
 curve crosses its own 50% progress point, around 170ms into the .5s
-transition. That 25% of `#app`'s flat `background:var(--cream)` (`:17`)
-shows through every pixel where neither screen's own content is opaque.
+transition. Both screens hold a full-bleed opaque `.kq-sky` at `inset:0`,
+so this isn't confined to gaps between content — at the 170ms peak, 25%
+of `#app`'s flat `background:var(--cream)` (`:17`) shows through the
+*entire* viewport, composited under whatever fraction of each screen's
+own sky is currently opaque.
 
 **This is a structural property of every screen cut in the app**, not
 something specific to the splash→login pair — any two `.screen`s crossfading
