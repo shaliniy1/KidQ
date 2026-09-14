@@ -28,6 +28,8 @@ export interface CandidateInput {
   category: string | null;
   /** Every category the item fits, primary first. */
   categories: string[];
+  /** The parent categories (the seven groups) the item falls under, primary first. */
+  parentCategories?: string[];
   interests: string[];
   developmentGoals: string[];
   regulationGoals: string[];
@@ -93,6 +95,9 @@ export function isEligible(candidate: CandidateInput): boolean {
 
 const baseLanguage = (code: string) => code.toLowerCase().split(/[-_]/)[0];
 const categoriesOf = (candidate: CandidateInput) => (candidate.categories.length ? candidate.categories : candidate.category ? [candidate.category] : []);
+/** A chosen category matches by the item's parent group, or by its admin category (admin previews still send those). */
+const matchesPreferred = (candidate: CandidateInput, preferred: string[]) =>
+  (candidate.parentCategories ?? []).some((key) => preferred.includes(key)) || categoriesOf(candidate).some((key) => preferred.includes(key));
 
 function passesHardFilters(candidate: CandidateInput, profile: ChildProfileInput): boolean {
   if (candidate.ageMin === null || candidate.ageMax === null) return false;
@@ -101,7 +106,7 @@ function passesHardFilters(candidate: CandidateInput, profile: ChildProfileInput
     if (!profile.languages.map(baseLanguage).includes(baseLanguage(candidate.language))) return false;
   }
   // "Let me choose categories": only items that fit one of the parent's chosen categories.
-  if (profile.contentMix === "CHOSEN" && !categoriesOf(candidate).some((key) => profile.preferredCategories.includes(key))) return false;
+  if (profile.contentMix === "CHOSEN" && !matchesPreferred(candidate, profile.preferredCategories)) return false;
   return true;
 }
 
@@ -141,7 +146,7 @@ function scoreCandidate(candidate: CandidateInput, profile: ChildProfileInput, c
   }
   if (profile.preferredCategories.length > 0) {
     weightSum += weights.category;
-    if (categoriesOf(candidate).some((key) => profile.preferredCategories.includes(key))) {
+    if (matchesPreferred(candidate, profile.preferredCategories)) {
       matched.category = true;
       relevanceSum += weights.category;
     }
@@ -176,13 +181,15 @@ function explain(candidate: CandidateInput, matched: Matched, coldStart: boolean
  * before it, and whose creator hasn't filled their share of the top window. Nothing is dropped;
  * when no item qualifies, the best remaining one goes next.
  */
-function arrange<T extends { id: string; creator: string | null; category: string | null }>(items: T[], maxPerCreator: number, window: number): T[] {
+function arrange<T extends { id: string; creator: string | null; category: string | null; parentCategories?: string[] }>(items: T[], maxPerCreator: number, window: number): T[] {
+  // Stories then Storybooks is still two in a row for a parent: rotate by the parent group.
+  const rotationKey = (item: T) => item.parentCategories?.[0] ?? item.category;
   const remaining = [...items];
   const arranged: T[] = [];
   const perCreator = new Map<string, number>();
   const creatorOf = (item: T) => item.creator ?? `__unknown:${item.id}`;
   const withinCap = (item: T) => arranged.length >= window || (perCreator.get(creatorOf(item)) ?? 0) < maxPerCreator;
-  const repeats = (item: T) => arranged.length > 0 && arranged[arranged.length - 1].category === item.category;
+  const repeats = (item: T) => arranged.length > 0 && rotationKey(arranged[arranged.length - 1]) === rotationKey(item);
   while (remaining.length > 0) {
     let index = remaining.findIndex((item) => withinCap(item) && !repeats(item));
     if (index < 0) index = remaining.findIndex(withinCap);

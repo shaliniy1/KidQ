@@ -4,8 +4,10 @@
 import { fetchYouTubeVideos, parseYouTubeId } from "../connectors/youtube";
 import { getPool, withTransaction, type Db } from "../db/pool";
 import { ageFromBand, bandForAge, type AgeBand } from "../domain/age";
+import { suggestCategories } from "../domain/analysis/rules";
 import {
   breakPlan,
+  DEFAULT_BREAK_INTERVAL,
   DEFAULT_DEVELOPMENT_GOALS,
   defaultSessionMinutes,
   MAX_CHILDREN,
@@ -13,12 +15,14 @@ import {
   type ContentMix,
   type SessionMinutes,
 } from "../domain/onboarding";
+import { groupOf, parentCategoriesFrom } from "../domain/parent-categories";
 import { recommend, type CandidateInput, type ChildProfileInput } from "../domain/recommendation";
+import type { SessionMode } from "../domain/time-of-day";
 import type { AuthUser } from "../http/auth";
 import { ApiError, notFound } from "../http/errors";
 import type { ChildBody, ChildPatchBody, MePatchBody, OnboardingBody, PreviewBody } from "../http/schemas";
 import { getActiveRankingConfig } from "../repositories/config";
-import { getCardRows, listApprovedCardRows, toCard, type ContentCard } from "../repositories/content";
+import { getCardRows, listApprovedCardRows, toCard, toKidqCheck, type ContentCard } from "../repositories/content";
 import { keysOf, listTaxonomy, type Taxonomy, type TaxonomyKind } from "../repositories/taxonomy";
 import { upsertRecord } from "./ingestion";
 
@@ -47,6 +51,8 @@ interface ChildColumns {
   regulation_goals: string[];
   session_minutes: number;
   break_type: BreakType;
+  break_interval_minutes: number;
+  session_mode: SessionMode;
 }
 
 const CHILD_COLUMNS = [
@@ -62,6 +68,8 @@ const CHILD_COLUMNS = [
   "regulation_goals",
   "session_minutes",
   "break_type",
+  "break_interval_minutes",
+  "session_mode",
 ] as const;
 
 export function toChild(row: Row) {
@@ -83,7 +91,9 @@ export function toChild(row: Row) {
     regulation_goals: row.regulation_goals as string[],
     session_minutes: row.session_minutes as SessionMinutes,
     break_type: row.break_type as BreakType,
-    break_plan: breakPlan(row.session_minutes),
+    break_interval_minutes: row.break_interval_minutes as 10 | 15 | 20,
+    session_mode: row.session_mode as SessionMode,
+    break_plan: breakPlan(row.session_minutes, row.break_interval_minutes),
     created_at: toIso(row.created_at),
     updated_at: toIso(row.updated_at),
   };
@@ -108,6 +118,8 @@ function columnsOf(row: Row): ChildColumns {
     regulation_goals: row.regulation_goals,
     session_minutes: row.session_minutes,
     break_type: row.break_type,
+    break_interval_minutes: row.break_interval_minutes,
+    session_mode: row.session_mode,
   };
 }
 
@@ -126,18 +138,22 @@ function newChild(nickname: string, band: AgeBand, language: string): ChildColum
     regulation_goals: [],
     session_minutes: defaultSessionMinutes(band),
     break_type: "ALTERNATE",
+    break_interval_minutes: DEFAULT_BREAK_INTERVAL,
+    session_mode: "AUTO",
   };
 }
 
 /** Every key comes from the shared vocabulary (GET /taxonomy), the one admins tag content with. */
 function assertKnownKeys(taxonomy: Taxonomy, values: Partial<Record<"languages" | "interests" | "preferred_categories" | "development_goals" | "regulation_goals", string[]>>) {
-  const check = (kind: TaxonomyKind, field: keyof typeof values) => {
-    const unknown = (values[field] ?? []).filter((value) => !keysOf(taxonomy, kind).includes(value));
+  const check = (kinds: TaxonomyKind | TaxonomyKind[], field: keyof typeof values) => {
+    const known = [kinds].flat().flatMap((kind) => keysOf(taxonomy, kind));
+    const unknown = (values[field] ?? []).filter((value) => !known.includes(value));
     if (unknown.length) throw new ApiError(400, "UNKNOWN_TAXONOMY_KEY", `Unknown ${field}: ${unknown.join(", ")}. Use keys from GET /taxonomy.`, { field, unknown });
   };
   check("language", "languages");
   check("interest", "interests");
-  check("category", "preferred_categories");
+  // Parents choose from the seven parent categories; admin previews may still send admin categories.
+  check(["parent_category", "category"], "preferred_categories");
   check("development_goal", "development_goals");
   check("regulation_goal", "regulation_goals");
 }
@@ -174,6 +190,8 @@ function applyChange(current: ChildColumns, change: ChildPatchBody, taxonomy: Ta
   }
   if (change.session_minutes !== undefined) next.session_minutes = change.session_minutes;
   if (change.break_type !== undefined) next.break_type = change.break_type;
+  if (change.break_interval_minutes !== undefined) next.break_interval_minutes = change.break_interval_minutes;
+  if (change.session_mode !== undefined) next.session_mode = change.session_mode;
   return next;
 }
 
@@ -289,6 +307,7 @@ export function toCandidate(row: Row): CandidateInput {
     ageMax: toNumber(row.age_max),
     category: row.category,
     categories: row.categories?.length ? row.categories : row.category ? [row.category] : [],
+    parentCategories: row.parent_categories ?? [],
     interests: row.interests ?? [],
     developmentGoals: row.development_goals ?? [],
     regulationGoals: row.regulation_goals ?? [],
@@ -307,7 +326,9 @@ function friendlyWhy(taxonomy: Taxonomy, card: ContentCard, ranked: ReturnType<t
   if (ranked.matched.interests.length) why.push(`Matches interests: ${list("interest", ranked.matched.interests)}`);
   if (ranked.matched.developmentGoals.length) why.push(`Supports: ${list("development_goal", ranked.matched.developmentGoals)}`);
   if (ranked.matched.regulationGoals.length) why.push(`Helps with: ${list("regulation_goal", ranked.matched.regulationGoals)}`);
-  if (ranked.matched.category && card.category) why.push(`Favourite category: ${label("category", card.category)}`);
+  if (ranked.matched.category && (card.parent_category || card.category)) {
+    why.push(`Favourite category: ${card.parent_category ? label("parent_category", card.parent_category) : label("category", card.category as string)}`);
+  }
   if ((card.content_score?.score ?? 0) >= 85) why.push("Calm and gentle");
   if (card.learning.areas.length) why.push(`Learning: ${card.learning.areas.join(", ")}`);
   return why;
@@ -511,4 +532,51 @@ export async function listSubmissions(user: AuthUser, childId: string) {
   );
   const cards = await getCardRows(db, rows.map((row) => row.content_item_id).filter(Boolean), { approvedOnly: false });
   return { items: rows.map((row) => toSubmission(row, cards.get(row.content_item_id))) };
+}
+
+/**
+ * Add a Video, step 1 (spec §7, P9a): the link's details and KidQ check, before the parent adds it.
+ * Saves nothing. A video KidQ already knows shows its check; a new one is checked after it's added,
+ * because the AI review isn't instant. Adding (POST /children/:id/submissions) still needs an admin
+ * before the child can watch it.
+ */
+export async function previewSubmission(user: AuthUser, childId: string, url: string) {
+  await childRow(user, childId);
+  const videoId = parseYouTubeId(url);
+  if (!videoId) throw new ApiError(422, "INVALID_URL", "Only public YouTube video links can be added right now.");
+  const db = getPool();
+  const groups = parentCategoriesFrom((await listTaxonomy(db)).parent_category);
+  const known = (await db.query("SELECT content_item_id FROM source_records WHERE source_system_id = 'youtube' AND external_id = $1", [videoId])).rows[0]
+    ?.content_item_id as string | undefined;
+  const row = known ? (await getCardRows(db, [known], { approvedOnly: false })).get(known) : undefined;
+  if (row) {
+    const card = toCard(row);
+    return {
+      video_id: videoId,
+      already_in_kidq: true,
+      title: card.title,
+      thumbnail_url: card.thumbnail_url,
+      duration_seconds: card.duration_seconds,
+      channel: card.creator,
+      category: card.category,
+      parent_category: card.parent_category,
+      kidq_check: { ...toKidqCheck(row), note: null },
+    };
+  }
+  const record = (await fetchYouTubeVideos([videoId])).records[0];
+  if (!record) throw new ApiError(422, "VIDEO_NOT_AVAILABLE", "This video is private, unavailable, too long, or can't be played inside KidQ.");
+  const category =
+    suggestCategories({ title: record.title, description: record.description, tags: record.tags, language: record.language, contentType: record.contentType, source: "youtube" })[0] ??
+    null;
+  return {
+    video_id: videoId,
+    already_in_kidq: false,
+    title: record.title,
+    thumbnail_url: record.thumbnailUrl,
+    duration_seconds: record.durationSeconds,
+    channel: record.creator,
+    category,
+    parent_category: groupOf(groups, category),
+    kidq_check: { status: "NOT_CHECKED" as const, dimensions: [], note: "KidQ checks this video after you add it." },
+  };
 }

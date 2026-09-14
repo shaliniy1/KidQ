@@ -808,6 +808,8 @@ export interface paths {
                         interests?: string[];
                         development_goals?: string[];
                         regulation_goals?: string[];
+                        /** @description Times of day the item suits; the AI sets them once, an admin can change them */
+                        session_modes?: ("MORNING" | "DAYTIME" | "BEDTIME")[];
                         language?: string | null;
                         /** @enum {string} */
                         content_type?: "VIDEO" | "ACTIVITY" | "STORYBOOK" | "INTERACTIVE_CONTENT";
@@ -917,6 +919,8 @@ export interface paths {
                             interests?: string[];
                             development_goals?: string[];
                             regulation_goals?: string[];
+                            /** @description Times of day the item suits; the AI sets them once, an admin can change them */
+                            session_modes?: ("MORNING" | "DAYTIME" | "BEDTIME")[];
                             language?: string | null;
                             /** @enum {string} */
                             content_type?: "VIDEO" | "ACTIVITY" | "STORYBOOK" | "INTERACTIVE_CONTENT";
@@ -1641,7 +1645,7 @@ export interface paths {
                          * @enum {string}
                          */
                         content_mix?: "SURPRISE" | "CHOSEN";
-                        /** @description Block B categories; sending some without content_mix means CHOSEN */
+                        /** @description Block B: parent category keys (GET /taxonomy → parent_category); sending some without content_mix means CHOSEN */
                         preferred_categories?: string[];
                         /** @description Block C: never asked. Omit, or send [], for the age-band defaults. */
                         development_goals?: string[];
@@ -1654,6 +1658,13 @@ export interface paths {
                          * @enum {string}
                          */
                         break_type?: "MOVEMENT" | "QUIET" | "ALTERNATE";
+                        /** @description Block E: minutes between breaks (10, 15 or 20); breaks = duration ÷ interval, rounded */
+                        break_interval_minutes?: 10 | 15 | 20;
+                        /**
+                         * @description §12: AUTO follows the clock; MORNING, DAYTIME or BEDTIME is remembered until changed
+                         * @enum {string}
+                         */
+                        session_mode?: "AUTO" | "MORNING" | "DAYTIME" | "BEDTIME";
                         /**
                          * @description Age band: the same five bands admins tag content with
                          * @enum {string}
@@ -2217,7 +2228,7 @@ export interface paths {
                 content: {
                     "application/json": {
                         /** @enum {string} */
-                        kind: "category" | "interest" | "development_goal" | "regulation_goal" | "language" | "age_group";
+                        kind: "category" | "interest" | "development_goal" | "regulation_goal" | "language" | "age_group" | "parent_category";
                         key: string;
                         label: string;
                         sort_order?: number;
@@ -2629,7 +2640,7 @@ export interface paths {
                          * @enum {string}
                          */
                         content_mix?: "SURPRISE" | "CHOSEN";
-                        /** @description Block B categories; sending some without content_mix means CHOSEN */
+                        /** @description Block B: parent category keys (GET /taxonomy → parent_category); sending some without content_mix means CHOSEN */
                         preferred_categories?: string[];
                         /** @description Block C: never asked. Omit, or send [], for the age-band defaults. */
                         development_goals?: string[];
@@ -2642,6 +2653,13 @@ export interface paths {
                          * @enum {string}
                          */
                         break_type?: "MOVEMENT" | "QUIET" | "ALTERNATE";
+                        /** @description Block E: minutes between breaks (10, 15 or 20); breaks = duration ÷ interval, rounded */
+                        break_interval_minutes?: 10 | 15 | 20;
+                        /**
+                         * @description §12: AUTO follows the clock; MORNING, DAYTIME or BEDTIME is remembered until changed
+                         * @enum {string}
+                         */
+                        session_mode?: "AUTO" | "MORNING" | "DAYTIME" | "BEDTIME";
                         /** @description A nickname only, never the child's legal name */
                         nickname: string;
                         /**
@@ -2799,7 +2817,7 @@ export interface paths {
                          * @enum {string}
                          */
                         content_mix?: "SURPRISE" | "CHOSEN";
-                        /** @description Block B categories; sending some without content_mix means CHOSEN */
+                        /** @description Block B: parent category keys (GET /taxonomy → parent_category); sending some without content_mix means CHOSEN */
                         preferred_categories?: string[];
                         /** @description Block C: never asked. Omit, or send [], for the age-band defaults. */
                         development_goals?: string[];
@@ -2812,6 +2830,13 @@ export interface paths {
                          * @enum {string}
                          */
                         break_type?: "MOVEMENT" | "QUIET" | "ALTERNATE";
+                        /** @description Block E: minutes between breaks (10, 15 or 20); breaks = duration ÷ interval, rounded */
+                        break_interval_minutes?: 10 | 15 | 20;
+                        /**
+                         * @description §12: AUTO follows the clock; MORNING, DAYTIME or BEDTIME is remembered until changed
+                         * @enum {string}
+                         */
+                        session_mode?: "AUTO" | "MORNING" | "DAYTIME" | "BEDTIME";
                         /** @description A nickname only, never the child's legal name */
                         nickname?: string;
                         /**
@@ -3436,6 +3461,13 @@ export interface paths {
                     "application/json": {
                         /** @description 15, 30, 45, 60 or 90; any other length snaps to 30-minute blocks */
                         minutes: number;
+                        /**
+                         * @description Session mode; remembered as this child's default. Omit to use the remembered one
+                         * @enum {string}
+                         */
+                        mode?: "AUTO" | "MORNING" | "DAYTIME" | "BEDTIME";
+                        /** @description "Today, lean toward…": a parent category key for this session only; never saved */
+                        lean_toward?: string;
                     };
                 };
             };
@@ -4074,6 +4106,107 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/children/{id}/submissions/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add a Video, step 1: a YouTube link's details and KidQ check, before adding it. Saves nothing */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        url: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Success */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            video_id: string;
+                            already_in_kidq: boolean;
+                            title: string;
+                            thumbnail_url: string | null;
+                            duration_seconds: number | null;
+                            channel: string | null;
+                            /** @description The admin category KidQ would suggest */
+                            category: string | null;
+                            parent_category: string | null;
+                            kidq_check: {
+                                /** @enum {string} */
+                                status: "REVIEWED" | "CHECKING" | "NOT_CHECKED";
+                                dimensions: {
+                                    /** @enum {string} */
+                                    key: "CONTENT_LANGUAGE" | "PACING" | "VISUAL_COMFORT" | "AUDIO_COMFORT";
+                                    label: string;
+                                    summary: string;
+                                }[];
+                                note: string | null;
+                            };
+                        };
+                    };
+                };
+                /** @description Validation failed */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not signed in */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Wrong role */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/ready": {
         parameters: {
             query?: never;
@@ -4232,6 +4365,23 @@ export interface components {
             interests: string[];
             development_goals: string[];
             regulation_goals: string[];
+            /** @description The parent category (one of the seven) the primary category rolls up to; show this to parents */
+            parent_category: string | null;
+            /** @description Every parent category the item falls under, primary first */
+            parent_categories: string[];
+            /** @description Times of day the item suits (MORNING, DAYTIME, BEDTIME); empty fits any */
+            session_modes: ("MORNING" | "DAYTIME" | "BEDTIME")[];
+            /** @description The parent-facing trust badge: plain words per dimension, never a number. Parent screens show this, not content_score */
+            kidq_check: {
+                /** @enum {string} */
+                status: "REVIEWED" | "CHECKING" | "NOT_CHECKED";
+                dimensions: {
+                    /** @enum {string} */
+                    key: "CONTENT_LANGUAGE" | "PACING" | "VISUAL_COMFORT" | "AUDIO_COMFORT";
+                    label: string;
+                    summary: string;
+                }[];
+            };
             content_score: components["schemas"]["ContentScore"] | null;
             /** @description What the child can learn or do, kept separate from the KidQ score: 25 points per area (Thinking, Language, Feelings & friends, Doing) */
             learning: {
@@ -4268,7 +4418,7 @@ export interface components {
              * @enum {string}
              */
             content_mix: "SURPRISE" | "CHOSEN";
-            /** @description Block B categories; sending some without content_mix means CHOSEN */
+            /** @description Block B: parent category keys (GET /taxonomy → parent_category); sending some without content_mix means CHOSEN */
             preferred_categories: string[];
             /** @description Block C: never asked. Omit, or send [], for the age-band defaults. */
             development_goals: string[];
@@ -4281,6 +4431,13 @@ export interface components {
              * @enum {string}
              */
             break_type: "MOVEMENT" | "QUIET" | "ALTERNATE";
+            /** @description Block E: minutes between breaks (10, 15 or 20); breaks = duration ÷ interval, rounded */
+            break_interval_minutes: 10 | 15 | 20;
+            /**
+             * @description §12: AUTO follows the clock; MORNING, DAYTIME or BEDTIME is remembered until changed
+             * @enum {string}
+             */
+            session_mode: "AUTO" | "MORNING" | "DAYTIME" | "BEDTIME";
             /** Format: uuid */
             id: string;
             nickname: string;
@@ -4293,7 +4450,7 @@ export interface components {
             age_years: number;
             /** @enum {string} */
             development_goals_source: "AGE_DEFAULT" | "PARENT";
-            /** @description One break per 15 minutes; the last is always the wind-down */
+            /** @description One break per break interval; the last is always the wind-down */
             break_plan: {
                 total_breaks: number;
                 mid_session_breaks: number;
@@ -4322,6 +4479,24 @@ export interface components {
             outcome: "COMPLETED" | "EXITED" | null;
             /** @description How far the child's library fell short of the chosen time; 0 when it filled it */
             short_by_minutes: number;
+            /** @enum {string} */
+            mode: "AUTO" | "MORNING" | "DAYTIME" | "BEDTIME";
+            /**
+             * @description The band India's clock was in when the session started
+             * @enum {string|null}
+             */
+            time_band: "MORNING" | "DAYTIME" | "EVENING" | "NIGHT" | null;
+            /** @description The KidQ Agent's opener, played before slot 1 and outside the chosen minutes */
+            opener: {
+                /** @enum {string} */
+                band: "MORNING" | "DAYTIME" | "EVENING" | "NIGHT";
+            };
+            /**
+             * @description How the last slot closes: SLEEP is the full sleep wind-down
+             * @enum {string}
+             */
+            wind_down: "STANDARD" | "CALM" | "SLEEP";
+            lean_toward: string | null;
             slots: {
                 slot: number;
                 /**

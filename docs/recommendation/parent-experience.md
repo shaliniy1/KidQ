@@ -1,21 +1,19 @@
 # KidQ Parent Experience
 
-The parent-experience spec as Shalini shared it on 2026-09-13, below, with **KidQ's decisions of the same day**. Where they differ, the decisions win:
+The parent spec, v5 (2026-09-14), is committed below as the source of truth. Where KidQ's build differs, the decision is recorded here:
 
-- **Who sees what**: a parent sees a video in recommendations once an admin approves it and it matches the child's age band and chosen options. A child sees only what their parent added to that child's library. Sessions draw from the child's library, never from recommendations.
-- **Parent-added videos stay admin-approved** before any child sees them (§7's "Private, usable immediately" isn't adopted). The Private/Public switch only decides whether an approved video is also suggested to other families.
-- **Thin library** (§2 rule 6): no neighbouring-age-band fallback. A session is as long as the child's library allows, and the parent is told factually afterwards.
-- **Login** (§0, §9): Google Sign-In through Supabase Auth, not Firebase.
-- **No expert reviews** anywhere (§2 rule 2, §9): removed from KidQ.
-- **AI scoring**: every item is scored once and keeps its score.
-- **Analytics (§6)**: built as the Parent Analytics page: screen time counts only active playback, sections follow Shalini's 2026-09-13 brief, and insights are factual sentences only (`docs/api/README.md` "Analytics").
-- **Build order**: sessions and the watch log (built); consent, mascot colour, settings and per-child blocking; My Videos, 👍/👎 and notifications; analytics and the pool monitor (`GET /content-pool`, built); voice.
+- **Private parent videos keep admin approval** (Shalini, 2026-09-13, reconfirmed 2026-09-14). The KidQ check badge is shown before Add, but a child only ever sees admin-approved videos; §7's "instant, never a gate" isn't adopted.
+- **A short library gives a shorter session**, and the parent is told (`short_by_minutes`). §2 rule 6's neighbouring-age-band fallback isn't adopted, because a child sees only what their parent added.
+- **The seven parent categories roll up the admin categories** (`parent_category` in `GET /taxonomy`). Admins and the AI keep tagging the detailed ones. Animation is no longer a category.
+- **Session-mode tags come from the AI**, once, when it scores an item (Morning / Daytime / Bedtime). An admin can change them, and untagged items fit any mode.
+- **Login is Google via Supabase**, not Firebase. There are **no expert reviews** in ranking. English only for phase 1.
+- **Built (API)**: sessions, analytics, the content-pool monitor, the seven categories, the break interval, the time-of-day mode and "lean toward", the KidQ check badge and the Add-a-Video preview. **Next**: consent, mascot colour, settings and per-child blocking; My Videos sharing, 👍/👎 and notifications; voice.
 
 ---
 
 # KidQ Parent Experience — Consolidated Spec
 
-Merges and supersedes `KidQ_Parent_Onboarding_Field_Spec.md` and `KidQ_Session_Assembly_Rules.md`. Adds: session duration/tolerance, recurring session handoff, session-complete notification, analytics, My Videos, voice input, and the backend/API surface all of the above requires.
+Merges and supersedes `KidQ_Parent_Onboarding_Field_Spec.md` and `KidQ_Session_Assembly_Rules.md`. Adds: session duration/tolerance, recurring session handoff, session-complete notification, analytics, My Videos, voice input, and the backend/API surface all of the above requires. **v5 adds:** a grounded seven-category content taxonomy (Block B) and a time-of-day context layer (Section 12).
 
 ---
 
@@ -25,12 +23,13 @@ Merges and supersedes `KidQ_Parent_Onboarding_Field_Spec.md` and `KidQ_Session_A
 |---|---|---|---|
 | P1 | DPDP Consent Gate | existing | One-time, before any child profile. Unchanged. Tap-only — see Section 8. |
 | P2 | Child Profile & Preferences | **revised** | Section 1 below. Screens 1–7 **mocked**. |
-| P3 | Onboarding Path (3 doors) | existing | Talk/type, guided questions, browse. Voice detailed in Section 8. |
-| P4 | Review AI Suggestions | existing | AI-guided path only. Voice retry loop detailed in Section 8. |
+| P3 | (dissolved as a gatekeeping screen) | **revised** | No longer a mandatory detour. Its three "doors" are redistributed: talk/type and guided-questions become optional input shortcuts inside the Customize Hub (P2); browse-myself becomes a third top-level choice on Screen 2 (P2-confirm), alongside Start-using-KidQ and Customize. See Section 11 #16. |
+| P3-guided | Guided Questions (new capture screen) | **new** | A short structured, tap-based Q&A alternative to voice, for parents who'd rather tap than talk or type. Converges on the same Hub fields voice input does. See Section 11 #16. |
+| P4 | (dissolved) | **revised** | Its "review what we extracted" function is absorbed into the Hub itself — voice/guided capture fills the Hub's existing fields directly, with no separate review screen in between. See Section 11 #16. |
 | P5 | Recommendation Screen | existing | Unchanged, not mocked. |
 | P6 | Kid View Preview | existing | Unchanged, not mocked. |
 | P7 | Settings | **revised** | Rarely-changed defaults: schedule, autoplay, break type, sensory — now field-level specified, see Section 11 #7. |
-| P7a | **Start a Session** | **new** | Section 4. The everyday quick action — not the same screen as P7 Settings. Voice-enabled (Section 8). |
+| P7a | **Start a Session** | **new** | Section 4. The everyday quick action — not the same screen as P7 Settings. Voice-enabled (Section 8). Carries the optional Session-mode chips (Section 12) and the "today, lean toward…" category chip (Block B). |
 | P8 | Handoff & Insight Tray | existing | Factual watched-content log + 👍/👎. Extended by P8a/P8b below. |
 | P8a | **Session-Complete Notification** | **new** | Section 5. |
 | P8b | **Analytics / Insight Dashboard** | **new** | Section 6. |
@@ -71,7 +70,7 @@ Each child also gets a mascot/avatar color — auto-assigned by default, cycling
 ### Screen 2 — Default confirmation
 
 **Copy:** "We've set up [Child]'s KidQ using just their age. Start right away, or fine-tune it below."
-**Actions:** `[ Start using KidQ ]` (primary) → skips to P3 · `[ Customize for {child} ]` (secondary) → expands Blocks A, B, D, E.
+**Actions:** `[ Start using KidQ ]` (primary) → straight to P7a Start a Session, no detour · `[ Customize for {child} ]` (secondary) → opens the Hub (Blocks A, B, D, E) · `[ Browse and pick myself ]` (tertiary link) → straight to P5, bypassing preference-tagging and the recommendation engine entirely. See Section 11 #16 for the full reasoning behind this three-way split.
 
 ### Optional Block A — Interests
 Multi-select chips, default = none selected. Open item: interest tag vocabulary isn't finalized by Admin yet.
@@ -79,10 +78,23 @@ Multi-select chips, default = none selected. Open item: interest tag vocabulary 
 ### Optional Block B — Content mix
 ```
 ( ) Surprise us — a good age-appropriate mix        [default]
-( ) Let me choose categories  →  Animation · Stories · Storybooks · Crafts ·
-    Painting · Science · Maths · Yoga · Activities · Educational ·
-    Music/Rhymes · Knowledge/General Learning
+( ) Let me choose a category  →  Stories & Rhymes · Songs & Music · Numbers & Thinking ·
+    Our World · Art & Making · Move & Play · Calm & Breathe
 ```
+
+Seven parent-facing categories, each mapped to an early-childhood developmental domain (NCF-FS 2022). This supersedes the earlier flat 12-item list; **"Animation" is dropped** as a top-level category — it's a *style* (a cartoon can be a story, a science clip, or a song), not a content type.
+
+| Parent sees | Rolls up | Developmental area (NCF-FS 2022) |
+|---|---|---|
+| Stories & Rhymes | Stories, Storybooks | Language & Literacy |
+| Songs & Music | Music/Rhymes | Aesthetic & Creative |
+| Numbers & Thinking | Maths, puzzles/logic | Cognitive |
+| Our World | Science, Educational, Knowledge/General Learning | Cognitive / environmental awareness |
+| Art & Making | Crafts, Painting | Aesthetic & Creative |
+| Move & Play | Activities, movement/dance | Physical (motor) |
+| Calm & Breathe | Yoga, breathing | Physical + life-energy (pranik) + emotional regulation |
+
+**How category is set:** saved once here (editable any time via the Hub), plus an optional per-session **"today, lean toward…"** chip on Start a Session (P7a) that steers a single session without changing the saved default. Default stays "Surprise us" for any parent who sets nothing.
 
 ### Optional Block C — Development goal (never shown to parent)
 | Age band | Default Development Goals |
@@ -106,17 +118,20 @@ Flag: a product-sequencing default, not a clinical claim — deserves the same e
 | Play nicely with others | Social Regulation |
 
 ### Optional Block E — Screen time & breaks (first-time defaults)
-Duration picker **15 / 30 / 45 / 60 / 90 min**, break count derived at one break per 15 minutes:
+Duration picker **15 / 30 / 45 / 60 / 90 min**, plus a **break interval** picker — **10 / 15 / 20 min** (default 15). Interval is set here, at curation time — same tier as break type, not re-asked at every session (Section 4/8). Break count is derived from the two together: **total breaks = duration ÷ chosen interval, rounded to the nearest whole slot.**
 
-| Session length | Total breaks | Mid-session breaks | Final break |
-|---|---|---|---|
-| 15 min | 1 | 0 | Wind-down only |
-| 30 min | 2 | 1 | + Wind-down |
-| 45 min | 3 | 2 | + Wind-down |
-| 60 min | 4 | 3 | + Wind-down |
-| 90 min | 6 | 5 | + Wind-down |
+| Session length | Interval | Total breaks | Mid-session breaks | Final break |
+|---|---|---|---|---|
+| 15 min | 15 min | 1 | 0 | Wind-down only |
+| 30 min | 15 min | 2 | 1 | + Wind-down |
+| 30 min | 10 min | 3 | 2 | + Wind-down |
+| 45 min | 15 min | 3 | 2 | + Wind-down |
+| 60 min | 15 min | 4 | 3 | + Wind-down |
+| 90 min | 15 min | 6 | 5 | + Wind-down |
 
-The last break is always the mandatory wind-down. Break type: Movement / Quiet-calm / Let KidQ alternate (default).
+Table shows the default 15-min interval plus one 10-min example — the formula applies to any duration/interval combination a parent picks, not just these rows.
+
+The last break is always the mandatory wind-down, regardless of interval. Break type — Movement / Quiet-calm / Let KidQ alternate (default) — is a separate, independent choice from interval, on the same screen.
 
 ### Language — Phase 1 decision
 English only for phase 1. Multi-language (Hindi + regional languages per `kidQ Design.md` §3.4) is explicitly out of scope for this version, not dropped — revisit in phase 2.
@@ -130,13 +145,14 @@ Language is now decided (above), not open.
 
 Fills the gap between "filter and rank videos" (already specified) and "assemble a session that adds up to the chosen duration" (wasn't).
 
-1. **Break count sets the number of slots** — same table as Block E above; each slot ≈ 15 minutes of viewing, ending in a break.
+1. **Break count sets the number of slots** — derived from the child's saved duration and break-interval settings (Block E): total breaks = duration ÷ interval, rounded; each slot ≈ the chosen interval's length of viewing, ending in a break. Interval is a curation-time setting (set once in the Hub, editable any time — not re-asked at Start a Session), same tier as break type.
 2. **Each slot fills greedily** from the ranked list (existing relevance + KidQ score + expert review + parent preference order) until the next video would overflow the slot.
 3. **Never cut a video short to hit the clock** (already established in `kidQ Design.md` §5.3) — a break triggers at the nearest video boundary at or after the target minute.
 4. **Category rotation** in "Surprise us" mode — rotate across the 2–3 categories implied by that age's default Development Goals; no same category twice in a row.
 5. **The final slot leans calm on purpose** if "Wind down before bed" or "Help them calm down" is an active Regulation Goal.
 6. **Thin eligible pool — bounded fallback, never silent on safety.** If a slot's pool of age-band + safety-tagged content is too thin to fill, the engine may pull from the immediately adjacent age band only (e.g. a 3–4 slot may draw from 2–3 or 4–5) — always still from KidQ's own admin-approved, safety-reviewed catalog, never wider and never uncurated content. Disclosed to the parent afterward, factually, in the session log or session-complete notification (e.g. *"A couple of videos today came from a neighboring age range — content was a little thin in [age band] this week"*) — not asked upfront, to avoid adding friction to something meant to stay rare. Depends on the content-pool-depth monitor in Section 9.
 7. **"Let me choose categories" mode** uses the identical slot / greedy-fill / rotation mechanics as "Surprise us," restricted to only the categories the parent chose.
+8. **Time-of-day shaping (Section 12).** The time-of-day context layer supplies an energy bias (brighter vs. calmer) used during ranking/rotation, a session opener, and the flavor of the final wind-down slot. It shapes *which* content is selected within the rules above — it does not change the slot / greedy-fill / rotation / never-cut mechanics.
 
 ---
 
@@ -152,7 +168,7 @@ Proposal, not confirmed — flagged for sign-off.
 ## 4. Recurring session handoff flow
 
 0. **If more than one child profile exists, P7a opens on a child-switcher first** — each child shown by nickname and their mascot color (Section 1). Selecting a child reveals that child's own duration picker; each child's last-used duration is remembered independently and never shared across children.
-1. Parent opens the app. They do **not** repeat onboarding — they land on **P7a Start a Session**: a lightweight duration picker only (reuses the Block E picker), not the full P7 Settings screen.
+1. Parent opens the app. They do **not** repeat onboarding — they land on **P7a Start a Session**: a lightweight duration picker (reuses the Block E picker) — plus the optional Session-mode chips (Section 12) and the "today, lean toward…" category chip (Block B) — not the full P7 Settings screen.
 2. Parent taps or voices a duration (Section 8) and hands the device to the child.
 3. **Business-logic addition to the existing Child Player screen:** the session starts live the moment the parent confirms the duration — no separate "kid taps start" step. The child never sees a duration control themselves, consistent with "no settings icons in child view" (`kidQ Design.md` §3.1).
 4. **Changing the duration is available any time the parent wants** — there's no restriction to "once a day." If they don't touch it, it defaults to whatever they last set.
@@ -199,8 +215,12 @@ All stay factual, not behavioral — none infer attention, mood, or preference.
 
 ## 7. My Videos — parent URL submission flow
 
-### P9a — Add a Video
-- Parent pastes a YouTube URL. **Default state: Private** — usable by this family immediately, no admin approval needed.
+### P9a — Add a Video (updated: auto-detect → score badge → review → add)
+- Parent pastes a YouTube URL. KidQ auto-fetches title, thumbnail, duration, channel, and content category — no manual entry.
+- KidQ runs its content-scoring check on the detected video and shows the result as a simple trust badge (e.g. "✓ Reviewed") — never a raw numeric score. Tapping the badge can optionally expand into a plain-language readout of the scoring dimensions (pacing, language, content, visual, audio) — opt-in, not required.
+- Parent reviews the detected details and badge, then taps **Add Content** to confirm — replaces the previous blind paste-and-add with a review-before-add step, still one linear flow.
+- **The score is informational only for a parent's own private use — never a gate.** Whatever the result, the parent decides. Even a low score doesn't block **Add Content**; KidQ shows what it found, the parent stays in control of their own family's library. (This is unchanged from — and now made explicit alongside — the Public-submission path below, which is the only place a human admin review actually gates anything.)
+- **Default state: Private** — usable by this family immediately, no admin approval needed. The scoring check above is automated and near-instant regardless of Private/Public status — it is not a human review gate, so it never delays private use.
 - Toggle: **"Also suggest this to other families"** — sends it into the Admin review queue (`KidQ_Screens_and_Logic.docx` A2). Never changes this family's own instant access either way.
 
 ### Editing / removing a video
@@ -249,19 +269,20 @@ Everything above implies backend components. Listed here so nothing gets built t
 
 | Component | What it does | Status |
 |---|---|---|
-| **Content scoring / recommendation engine** | Ranks admin-approved content by relevance + KidQ Score + expert review + parent preference (`KidQ_Architecture_Process.md` §11–12). Your teammate's current build — pulling ~140 videos, scoring pacing/language/content/visual/audio via an LLM — is this component. | in progress (owned by your teammate) |
-| **Session Assembly / Timing API** | Takes a chosen duration + a child's filters, returns the actual slot-by-slot video queue per Section 2's rules (greedy fill, never cut mid-video, category rotation, calm final slot). | **new — needs building**, separate from the scoring engine above even though it consumes its output |
+| **Content scoring / recommendation engine** | Ranks admin-approved content by relevance + KidQ Score + expert review + parent preference (`KidQ_Architecture_Process.md` §11–12). Your teammate's current build — pulling ~140 videos, scoring pacing/language/content/visual/audio via an LLM — is this component. Also invoked at the moment a parent adds content (P9a) to generate the trust badge shown before Add Content is confirmed (Section 7) — must run fast enough to feel instant, not a blocking review. | in progress (owned by your teammate) |
+| **Session Assembly / Timing API** | Takes a chosen duration + a child's filters, returns the actual slot-by-slot video queue per Section 2's rules (greedy fill, never cut mid-video, category rotation, calm final slot). Also takes the Section 12 time-of-day band + session mode as inputs (energy bias, opener, wind-down flavor) — no new service required for this. | **new — needs building**, separate from the scoring engine above even though it consumes its output |
 | **Voice-to-tag NLU API** | Takes a voice transcript, returns a best-effort mapping to Content Category / Interests / Regulation Goal (curation) or a single duration value (session time). Feeds the Section 8 review screen — never writes directly to a child's library. | **new — needs building** |
 | **Analytics aggregation API** | Rolls up the factual watched-content log into the day/week/month category breakdowns and the proposed metrics in Section 6. | **new — needs building** |
 | **Authentication** | Google Sign-In (OAuth) via Firebase Auth. One shared Google account per family — every caregiver signs in with it (Section 0). No custom domain required; free under Firebase's no-cost tier and Google's unverified-app allowance (fine under 100 users for phase 1). Email/OTP explicitly deferred, not built now. | **new — needs building** |
 | **Content pool depth monitor** | Tracks how many admin-approved, safety-tagged videos exist per age-band × category combination; flags to the content/admin team before a combination gets thin enough to trigger the Section 2 fallback rule. Exists so that fallback stays rare in practice. | **new — needs building** |
+| **Client platform** | Responsive web app / PWA for MVP — works in any browser, phone or laptop, including laptop-to-TV via Chromecast/screen mirroring for the child's viewing device. No dedicated native Smart TV app for MVP; true remote-control/D-pad TV navigation is explicitly deferred, not built now. | **decided** |
 | **Sync / persistence layer** | See "what syncs" below. | mostly implied by existing screens, worth stating explicitly |
 
 ### What has to sync to the backend (so nothing is missed)
 - DPDP consent record (timestamp + version — already required by P1).
 - Child profile: nickname, age band.
 - Curation settings: content mix mode, categories chosen, interests, regulation goals — every time a parent changes them via UI *or* voice.
-- Session duration + break/type preference, per session (not just a stored default — each actual session's chosen duration).
+- Session duration, per session (not just a stored default — each actual session's chosen duration). Break type and break interval, per child, as curation-time settings — changed only when a parent deliberately updates them via the Hub, not per session.
 - My Videos: URL submissions, private/public status, and the admin approval state flowing back down (Section 7).
 - Watched-content log + session outcome (completed/skipped/exited) — flows *up* from the child device after each session, feeding both the Insight Tray (P8) and Analytics (P8b).
 - 👍/👎 feedback — feeds future ranking as a preference signal.
@@ -282,6 +303,8 @@ Everything above implies backend components. Listed here so nothing gets built t
 5. Exact wording/trigger conditions for the P9b approval notification (Section 7).
 6. Whether "change curation" is ever system-prompted or always parent-initiated (Section 8).
 7. Ownership split between the recommendation/scoring engine (in progress) and the new Session Assembly API (Section 9) — confirm these are being built as two separate components, not folded into one.
+8. **PDF/classwork upload (teammate proposal, 2026-09-13)** — is this scoped as link-extraction only (KidQ finds video links mentioned inside a PDF), or is the PDF itself meant to become child-facing content? For a 0–6 audience the latter doesn't fit the product — recommend link-extraction only, but needs explicit team confirmation before scoping.
+9. ~~Per-video breakpoints/activities (teammate proposal, 2026-09-13)~~ — **resolved, see Section 11 #21–22.** Breaks stay a per-child curation setting (interval + type), not authored per video; the Orange KidQ Agent is confirmed in scope as the existing break-time host character, separate from the per-child mascot color.
 
 ---
 
@@ -304,3 +327,76 @@ A completeness pass over Sections 1–9 against the full Parent Flow scope, gril
 
 11. **Mascot / avatar color per child — resolved.** Parent picks one of KidQ's 5 existing brand accent colors per child (auto-assigned by default), used to tell children apart at a glance on the child-switcher. Not tied to gender by the system. See Section 1.
 12. **Blocking a specific KidQ-recommended video — resolved, confirmed for phase 1.** Per-child (not per-family) exclude list, reusing existing 👍/👎 and My Videos infrastructure. See Section 7.
+13. **Client platform — resolved.** Responsive web app / PWA for MVP (phone or laptop browser; laptop-to-TV via Chromecast/mirroring covers the "watched on the TV" case) rather than a dedicated native Smart TV app. True TV remote/D-pad navigation explicitly deferred. See Section 9.
+14. **Development Goal visibility — reconfirmed, unchanged.** Stays hidden from the parent (Section 1, Block C) — raised again during this pass, decision unchanged.
+15. **Voice input screens were missing from the prototype (not the spec) — now added.** Section 8 always specified voice at content curation (P3/P4) and session time (P7a); the prototype build had skipped the actual capture UI. Added: a "Talk or type to KidQ" capture screen (mic + text box) between P3 and P4, and a mic option alongside the duration pills on P7a.
+16. **P3/P4 screen-flow logic grilled and restructured — resolved.** Two real bugs surfaced in the same review pass:
+    - **Bug A — the default and Hub-finish paths both forced a detour through P3.** Both "Start using KidQ" (P2-confirm) and "Done — start using KidQ" (the Hub's finish button) routed to P3's three-door screen before reaching a session, even for a parent who explicitly chose not to customize anything. Traced back to the original spec text itself ("Start using KidQ → skips to P3"), not introduced independently during prototyping.
+    - **Bug B — P3's second door had no real destination of its own.** "Answer a few guided questions" pointed at the exact same screen as "Talk or type to KidQ"'s result, with no distinct guided-question interaction ever designed for it — a dead duplicate, not a working alternate path.
+    - **Resolution — P3 is dissolved as a standalone gate, its three doors redistributed to where they logically belong:**
+      1. P2-confirm now offers three coequal top-level choices: **Start using KidQ** (defaults, straight to P7a), **Customize** (opens the Hub), and **Browse and pick myself** (straight to P5 — this is fundamentally different in kind from the other two, since it skips preference-tagging and the recommendation engine altogether, so it does not belong nested inside the Hub or a conversational flow).
+      2. Inside the Hub, tapping fields directly stays the default interaction. Two small optional shortcuts sit alongside it for parents who'd rather not tap through everything themselves: **"Talk or type to KidQ"** (voice/text capture, now a real, newly-designed guided Q&A screen) and **"Answer a few guided questions"** (a short structured wizard: "What does [child] enjoy more — stories or active play?" and "What matters most right now — calming down, focus, or energy?"). Both are alternate *input methods* for the same Hub fields, not separate destinations — each fills in the Hub's Interests/Content-mix/Regulation rows directly and returns the parent to the Hub to review or adjust by tapping, with no separate "review what we extracted" screen in between (this is what dissolves P4 — its function is now just the Hub, prefilled).
+      3. The Hub's finish button ("Done — start using KidQ") goes straight to P7a, same as the plain-default path — no remaining detour either way.
+17. **Back navigation and an escape hatch — resolved.** A real gap: no screen had a way back, so a parent who started customizing and changed their mind had no way to return to KidQ's own recommendation without abandoning the app entirely. Fixed with two mechanisms: (a) a standard back arrow on every screen that has a logical prior step (P1 back to login, P2 screens back to the previous P2 step, P5 back to P2-confirm, and so on); (b) inside the Hub and its voice/guided capture screens specifically, an explicit one-tap **"Never mind — use KidQ's recommendation instead"** link, which resets any in-progress customization back to defaults and goes straight to P7a — for the specific case this review surfaced, where stepping back screen-by-screen through several levels of customization would be tedious.
+18. **The Hub was unreachable outside first-time onboarding — resolved.** Previously, once a parent finished onboarding there was no way to ever change curation preferences again short of a fresh signup — Settings (P7) only covered autoplay/break-type/sensory-mode/schedule, none of which touch Interests, Content mix, or Regulation goals. Fixed by adding a "Content & curation preferences" entry point to both **Settings (P7)** and **Start a Session (P7a)**, both opening the same Hub. The Hub's finish button adapts to context — "Done — start using KidQ" when reached during first-time onboarding, plain "Save & back" when reached from Settings or Start a Session, since the parent is already using the app in that case.
+19. **Where parents see KidQ's recommendations and the KidQ Score — resolved (2026-09-13).** Recommendations surface where they already did: the P5 "Made for [child]" shelf, and the source tag on My Videos (P9). The Score itself is never shown as a raw number — it appears as a simple trust badge on video cards (P5, P9, and the P8 session log), with an optional tap-to-expand into plain-language scoring dimensions (pacing, language, content, visual, audio) for a curious parent. Analytics (P8b) gets one added aggregate line reinforcing this (e.g. "X% of what they watched was KidQ-reviewed") — no new mandatory screen or tap anywhere in the flow.
+20. **Add-a-Video flow upgraded — resolved (2026-09-13), from a teammate proposal.** P9a now auto-fetches YouTube metadata (title, thumbnail, duration, channel, category) and shows the KidQ-check trust badge before the parent confirms Add, replacing the previous blind paste-and-add. See Section 7. Two related ideas from the same proposal — parent PDF/classwork upload, and per-video breakpoints/activities with a "KidQ AI Mascot" — are logged as open items rather than resolved here; see Section 10, items 8–9.
+21. **Break interval made parent-configurable, at the child/curation level — resolved (2026-09-13).** A parent can now choose how often breaks occur (10/15/20 min, default 15) alongside break type, set once during curation (Block E) and editable any time via the Hub — never re-asked at Start a Session, and never set per individual video. The break-count table becomes a formula (duration ÷ interval) rather than a fixed lookup. Breaks still snap to the nearest video's end, never mid-play — same tolerance principle as overall session length (Section 3), just applied per break. This also settles the "per-video breakpoints" question from item #9 in Section 10 in the simpler direction: breaks stay a per-child setting, not something authored per video.
+22. **Orange KidQ Agent confirmed for phase 1 — resolved (2026-09-13).** Already specified in `KidQ_Architecture_Process.md` / `KidQ_Screens_and_Logic.docx` as the break-time host character (pauses video, gives a short instruction, runs a 20–30s activity, resumes) — team confirmed it stays in scope, no new design needed. It appears on the child's screen during a break, not on a parent-facing screen; if a parent-facing preview is wanted, Kid View Preview (P6) is the natural fit, since that screen already mirrors exactly what the child sees.
+23. **Scoring on a parent-uploaded video is informational only, never a gate on private use — resolved (2026-09-13).** KidQ still runs and shows the score/trust badge on every parent-added video, so the recommendation signal is always visible — but the parent has final say. A low score does not block **Add Content**; the parent can add it anyway for their own family's use. Only the separate Public-submission path (Section 7) still routes through human Admin review, and only for making that video recommendation-eligible to *other* families — never for this family's own access.
+24. **Content categories regrouped to seven, grounded in NCF-FS domains — resolved (2026-09-14).** The flat 12-item content list is replaced by seven parent-facing categories (Stories & Rhymes, Songs & Music, Numbers & Thinking, Our World, Art & Making, Move & Play, Calm & Breathe), each mapped to an NCF-FS 2022 developmental domain. "Animation" is dropped as a category — it's a style, not a content type. Category is saved once with an optional per-session "today, lean toward…" override; "Surprise us" stays the default. See Section 1, Block B.
+25. **Time-of-Day Context Layer added — resolved (2026-09-14).** A thin wrapper around Session Assembly (Section 2) that adds a time-appropriate opener and tunes the wind-down by time of day — automatic from the clock (anchored to IST, gentle transitions), with an optional per-session manual override (Auto / Morning / Daytime / Bedtime) that is remembered. Opener sits outside the chosen duration; late-night sessions always end on a full sleep wind-down. See new Section 12.
+
+---
+
+## 12. Time-of-Day Context Layer
+
+A thin wrapper around the Session Assembly engine (Section 2). It makes a session aware of the time of day — a short time-appropriate opener and a wind-down tuned to how close it is to bedtime — decided automatically from the clock, with an optional manual override. It does **not** change greedy slot-fill, category rotation, the never-cut-mid-video rule, or break timing (Sections 2–3).
+
+### 12.1 What it does
+1. Adds a short **opener** (~30–60s, KidQ-agent hosted) at the start of a session.
+2. Sets an **energy bias** the ranker uses when filling slots (brighter/livelier vs. calmer).
+3. Tunes the **wind-down close** that already exists (Section 2, rule 5) — how strongly it leans toward sleep.
+
+### 12.2 Automatic mode (default — clock-driven)
+The app reads the clock at session start and picks a band. The parent is never asked — same principle as the silent age-band update (Section 11 #10) and the never-shown Development Goals (Block C).
+
+| Band (IST) | Opener | Content energy bias | Wind-down close |
+|---|---|---|---|
+| Morning (~5:00–11:00) | "Good morning" + sunlight/stretch moment | Brighter; can lean learning (kids freshest) | Standard gentle close |
+| Daytime (~11:00–16:00) | Neutral / warm | Steady mix | Standard close |
+| Evening (~16:00–19:00) | Warm, softer | Start easing off high-arousal | Close leans calm |
+| Night / bedtime (~19:00 onward) | Soft, "winding down" | Avoid fast-paced / high-stimulation | Full sleep wind-down (breathing, lullaby, "time to sleep") |
+
+Bands are anchored to **IST**, not the raw device timezone, so a mis-set or travelling device still gets India-appropriate day/night bands. Transitions are **gentle** — the energy bias shifts gradually rather than snapping, and any time-of-day cue shown to the parent is a soft nudge, never a warning or hard stop (`kidQ Design.md` §7).
+
+### 12.3 Manual mode (parent override)
+On **Start a Session (P7a)**, alongside the duration picker, an optional **Session mode** control: `[ Auto ] [ Morning ] [ Daytime ] [ Bedtime ]`, default **Auto**.
+- **Auto**: the clock decides (12.2). Zero taps.
+- **Morning / Daytime / Bedtime**: forces that flavor for the session regardless of clock — e.g. a Bedtime wind-down for a 3 p.m. nap, or a bright Morning-style session on a lazy holiday evening.
+- The chosen mode is **remembered** as the working default until the parent changes it or taps back to Auto; Auto is always one tap away and the current mode is always shown on P7a, so a stale mode (e.g. "Bedtime" still on in the morning) is easy to spot and reset.
+
+**Priority when signals disagree:** (1) manual mode this session → (2) saved Regulation Goal (Block D) → (3) automatic clock default.
+
+### 12.4 Anatomy of a session
+`[ Opener ] → [ Content ] → [ Break ] → [ Content ] → [ Wind-down ]`
+
+- **Opener** and **Wind-down** are hosted by the Orange KidQ Agent (Section 11 #22) — reused, no new character.
+- **Wind-down = the last slot**, beginning a few minutes before the timer runs out, snapped to the nearest video boundary (Section 3 — never cut mid-video). The child is already settling when the session ends, easing the handoff and reducing "one more!" (the AAP 2026 "Calm" principle).
+- The **opener sits outside the chosen duration** — a 15-min session gives ~15 min of content, opener on top.
+- A **late-night session always ends on the full sleep wind-down.**
+
+### 12.5 How it plugs in
+| Touches | What changes |
+|---|---|
+| Section 2 (Session Assembly) | Supplies energy bias for ranking/rotation and the final-slot flavor (rule 8). Mechanics unchanged. |
+| Section 3 (duration & tolerance) | Wind-down ramp reuses the existing never-cut-mid-video boundary snapping. |
+| P7a (Start a Session) | Adds the optional Session-mode control beside the duration picker. |
+| Section 9 (backend) | Session Assembly / Timing API takes band + mode as inputs. No new service. |
+| Section 11 #22 (Orange KidQ Agent) | Agent now also hosts opener + wind-down, not only mid-session breaks. |
+
+### 12.6 Resolved decisions (record)
+- **Clock:** bands anchor to IST; gentle nudges and gradual transitions, no hard stops.
+- **Late-night:** always ends on a full sleep wind-down.
+- **Opener vs. duration:** opener sits outside the paid duration.
+- **Manual-mode persistence:** last chosen mode is remembered; Auto stays one tap away.

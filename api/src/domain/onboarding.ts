@@ -6,6 +6,9 @@ export const MAX_CHILDREN = 6;
 export const CONTENT_MIXES = ["SURPRISE", "CHOSEN"] as const;
 export const SESSION_MINUTES = [15, 30, 45, 60, 90] as const;
 export const BREAK_TYPES = ["MOVEMENT", "QUIET", "ALTERNATE"] as const;
+/** Block E: minutes between breaks, set once per child (never re-asked at Start a Session). */
+export const BREAK_INTERVALS = [10, 15, 20] as const;
+export const DEFAULT_BREAK_INTERVAL = 15;
 export type ContentMix = (typeof CONTENT_MIXES)[number];
 export type SessionMinutes = (typeof SESSION_MINUTES)[number];
 export type BreakType = (typeof BREAK_TYPES)[number];
@@ -27,8 +30,8 @@ export function defaultSessionMinutes(band: AgeBand): SessionMinutes {
   return band === "0_2" || band === "2_3" ? 15 : 30;
 }
 
-/** One break per 15 minutes. The last is always the wind-down (Sunset Indicator and moon mascot), never a movement or quiet break. */
-export function breakPlan(sessionMinutes: number) {
-  const total = Math.max(1, Math.round(sessionMinutes / 15));
+/** One break per interval (duration ÷ interval, rounded). The last is always the wind-down (Sunset Indicator and moon mascot), never a movement or quiet break. */
+export function breakPlan(sessionMinutes: number, intervalMinutes: number = DEFAULT_BREAK_INTERVAL) {
+  const total = Math.max(1, Math.round(sessionMinutes / intervalMinutes));
   return { total_breaks: total, mid_session_breaks: total - 1, wind_down: true };
 }

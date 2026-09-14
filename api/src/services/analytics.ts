@@ -17,6 +17,7 @@ import {
 import type { AuthUser } from "../http/auth";
 import type { AnalyticsEventBody } from "../http/schemas";
 import { getCardRows, toCard } from "../repositories/content";
+import { groupOf, parentCategoriesFrom } from "../domain/parent-categories";
 import { listTaxonomy } from "../repositories/taxonomy";
 import { childRow } from "./parents";
 
@@ -164,17 +165,19 @@ export async function getAnalytics(user: AuthUser, childId: string, period: Peri
     ]),
     listTaxonomy(db),
   ]);
+  // Parents see the seven parent categories, so each play's admin category rolls up to its group.
+  const groups = parentCategoriesFrom(taxonomy.parent_category);
   const plays: Play[] = rows.rows.map((row) => ({
     itemId: row.item_id,
     kind: row.kind,
-    category: row.category,
+    category: groupOf(groups, row.category) ?? row.category,
     day: row.local_day,
     activeSeconds: row.active_seconds,
     parts: { MORNING: row.morning_seconds, AFTERNOON: row.afternoon_seconds, EVENING: row.evening_seconds, OTHER: row.other_seconds },
     maxProgress: row.max_progress,
     completed: row.completed,
   }));
-  const { top, ...summary } = summarize(plays, { period, today, labels: Object.fromEntries(taxonomy.category.map((term) => [term.key, term.label])) });
+  const { top, ...summary } = summarize(plays, { period, today, labels: Object.fromEntries([...taxonomy.category, ...taxonomy.parent_category].map((term) => [term.key, term.label])) });
   const cards = await getCardRows(db, top.map((entry) => entry.item_id), { approvedOnly: false });
   return {
     child_id: childId,

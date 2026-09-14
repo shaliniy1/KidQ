@@ -11,6 +11,7 @@ import type { StoryContent } from "../connectors/types";
 import type { Db } from "../db/pool";
 import { MAX_CATEGORIES, type SuggestedClassification } from "../domain/analysis/rules";
 import { CRITICAL_KEYS, RUBRIC, RUBRIC_VERSION } from "../domain/rubric";
+import { CONTENT_MODES } from "../domain/time-of-day";
 import { COMPONENTS, componentsFor, type Component, type ComponentInput, type CriterionInput } from "../domain/scoring";
 import {
   applyBounds,
@@ -28,6 +29,7 @@ import {
 import type { NewAssessment } from "../repositories/assessments";
 import { keysOf, type Taxonomy } from "../repositories/taxonomy";
 import { deleteMediaFile, GeminiQuotaError, generateJson, inlineImage, uploadMediaFile, type GeminiPart } from "./gemini";
+
 
 export interface AgentTarget {
   contentItemId: string;
@@ -56,7 +58,7 @@ export type AgentOutcome =
   | { kind: "DEFERRED"; retryAt: Date; reason: string };
 
 /** Bump whenever the prompt or response schema changes: a new version re-scores items on request and never reuses the cache. */
-export const PROMPT_VERSION = "2";
+export const PROMPT_VERSION = "3";
 
 const PACIFIC = "America/Los_Angeles";
 const ASSUMED_SECONDS = 600;
@@ -180,6 +182,7 @@ export function buildPrompt(target: AgentTarget, taxonomy: Taxonomy): string {
     `interests: ${keysOf(taxonomy, "interest").join(", ")}`,
     `development_goals: ${keysOf(taxonomy, "development_goal").join(", ")}`,
     `regulation_goals: ${keysOf(taxonomy, "regulation_goal").join(", ")}`,
+    "session_modes: every time of day this suits, usually one or two, judged from what you observed. MORNING: bright, lively or learning-focused, for children fresh from sleep. DAYTIME: a steady everyday pick. BEDTIME: slow, quiet, soft audio and nothing exciting, fine right before sleep.",
     story ? "language: ISO 639-1 code of the story's language." : "language: ISO 639-1 code of the spoken language, or null if there is no speech.",
     "age_min / age_max: youngest and oldest suitable age between 0 and 6. KidQ's age bands are 0–2, 2–3, 3–4, 4–5 and 5–6.",
     "kidq_summary: at most two sentences for parents. learning_objective: one sentence, or null.",
@@ -230,6 +233,7 @@ export function responseSchema(taxonomy: Taxonomy, components: readonly Componen
       interests: strings(keysOf(taxonomy, "interest")),
       development_goals: strings(keysOf(taxonomy, "development_goal")),
       regulation_goals: strings(keysOf(taxonomy, "regulation_goal")),
+      session_modes: strings([...CONTENT_MODES]),
       language: { type: "STRING", nullable: true },
     }),
     learning_objective: { type: "STRING", nullable: true },
@@ -275,6 +279,8 @@ export const agentOutputSchema = z.object({
     interests: z.array(z.string()).default([]),
     development_goals: z.array(z.string()).default([]),
     regulation_goals: z.array(z.string()).default([]),
+    // Prompt v3; older outputs have none.
+    session_modes: z.array(z.string()).default([]),
     language: z.string().nullable().optional(),
   }),
   learning_objective: z.string().nullable().optional(),
@@ -360,6 +366,7 @@ export function normalizeAgentOutput(
     interests: allowed("interest", output.classification.interests),
     developmentGoals: allowed("development_goal", output.classification.development_goals),
     regulationGoals: allowed("regulation_goal", output.classification.regulation_goals),
+    sessionModes: [...new Set(output.classification.session_modes)].filter((mode) => (CONTENT_MODES as readonly string[]).includes(mode)),
     language: output.classification.language ?? null,
     learningObjective: output.learning_objective ?? null,
     kidqSummary: firstTwoSentences(output.kidq_summary),

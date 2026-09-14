@@ -14,6 +14,7 @@ const taxonomy: Taxonomy = {
   regulation_goal: [term("regulation_goal", "calm")],
   language: [],
   age_group: [],
+  parent_category: [],
 };
 const parse = (json: string) => agentOutputSchema.parse(JSON.parse(json));
 const BOOK = { contentType: "STORYBOOK" };

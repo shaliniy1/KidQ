@@ -22,6 +22,8 @@ import {
   analyticsQuery,
   parentAnalyticsSchema,
   sessionEndBody,
+  submissionPreviewBody,
+  submissionPreviewSchema,
   sessionItemBody,
   sessionItemParams,
   sessionParams,
@@ -193,7 +195,7 @@ defineRoute(
     response: sessionSchema,
     status: 201,
   },
-  async ({ user, params, body }) => sessions.startSession(user, params.id, body.minutes),
+  async ({ user, params, body }) => sessions.startSession(user, params.id, body),
 );
 
 defineRoute(
@@ -242,4 +244,19 @@ defineRoute(
     response: parentAnalyticsSchema,
   },
   async ({ user, params, query }) => analytics.getAnalytics(user, params.id, query.period),
+);
+
+defineRoute(
+  parentRouter,
+  {
+    method: "post",
+    path: "/children/:id/submissions/preview",
+    summary: "Add a Video, step 1: a YouTube link's details and KidQ check, before adding it. Saves nothing",
+    tag: "Submissions",
+    roles,
+    params: childParams,
+    body: submissionPreviewBody,
+    response: submissionPreviewSchema,
+  },
+  async ({ user, params, body }) => parents.previewSubmission(user, params.id, body.url),
 );
