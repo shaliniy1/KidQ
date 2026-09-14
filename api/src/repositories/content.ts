@@ -62,6 +62,31 @@ function toContentScore(row: Row) {
   };
 }
 
+// Parent-facing words for each dimension's band: the trust badge never shows a number (spec §7, §11 #19).
+const DIMENSION_WORDS: Record<ComponentResult["component"], [string, string, string, string]> = {
+  CONTENT_LANGUAGE: ["Kind, suitable content", "Suitable, with small notes", "Some concerns", "Not suitable"],
+  PACING: ["Slow and calm", "Gently paced", "Some fast moments", "Fast-paced"],
+  VISUAL_COMFORT: ["Soft and easy on the eyes", "Bright but balanced", "Bright, busy visuals", "Harsh or intense visuals"],
+  AUDIO_COMFORT: ["Quiet and even", "Upbeat but steady", "Some loud moments", "Loud or jarring"],
+};
+const bandWords = (component: ComponentResult["component"], value: number) => {
+  const words = DIMENSION_WORDS[component];
+  return value >= 90 ? words[0] : value >= 75 ? words[1] : value >= 60 ? words[2] : words[3];
+};
+
+/** The KidQ check badge: REVIEWED once the AI or an admin judged it, CHECKING while that's under way. */
+export function toKidqCheck(row: Row) {
+  const judged = ((row.score_detail?.components ?? []) as ComponentResult[]).filter(
+    (component) => component.value !== null && (component.source === "MODEL" || component.source === "HUMAN"),
+  );
+  const checking = row.analysis_status === "QUEUED" || row.analysis_status === "ANALYSING";
+  const status: "REVIEWED" | "CHECKING" | "NOT_CHECKED" = judged.length > 0 ? "REVIEWED" : checking ? "CHECKING" : "NOT_CHECKED";
+  return {
+    status,
+    dimensions: judged.map((component) => ({ key: component.component, label: component.label, summary: bandWords(component.component, component.value as number) })),
+  };
+}
+
 function toPlayer(row: Row) {
   // Picture books open in the KidQ story reader (GET /content-items/:id/story).
   if (row.content_type === "STORYBOOK") return row.story_page_count ? { provider: "story" as const, page_count: row.story_page_count as number } : null;
@@ -102,6 +127,10 @@ export function toCard(row: Row) {
     interests: row.interests ?? [],
     development_goals: row.development_goals ?? [],
     regulation_goals: row.regulation_goals ?? [],
+    parent_category: (row.parent_categories?.[0] ?? null) as string | null,
+    parent_categories: (row.parent_categories ?? []) as string[],
+    session_modes: (row.session_modes ?? []) as Array<"MORNING" | "DAYTIME" | "BEDTIME">,
+    kidq_check: toKidqCheck(row),
     content_score: toContentScore(row),
     learning: toLearning(row),
     player: toPlayer(row),

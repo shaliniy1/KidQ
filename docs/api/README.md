@@ -84,16 +84,18 @@ Admin screens show `studio_state`, one of five. Show one tile or filter per stat
 1. **Onboarding** ([fields and defaults](../recommendation/parent-onboarding.md)):
    - `GET /me` → `404 NOT_ONBOARDED` means show onboarding.
    - Screen 1: `POST /onboarding` with `{ parent_name, language, children: [{ nickname, age_band }] }` (1–6 children). `language` is the parent's pick; pre-select the device language when KidQ has it (`GET /taxonomy` → `language`), otherwise `en`.
-   - "Customize for {child}": `PATCH /children/:id` with any of `interests`, `content_mix` + `preferred_categories`, `regulation_goals`, `session_minutes`, `break_type`, `languages`. Everything left out keeps its age-based default; development goals are never asked.
+   - "Customize for {child}": `PATCH /children/:id` with any of `interests`, `content_mix` + `preferred_categories`, `regulation_goals`, `session_minutes`, `break_type`, `break_interval_minutes` (10, 15 or 20), `session_mode`, `languages`. `preferred_categories` takes the seven parent category keys (`GET /taxonomy` → `parent_category`). Everything left out keeps its age-based default; development goals are never asked.
    - Every chip's options come from `GET /taxonomy` — the keys admins tag content with. Regulation goals carry the parent wording in `meta.parent_label`.
    - `POST /children` adds a child later.
 2. **Recommendations**: `GET /children/:id/recommendations?limit=20&offset=0`. Each item has `why` (plain-language reasons) and `card`.
 3. **Add / Not now**: `POST /children/:id/library` with `{ content_item_id, state: "ADDED" | "DISMISSED" }`. Remove with `DELETE /children/:id/library/:contentItemId`.
 4. **Child library**: `GET /children/:id/library`. Play only entries where `awaiting_review` is false and `card.player` is non-null. For a picture book (`provider: "story"`), load `GET /content-items/:id/story` — it returns 404 until the book is published.
-5. **Parent-added links**: `POST /children/:id/submissions` with `{ url }`, then poll `GET /children/:id/submissions`. `assessment` moves PENDING → SCORED → APPROVED. "Keep" is `POST /children/:id/library`, which makes the entry REQUESTED until an admin approves it.
+5. **Parent-added links**: first `POST /children/:id/submissions/preview` with `{ url }` to show the title, thumbnail, suggested category and KidQ check before the parent confirms (it saves nothing). Then `POST /children/:id/submissions` with `{ url }`, and poll `GET /children/:id/submissions`. `assessment` moves PENDING → SCORED → APPROVED. "Keep" is `POST /children/:id/library`, which makes the entry REQUESTED until an admin approves it.
 6. **Start a Session** ([spec §2–5](../recommendation/parent-experience.md)):
    - `POST /children/:id/sessions` with `{ minutes }` (15, 30, 45, 60 or 90; other lengths snap to 30-minute blocks) returns the session, already started. Its `slots` are ~15 minutes of whole videos from the child's library, each with its `break_after` (`MOVEMENT`, `QUIET`, or `WIND_DOWN` for the last). A preset is saved as the child's next default.
    - `short_by_minutes` > 0 means the library couldn't fill the time; tell the parent afterwards and suggest adding videos.
+   - Optional `mode` (`AUTO`, `MORNING`, `DAYTIME`, `BEDTIME`) is remembered for the child; `AUTO` follows India's clock. Optional `lean_toward` (a parent category key) steers this session only. The response's `opener.band` is the KidQ Agent's opener, played before slot 1 and outside the chosen minutes; `wind_down` is `STANDARD`, `CALM` or `SLEEP`.
+   - **Trust badge**: parent screens show each card's `kidq_check` (plain words per dimension), never `content_score`'s numbers. Show `parent_category`, not the admin `category`.
    - After each video: `PATCH /sessions/:id/items/:itemId` with `{ outcome: "COMPLETED" | "SKIPPED" | "EXITED", watched_seconds }`.
    - `POST /sessions/:id/end` with `{ outcome: "COMPLETED" | "EXITED" }`. There's no resume; a new session starts fresh.
    - Handoff log: `GET /children/:id/sessions` (the last 20, newest first).

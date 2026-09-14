@@ -61,7 +61,7 @@ export async function applySuggestedClassification(
        language = COALESCE($9, language),
        learning_objective = CASE WHEN ${editedField("learning_objective")} THEN learning_objective ELSE COALESCE($10, learning_objective) END,
        kidq_summary = CASE WHEN ${editedField("kidq_summary")} THEN kidq_summary ELSE COALESCE($11, kidq_summary) END,
-       classification_source = $12, categories = $13, updated_at = now()
+       classification_source = $12, categories = $13, session_modes = COALESCE($14::text[], session_modes), updated_at = now()
      WHERE id = $1 AND (classification_source IS NULL OR classification_source = 'RULE' OR (classification_source = 'MODEL' AND $12 = 'MODEL'))`,
     [
       contentItemId,
@@ -77,6 +77,7 @@ export async function applySuggestedClassification(
       suggestion.kidqSummary,
       source,
       suggestion.categories,
+      suggestion.sessionModes ?? null,
     ],
   );
 }

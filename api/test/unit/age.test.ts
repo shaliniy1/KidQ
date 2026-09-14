@@ -30,7 +30,7 @@ describe("onboarding defaults", () => {
   });
 
   it("plans one break per 15 minutes, ending with the wind-down", () => {
-    expect([15, 30, 45, 60, 90].map(breakPlan)).toEqual([
+    expect([15, 30, 45, 60, 90].map((minutes) => breakPlan(minutes))).toEqual([
       { total_breaks: 1, mid_session_breaks: 0, wind_down: true },
       { total_breaks: 2, mid_session_breaks: 1, wind_down: true },
       { total_breaks: 3, mid_session_breaks: 2, wind_down: true },

@@ -80,6 +80,7 @@ const CLASSIFICATION_COLUMNS: Record<keyof ClassificationBody, string> = {
   interests: "topics",
   development_goals: "development_goals",
   regulation_goals: "regulation_goals",
+  session_modes: "session_modes",
   language: "language",
   content_type: "content_type",
 };
@@ -130,7 +131,7 @@ async function applyClassification(client: PoolClient, user: AuthUser, id: strin
     if (!(field in changes)) continue;
     const after = changes[field] ?? null;
     diff[field] = { before: current[column] instanceof Array ? current[column] : (current[column] ?? null), after };
-    params.push(after ?? (column === "topics" || column === "categories" || column.endsWith("_goals") ? [] : null));
+    params.push(after ?? (column === "topics" || column === "categories" || column === "session_modes" || column.endsWith("_goals") ? [] : null));
     sets.push(`${column} = $${params.length}`);
   }
   const ageMin = "age_min" in changes ? (changes.age_min ?? null) : toNumber(current.age_min);

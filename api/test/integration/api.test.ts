@@ -282,6 +282,52 @@ describe("API", () => {
     expect((await send([progress], PARENT_B)).status).toBe(404);
   });
 
+  it("lets parents choose the seven categories, and shapes a session by mode and lean-toward", async () => {
+    const counting = await importVideo("AAAAAAAAAAA");
+    const nature = await importVideo("BBBBBBBBBBB", [agentOutput({ classification: { category: "science", session_modes: ["BEDTIME"] } })], "Sleepy forest animals");
+    for (const id of [counting, nature]) await publish(id, { decision: "APPROVED", reason: "Calm and clear." }).expect(201);
+
+    const childId = await createChild(PARENT_A, { content_mix: "CHOSEN", preferred_categories: ["our_world"] });
+    const recommended = (await request(app).get(`/children/${childId}/recommendations`).set("Authorization", PARENT_A)).body.items;
+    expect(recommended.map((item: { card: { id: string } }) => item.card.id)).toEqual([nature]);
+    expect(recommended[0].card).toMatchObject({ parent_category: "our_world", session_modes: ["BEDTIME"], kidq_check: { status: "REVIEWED" } });
+    expect(recommended[0].card.kidq_check.dimensions[0]).toEqual({ key: "CONTENT_LANGUAGE", label: expect.any(String), summary: expect.any(String) });
+
+    for (const id of [counting, nature]) await request(app).post(`/children/${childId}/library`).set("Authorization", PARENT_A).send({ content_item_id: id });
+    const start = (body: Record<string, unknown>) => request(app).post(`/children/${childId}/sessions`).set("Authorization", PARENT_A).send(body);
+    expect((await start({ minutes: 15, lean_toward: "animation" })).status).toBe(400);
+    const session = (await start({ minutes: 15, mode: "BEDTIME", lean_toward: "numbers_thinking" })).body;
+    expect(session).toMatchObject({ mode: "BEDTIME", opener: { band: "NIGHT" }, wind_down: "SLEEP", lean_toward: "numbers_thinking" });
+    // The parent's lean-toward outranks the Bedtime tag; both videos are calm enough for bedtime.
+    expect(session.slots[0].items.map((item: { card: { id: string } }) => item.card.id)).toEqual([counting, nature]);
+
+    const child = (await request(app).get(`/children/${childId}`).set("Authorization", PARENT_A)).body;
+    expect(child).toMatchObject({ session_mode: "BEDTIME", break_interval_minutes: 15 });
+    expect(child).not.toHaveProperty("lean_toward");
+    const patched = (await request(app).patch(`/children/${childId}`).set("Authorization", PARENT_A).send({ break_interval_minutes: 10, session_minutes: 30 })).body;
+    expect(patched.break_plan.total_breaks).toBe(3);
+  });
+
+  it("previews a YouTube link for the parent without saving it", async () => {
+    const childId = await createChild(PARENT_A);
+    apis.youtube.set("PPPPPPPPPPP", youtubeVideo("PPPPPPPPPPP", { title: "Counting to ten with numbers" }));
+    const preview = await request(app)
+      .post(`/children/${childId}/submissions/preview`)
+      .set("Authorization", PARENT_A)
+      .send({ url: "https://www.youtube.com/watch?v=PPPPPPPPPPP" });
+    expect(preview.status).toBe(200);
+    expect(preview.body).toMatchObject({
+      video_id: "PPPPPPPPPPP",
+      already_in_kidq: false,
+      title: "Counting to ten with numbers",
+      category: "maths",
+      parent_category: "numbers_thinking",
+      kidq_check: { status: "NOT_CHECKED", dimensions: [] },
+    });
+    expect((await pool.query("SELECT count(*)::int AS n FROM source_records WHERE external_id = 'PPPPPPPPPPP'")).rows[0].n).toBe(0);
+    expect((await request(app).post(`/children/${childId}/submissions/preview`).set("Authorization", PARENT_B).send({ url: "https://youtu.be/PPPPPPPPPPP" })).status).toBe(404);
+  });
+
   it("gives a child with only an age a mixed feed", async () => {
     const counting = await importVideo("AAAAAAAAAAA");
     const moreCounting = await importVideo("BBBBBBBBBBB", [agentOutput()], "Counting to ten");
@@ -432,8 +478,17 @@ describe("API", () => {
   it("shares one vocabulary between onboarding and admin tagging", async () => {
     const taxonomy = (await request(app).get("/taxonomy")).body;
     expect(taxonomy.age_group.map((term: { key: string }) => term.key)).toEqual(["0_2", "2_3", "3_4", "4_5", "5_6"]);
+    // Parents choose from seven groups; Animation is a style, not a category (spec v5, Block B).
+    expect(taxonomy.parent_category.map((term: { label: string }) => term.label)).toEqual([
+      "Stories & Rhymes",
+      "Songs & Music",
+      "Numbers & Thinking",
+      "Our World",
+      "Art & Making",
+      "Move & Play",
+      "Calm & Breathe",
+    ]);
     expect(taxonomy.category.map((term: { label: string }) => term.label)).toEqual([
-      "Animation",
       "Stories",
       "Storybooks",
       "Crafts",

@@ -4,7 +4,8 @@ import { z } from "zod";
 import { SOURCE_SYSTEM_IDS } from "../connectors";
 import { AGE_BAND_KEYS } from "../domain/age";
 import { DEVICE_TYPES, PARTS, PERIODS, RECOMMENDATION_SOURCES, isTimeZone } from "../domain/analytics";
-import { BREAK_TYPES, CONTENT_MIXES, MAX_CHILDREN } from "../domain/onboarding";
+import { BREAK_INTERVALS, BREAK_TYPES, CONTENT_MIXES, MAX_CHILDREN } from "../domain/onboarding";
+import { CONTENT_MODES, SESSION_MODES, TIME_BANDS, WIND_DOWNS } from "../domain/time-of-day";
 import { RUBRIC } from "../domain/rubric";
 import { COMPONENTS } from "../domain/scoring";
 import { TAXONOMY_KINDS } from "../repositories/taxonomy";
@@ -97,6 +98,15 @@ export const contentCardSchema = registry.register(
     interests: z.array(z.string()),
     development_goals: z.array(z.string()),
     regulation_goals: z.array(z.string()),
+    parent_category: nullableString.describe("The parent category (one of the seven) the primary category rolls up to; show this to parents"),
+    parent_categories: z.array(z.string()).describe("Every parent category the item falls under, primary first"),
+    session_modes: z.array(z.enum(CONTENT_MODES)).describe("Times of day the item suits (MORNING, DAYTIME, BEDTIME); empty fits any"),
+    kidq_check: z
+      .object({
+        status: z.enum(["REVIEWED", "CHECKING", "NOT_CHECKED"]),
+        dimensions: z.array(z.object({ key: z.enum(COMPONENTS), label: z.string(), summary: z.string() })),
+      })
+      .describe("The parent-facing trust badge: plain words per dimension, never a number. Parent screens show this, not content_score"),
     // A union, not .nullable(): OpenAPI 3.1 then emits anyOf [ContentScore, null], which client
     // generators read as `ContentScore | null` (nullable refs become an impossible intersection).
     content_score: z.union([contentScoreSchema, z.null()]),
@@ -222,6 +232,7 @@ export const classificationBody = z
     interests: z.array(z.string().max(60)).max(20).optional(),
     development_goals: z.array(z.string().max(60)).max(10).optional(),
     regulation_goals: z.array(z.string().max(60)).max(10).optional(),
+    session_modes: z.array(z.enum(CONTENT_MODES)).max(3).optional().describe("Times of day the item suits; the AI sets them once, an admin can change them"),
     language: z.string().max(10).nullable().optional(),
     content_type: z.enum(CONTENT_TYPES).optional(),
   })
@@ -355,11 +366,15 @@ const childPreferences = z.object({
   languages: z.array(languageKey).min(1).max(3).describe("Content languages the parent chose (keys from GET /taxonomy); defaults to the parent's language"),
   interests: z.array(z.string().max(60)).max(19).describe("Block A. Empty broadens the feed; it never narrows it."),
   content_mix: z.enum(CONTENT_MIXES).describe("Block B. SURPRISE: an age-appropriate mix. CHOSEN: only preferred_categories."),
-  preferred_categories: z.array(z.string().max(60)).max(12).describe("Block B categories; sending some without content_mix means CHOSEN"),
+  preferred_categories: z.array(z.string().max(60)).max(12).describe("Block B: parent category keys (GET /taxonomy → parent_category); sending some without content_mix means CHOSEN"),
   development_goals: z.array(z.string().max(60)).max(8).describe("Block C: never asked. Omit, or send [], for the age-band defaults."),
   regulation_goals: z.array(z.string().max(60)).max(6).describe("Block D. Empty or all six means no restriction."),
   session_minutes: sessionMinutes.describe("Block E: session length; the breaks follow from it"),
   break_type: z.enum(BREAK_TYPES).describe("Block E: MOVEMENT, QUIET or ALTERNATE"),
+  break_interval_minutes: z
+    .union([z.literal(BREAK_INTERVALS[0]), z.literal(BREAK_INTERVALS[1]), z.literal(BREAK_INTERVALS[2])])
+    .describe("Block E: minutes between breaks (10, 15 or 20); breaks = duration ÷ interval, rounded"),
+  session_mode: z.enum(SESSION_MODES).describe("§12: AUTO follows the clock; MORNING, DAYTIME or BEDTIME is remembered until changed"),
 });
 
 export const childBody = childPreferences.partial().extend({ nickname, age_band: ageBand });
@@ -378,7 +393,7 @@ export const childSchema = registry.register(
     development_goals_source: z.enum(["AGE_DEFAULT", "PARENT"]),
     break_plan: z
       .object({ total_breaks: z.number(), mid_session_breaks: z.number(), wind_down: z.boolean() })
-      .describe("One break per 15 minutes; the last is always the wind-down"),
+      .describe("One break per break interval; the last is always the wind-down"),
     created_at: z.string(),
     updated_at: z.string(),
   }),
@@ -440,6 +455,8 @@ export const sessionParams = z.object({ id: z.uuid() });
 export const sessionItemParams = z.object({ id: z.uuid(), itemId: z.uuid() });
 export const sessionStartBody = z.object({
   minutes: z.number().int().min(15).max(180).describe("15, 30, 45, 60 or 90; any other length snaps to 30-minute blocks"),
+  mode: z.enum(SESSION_MODES).optional().describe("Session mode; remembered as this child's default. Omit to use the remembered one"),
+  lean_toward: z.string().max(60).optional().describe("\"Today, lean toward…\": a parent category key for this session only; never saved"),
 });
 export const sessionItemBody = z.object({
   outcome: z.enum(["COMPLETED", "SKIPPED", "EXITED"]),
@@ -456,6 +473,11 @@ export const sessionSchema = registry.register(
     ended_at: nullableString,
     outcome: z.enum(["COMPLETED", "EXITED"]).nullable(),
     short_by_minutes: z.number().describe("How far the child's library fell short of the chosen time; 0 when it filled it"),
+    mode: z.enum(SESSION_MODES),
+    time_band: z.enum(TIME_BANDS).nullable().describe("The band India's clock was in when the session started"),
+    opener: z.object({ band: z.enum(TIME_BANDS) }).describe("The KidQ Agent's opener, played before slot 1 and outside the chosen minutes"),
+    wind_down: z.enum(WIND_DOWNS).describe("How the last slot closes: SLEEP is the full sleep wind-down"),
+    lean_toward: nullableString,
     slots: z.array(
       z.object({
         slot: z.number(),
@@ -473,6 +495,24 @@ export const sessionSchema = registry.register(
     ),
   }),
 );
+
+// ── Add a Video preview (spec §7, P9a) ────────────────────────────────────────
+export const submissionPreviewBody = z.object({ url: z.string().min(5).max(500) });
+export const submissionPreviewSchema = z.object({
+  video_id: z.string(),
+  already_in_kidq: z.boolean(),
+  title: z.string(),
+  thumbnail_url: nullableString,
+  duration_seconds: z.number().nullable(),
+  channel: nullableString,
+  category: nullableString.describe("The admin category KidQ would suggest"),
+  parent_category: nullableString,
+  kidq_check: z.object({
+    status: z.enum(["REVIEWED", "CHECKING", "NOT_CHECKED"]),
+    dimensions: z.array(z.object({ key: z.enum(COMPONENTS), label: z.string(), summary: z.string() })),
+    note: nullableString,
+  }),
+});
 
 // ── Analytics (docs/api/README.md "Analytics") ────────────────────────────────
 const eventBase = {

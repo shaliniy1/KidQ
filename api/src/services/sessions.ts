@@ -2,12 +2,15 @@
 // the child's parent-approved library, records how each video and the session ended, and serves the
 // handoff log. Scoped to the signed-in parent; another family's child or session is a 404.
 import { getPool, withTransaction, type Db } from "../db/pool";
+import { parentCategoriesFrom } from "../domain/parent-categories";
 import { PRESET_MINUTES, assembleSession, type SessionCandidate } from "../domain/session";
+import { openerBand, sessionContext, type SessionMode, type TimeBand } from "../domain/time-of-day";
 import { recommend } from "../domain/recommendation";
 import type { AuthUser } from "../http/auth";
 import { ApiError, notFound } from "../http/errors";
 import { getActiveRankingConfig } from "../repositories/config";
 import { getCardRows, toCard, type ContentCard } from "../repositories/content";
+import { listTaxonomy } from "../repositories/taxonomy";
 import { childRow, profileOf, toCandidate, toChild } from "./parents";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -45,6 +48,11 @@ async function toSessions(db: Db, sessions: Row[]) {
     ended_at: toIso(session.ended_at),
     outcome: session.outcome ?? null,
     short_by_minutes: session.short_by_minutes as number,
+    mode: session.mode as SessionMode,
+    time_band: (session.time_band ?? null) as TimeBand | null,
+    opener: { band: openerBand(session.mode, session.time_band ?? "DAYTIME") },
+    wind_down: session.wind_down as "STANDARD" | "CALM" | "SLEEP",
+    lean_toward: (session.lean_toward ?? null) as string | null,
     slots: (session.breaks as string[]).map((breakAfter, index) => ({
       slot: index + 1,
       break_after: breakAfter,
@@ -62,10 +70,19 @@ async function toSessions(db: Db, sessions: Row[]) {
   }));
 }
 
-/** Builds the session and starts it at once: the child never sees a start button or a timer to change. */
-export async function startSession(user: AuthUser, childId: string, requestedMinutes: number) {
+/**
+ * Builds the session and starts it at once: the child never sees a start button or a timer to change.
+ * The clock (in IST) or the parent's session mode shapes which videos lead and how it winds down.
+ */
+export async function startSession(user: AuthUser, childId: string, input: { minutes: number; mode?: SessionMode; lean_toward?: string }) {
   const child = toChild(await childRow(user, childId));
   const db = getPool();
+  if (input.lean_toward) {
+    const groups = parentCategoriesFrom((await listTaxonomy(db)).parent_category);
+    if (!groups.some((group) => group.key === input.lean_toward)) {
+      throw new ApiError(400, "UNKNOWN_TAXONOMY_KEY", `Unknown lean_toward: ${input.lean_toward}. Use a parent_category key from GET /taxonomy.`);
+    }
+  }
   const libraryIds = (await db.query("SELECT content_item_id FROM library_items WHERE child_profile_id = $1 AND state = 'ADDED'", [childId])).rows.map(
     (row) => row.content_item_id as string,
   );
@@ -75,16 +92,46 @@ export async function startSession(user: AuthUser, childId: string, requestedMin
   const ranked = recommend(profileOf(child), rows.map(toCandidate), config, new Set(), { limit: Math.max(rows.length, 1), hardFilters: false });
   const library: SessionCandidate[] = ranked.map(({ contentId }) => {
     const row = cards.get(contentId) as Row;
-    return { id: contentId, durationSeconds: row.duration_seconds ?? null, category: row.category ?? null, calm: calmOf(toCard(row)) };
+    const groups = (row.parent_categories ?? []) as string[];
+    return {
+      id: contentId,
+      durationSeconds: row.duration_seconds ?? null,
+      category: groups[0] ?? row.category ?? null,
+      calm: calmOf(toCard(row)),
+      groups,
+      modes: row.session_modes ?? [],
+    };
   });
-  const calmEnding = child.regulation_goals.length === 0 || child.regulation_goals.some((goal) => CALMING_GOALS.includes(goal));
-  const assembled = assembleSession(library, requestedMinutes, { breakType: child.break_type, calmEnding });
+  const mode = input.mode ?? child.session_mode;
+  const calmingGoal = child.regulation_goals.some((goal) => CALMING_GOALS.includes(goal));
+  const context = sessionContext(new Date(), mode, calmingGoal);
+  // No regulation goals means all six, calming ones included: the last slot still leans calm.
+  const calmEnding = context.windDown !== "STANDARD" || child.regulation_goals.length === 0;
+  const assembled = assembleSession(library, input.minutes, {
+    breakType: child.break_type,
+    calmEnding,
+    intervalMinutes: child.break_interval_minutes,
+    contentMode: context.contentMode,
+    bias: context.bias,
+    leanToward: input.lean_toward ?? null,
+  });
 
   const session = await withTransaction(async (client) => {
     const row = (
       await client.query(
-        `INSERT INTO sessions (child_profile_id, minutes, breaks, planned_seconds, short_by_minutes) VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-        [childId, assembled.minutes, assembled.slots.map((slot) => slot.breakAfter), assembled.plannedSeconds, assembled.shortByMinutes],
+        `INSERT INTO sessions (child_profile_id, minutes, breaks, planned_seconds, short_by_minutes, mode, time_band, wind_down, lean_toward)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
+        [
+          childId,
+          assembled.minutes,
+          assembled.slots.map((slot) => slot.breakAfter),
+          assembled.plannedSeconds,
+          assembled.shortByMinutes,
+          mode,
+          context.timeBand,
+          context.windDown,
+          input.lean_toward ?? null,
+        ],
       )
     ).rows[0];
     let position = 0;
@@ -94,10 +141,11 @@ export async function startSession(user: AuthUser, childId: string, requestedMin
         await client.query("INSERT INTO session_items (session_id, content_item_id, slot, position) VALUES ($1, $2, $3, $4)", [row.id, contentItemId, slot.slot, position]);
       }
     }
-    // The next Start a Session opens on this length, for this child only.
+    // The next Start a Session opens on this length and mode, for this child only; lean_toward is never kept.
     if (PRESET_MINUTES.includes(assembled.minutes)) {
       await client.query("UPDATE child_profiles SET session_minutes = $2, updated_at = now() WHERE id = $1", [childId, assembled.minutes]);
     }
+    if (input.mode) await client.query("UPDATE child_profiles SET session_mode = $2, updated_at = now() WHERE id = $1", [childId, input.mode]);
     return row;
   });
   return (await toSessions(db, [session]))[0];

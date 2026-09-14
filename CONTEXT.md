@@ -87,3 +87,11 @@ _Avoid_: view, session
 **Screen Time**:
 Minutes a video was actually playing on screen: never paused, buffering, in a hidden tab or idle. Activity time is reported apart from it.
 _Avoid_: session length, time in app
+
+**Parent Category**:
+One of the seven groups parents choose from (Stories & Rhymes, Songs & Music, Numbers & Thinking, Our World, Art & Making, Move & Play, Calm & Breathe). Each rolls up admin categories, which admins and the AI keep tagging.
+_Avoid_: content type, genre
+
+**Session Mode**:
+How a session is shaped by time of day: Auto (India's clock decides) or a Morning, Daytime or Bedtime override the parent picked, remembered per child. Items carry the modes they suit, tagged once by the AI.
+_Avoid_: profile, playlist

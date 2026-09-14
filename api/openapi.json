@@ -467,6 +467,78 @@
               "type": "string"
             }
           },
+          "parent_category": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The parent category (one of the seven) the primary category rolls up to; show this to parents"
+          },
+          "parent_categories": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Every parent category the item falls under, primary first"
+          },
+          "session_modes": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "MORNING",
+                "DAYTIME",
+                "BEDTIME"
+              ]
+            },
+            "description": "Times of day the item suits (MORNING, DAYTIME, BEDTIME); empty fits any"
+          },
+          "kidq_check": {
+            "type": "object",
+            "properties": {
+              "status": {
+                "type": "string",
+                "enum": [
+                  "REVIEWED",
+                  "CHECKING",
+                  "NOT_CHECKED"
+                ]
+              },
+              "dimensions": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "key": {
+                      "type": "string",
+                      "enum": [
+                        "CONTENT_LANGUAGE",
+                        "PACING",
+                        "VISUAL_COMFORT",
+                        "AUDIO_COMFORT"
+                      ]
+                    },
+                    "label": {
+                      "type": "string"
+                    },
+                    "summary": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "key",
+                    "label",
+                    "summary"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "status",
+              "dimensions"
+            ],
+            "description": "The parent-facing trust badge: plain words per dimension, never a number. Parent screens show this, not content_score"
+          },
           "content_score": {
             "anyOf": [
               {
@@ -555,6 +627,10 @@
           "interests",
           "development_goals",
           "regulation_goals",
+          "parent_category",
+          "parent_categories",
+          "session_modes",
+          "kidq_check",
           "content_score",
           "learning",
           "player",
@@ -663,7 +739,7 @@
               "maxLength": 60
             },
             "maxItems": 12,
-            "description": "Block B categories; sending some without content_mix means CHOSEN"
+            "description": "Block B: parent category keys (GET /taxonomy → parent_category); sending some without content_mix means CHOSEN"
           },
           "development_goals": {
             "type": "array",
@@ -727,6 +803,39 @@
             ],
             "description": "Block E: MOVEMENT, QUIET or ALTERNATE"
           },
+          "break_interval_minutes": {
+            "anyOf": [
+              {
+                "type": "number",
+                "enum": [
+                  10
+                ]
+              },
+              {
+                "type": "number",
+                "enum": [
+                  15
+                ]
+              },
+              {
+                "type": "number",
+                "enum": [
+                  20
+                ]
+              }
+            ],
+            "description": "Block E: minutes between breaks (10, 15 or 20); breaks = duration ÷ interval, rounded"
+          },
+          "session_mode": {
+            "type": "string",
+            "enum": [
+              "AUTO",
+              "MORNING",
+              "DAYTIME",
+              "BEDTIME"
+            ],
+            "description": "§12: AUTO follows the clock; MORNING, DAYTIME or BEDTIME is remembered until changed"
+          },
           "id": {
             "type": "string",
             "format": "uuid"
@@ -774,7 +883,7 @@
               "mid_session_breaks",
               "wind_down"
             ],
-            "description": "One break per 15 minutes; the last is always the wind-down"
+            "description": "One break per break interval; the last is always the wind-down"
           },
           "created_at": {
             "type": "string"
@@ -792,6 +901,8 @@
           "regulation_goals",
           "session_minutes",
           "break_type",
+          "break_interval_minutes",
+          "session_mode",
           "id",
           "nickname",
           "age_band",
@@ -874,6 +985,62 @@
             "type": "number",
             "description": "How far the child's library fell short of the chosen time; 0 when it filled it"
           },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "AUTO",
+              "MORNING",
+              "DAYTIME",
+              "BEDTIME"
+            ]
+          },
+          "time_band": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "MORNING",
+              "DAYTIME",
+              "EVENING",
+              "NIGHT",
+              null
+            ],
+            "description": "The band India's clock was in when the session started"
+          },
+          "opener": {
+            "type": "object",
+            "properties": {
+              "band": {
+                "type": "string",
+                "enum": [
+                  "MORNING",
+                  "DAYTIME",
+                  "EVENING",
+                  "NIGHT"
+                ]
+              }
+            },
+            "required": [
+              "band"
+            ],
+            "description": "The KidQ Agent's opener, played before slot 1 and outside the chosen minutes"
+          },
+          "wind_down": {
+            "type": "string",
+            "enum": [
+              "STANDARD",
+              "CALM",
+              "SLEEP"
+            ],
+            "description": "How the last slot closes: SLEEP is the full sleep wind-down"
+          },
+          "lean_toward": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "slots": {
             "type": "array",
             "items": {
@@ -951,6 +1118,11 @@
           "ended_at",
           "outcome",
           "short_by_minutes",
+          "mode",
+          "time_band",
+          "opener",
+          "wind_down",
+          "lean_toward",
           "slots"
         ]
       },
@@ -2867,6 +3039,19 @@
                     },
                     "maxItems": 10
                   },
+                  "session_modes": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "MORNING",
+                        "DAYTIME",
+                        "BEDTIME"
+                      ]
+                    },
+                    "maxItems": 3,
+                    "description": "Times of day the item suits; the AI sets them once, an admin can change them"
+                  },
                   "language": {
                     "type": [
                       "string",
@@ -3096,6 +3281,19 @@
                           "maxLength": 60
                         },
                         "maxItems": 10
+                      },
+                      "session_modes": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "enum": [
+                            "MORNING",
+                            "DAYTIME",
+                            "BEDTIME"
+                          ]
+                        },
+                        "maxItems": 3,
+                        "description": "Times of day the item suits; the AI sets them once, an admin can change them"
                       },
                       "language": {
                         "type": [
@@ -4142,7 +4340,7 @@
                       "maxLength": 60
                     },
                     "maxItems": 12,
-                    "description": "Block B categories; sending some without content_mix means CHOSEN"
+                    "description": "Block B: parent category keys (GET /taxonomy → parent_category); sending some without content_mix means CHOSEN"
                   },
                   "development_goals": {
                     "type": "array",
@@ -4205,6 +4403,39 @@
                       "ALTERNATE"
                     ],
                     "description": "Block E: MOVEMENT, QUIET or ALTERNATE"
+                  },
+                  "break_interval_minutes": {
+                    "anyOf": [
+                      {
+                        "type": "number",
+                        "enum": [
+                          10
+                        ]
+                      },
+                      {
+                        "type": "number",
+                        "enum": [
+                          15
+                        ]
+                      },
+                      {
+                        "type": "number",
+                        "enum": [
+                          20
+                        ]
+                      }
+                    ],
+                    "description": "Block E: minutes between breaks (10, 15 or 20); breaks = duration ÷ interval, rounded"
+                  },
+                  "session_mode": {
+                    "type": "string",
+                    "enum": [
+                      "AUTO",
+                      "MORNING",
+                      "DAYTIME",
+                      "BEDTIME"
+                    ],
+                    "description": "§12: AUTO follows the clock; MORNING, DAYTIME or BEDTIME is remembered until changed"
                   },
                   "age_band": {
                     "type": "string",
@@ -5006,7 +5237,8 @@
                       "development_goal",
                       "regulation_goal",
                       "language",
-                      "age_group"
+                      "age_group",
+                      "parent_category"
                     ]
                   },
                   "key": {
@@ -5713,7 +5945,7 @@
                       "maxLength": 60
                     },
                     "maxItems": 12,
-                    "description": "Block B categories; sending some without content_mix means CHOSEN"
+                    "description": "Block B: parent category keys (GET /taxonomy → parent_category); sending some without content_mix means CHOSEN"
                   },
                   "development_goals": {
                     "type": "array",
@@ -5776,6 +6008,39 @@
                       "ALTERNATE"
                     ],
                     "description": "Block E: MOVEMENT, QUIET or ALTERNATE"
+                  },
+                  "break_interval_minutes": {
+                    "anyOf": [
+                      {
+                        "type": "number",
+                        "enum": [
+                          10
+                        ]
+                      },
+                      {
+                        "type": "number",
+                        "enum": [
+                          15
+                        ]
+                      },
+                      {
+                        "type": "number",
+                        "enum": [
+                          20
+                        ]
+                      }
+                    ],
+                    "description": "Block E: minutes between breaks (10, 15 or 20); breaks = duration ÷ interval, rounded"
+                  },
+                  "session_mode": {
+                    "type": "string",
+                    "enum": [
+                      "AUTO",
+                      "MORNING",
+                      "DAYTIME",
+                      "BEDTIME"
+                    ],
+                    "description": "§12: AUTO follows the clock; MORNING, DAYTIME or BEDTIME is remembered until changed"
                   },
                   "nickname": {
                     "type": "string",
@@ -5994,7 +6259,7 @@
                       "maxLength": 60
                     },
                     "maxItems": 12,
-                    "description": "Block B categories; sending some without content_mix means CHOSEN"
+                    "description": "Block B: parent category keys (GET /taxonomy → parent_category); sending some without content_mix means CHOSEN"
                   },
                   "development_goals": {
                     "type": "array",
@@ -6057,6 +6322,39 @@
                       "ALTERNATE"
                     ],
                     "description": "Block E: MOVEMENT, QUIET or ALTERNATE"
+                  },
+                  "break_interval_minutes": {
+                    "anyOf": [
+                      {
+                        "type": "number",
+                        "enum": [
+                          10
+                        ]
+                      },
+                      {
+                        "type": "number",
+                        "enum": [
+                          15
+                        ]
+                      },
+                      {
+                        "type": "number",
+                        "enum": [
+                          20
+                        ]
+                      }
+                    ],
+                    "description": "Block E: minutes between breaks (10, 15 or 20); breaks = duration ÷ interval, rounded"
+                  },
+                  "session_mode": {
+                    "type": "string",
+                    "enum": [
+                      "AUTO",
+                      "MORNING",
+                      "DAYTIME",
+                      "BEDTIME"
+                    ],
+                    "description": "§12: AUTO follows the clock; MORNING, DAYTIME or BEDTIME is remembered until changed"
                   },
                   "nickname": {
                     "type": "string",
@@ -6913,6 +7211,21 @@
                     "minimum": 15,
                     "maximum": 180,
                     "description": "15, 30, 45, 60 or 90; any other length snaps to 30-minute blocks"
+                  },
+                  "mode": {
+                    "type": "string",
+                    "enum": [
+                      "AUTO",
+                      "MORNING",
+                      "DAYTIME",
+                      "BEDTIME"
+                    ],
+                    "description": "Session mode; remembered as this child's default. Omit to use the remembered one"
+                  },
+                  "lean_toward": {
+                    "type": "string",
+                    "maxLength": 60,
+                    "description": "\"Today, lean toward…\": a parent category key for this session only; never saved"
                   }
                 },
                 "required": [
@@ -8078,6 +8391,206 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ParentAnalytics"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/children/{id}/submissions/preview": {
+      "post": {
+        "summary": "Add a Video, step 1: a YouTube link's details and KidQ check, before adding it. Saves nothing",
+        "tags": [
+          "Submissions"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "url": {
+                    "type": "string",
+                    "minLength": 5,
+                    "maxLength": 500
+                  }
+                },
+                "required": [
+                  "url"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "video_id": {
+                      "type": "string"
+                    },
+                    "already_in_kidq": {
+                      "type": "boolean"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "thumbnail_url": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "duration_seconds": {
+                      "type": [
+                        "number",
+                        "null"
+                      ]
+                    },
+                    "channel": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "category": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "The admin category KidQ would suggest"
+                    },
+                    "parent_category": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "kidq_check": {
+                      "type": "object",
+                      "properties": {
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "REVIEWED",
+                            "CHECKING",
+                            "NOT_CHECKED"
+                          ]
+                        },
+                        "dimensions": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "key": {
+                                "type": "string",
+                                "enum": [
+                                  "CONTENT_LANGUAGE",
+                                  "PACING",
+                                  "VISUAL_COMFORT",
+                                  "AUDIO_COMFORT"
+                                ]
+                              },
+                              "label": {
+                                "type": "string"
+                              },
+                              "summary": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "key",
+                              "label",
+                              "summary"
+                            ]
+                          }
+                        },
+                        "note": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "status",
+                        "dimensions",
+                        "note"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "video_id",
+                    "already_in_kidq",
+                    "title",
+                    "thumbnail_url",
+                    "duration_seconds",
+                    "channel",
+                    "category",
+                    "parent_category",
+                    "kidq_check"
+                  ]
                 }
               }
             }
