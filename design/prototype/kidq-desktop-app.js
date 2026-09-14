@@ -801,7 +801,7 @@
     followHero.setAttribute("aria-disabled", "true");
     $("#follow-headline").innerHTML = '<span class="m-full">Follow the sun!</span><span class="m-reduced">Where\'s the sun?</span>';
     showScreen("screen-follow");
-    hold(() => sayLine($("#voice-follow-intro"), "Follow the sun with your eyes. Tap it when it stops!"), 600);
+    hold(() => sayLine($("#voice-follow-intro"), "Follow the sun with your eyes. Catch it at the end!"), 600);
     let i = 0;
     const next = () => { i += 1; if (i < FOLLOW_LEGS.length) runLeg(i, next); else endFollow(); };
     runLeg(0, next);
