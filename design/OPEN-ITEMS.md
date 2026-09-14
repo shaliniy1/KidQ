@@ -399,3 +399,23 @@ SETTLE hero (follow the sun) is gold with no ink ring — contrast against the
 day sky is carried entirely by the amber rim outline (measured 3.9–4.7:1
 across the three day-sky stops, task-7-report.md). `brand.md` should note this
 second contrast mechanism exists alongside the ink-on-fill one.
+
+## Surfaced by the splash redesign ("Constellation Seeds"), not yet tracked elsewhere
+
+### [ ] 36. Screen-cut crossfade briefly shows ~25% raw cream
+Measured, not assumed: sampling `#screen-splash`/`#screen-login`'s computed
+`opacity` every animation frame through the `.5s` crossfade
+(`kidq-desktop-app.css:19-21`) shows the two curves sum to ≈1 throughout (both
+screens share the same `.5s ease-out`, triggered in the same tick), but that
+doesn't make the composite opaque — at the ~200ms midpoint (login≈0.53,
+splash≈0.47), the multiplicative gap `(1-login_op)×(1-splash_op)` peaks at
+≈25%, letting `#app`'s flat `background:var(--cream)` (`:17`) show through
+that fraction of every pixel where neither screen's own content is opaque.
+The old cream→indigo splash→login cut never exposed this (a cream flash atop
+an already-cream splash was invisible); the new predawn→predawn cut might
+show it as a brief warm/light pulse — flagged as measured-but-not-eyeballed,
+since a reliable screenshot of this exact ~150ms window kept losing the race
+against browser-automation round-trip timing. If a human eye check confirms
+it's visible, the fix is giving `#app` a dark ground for this specific
+transition (or scoping a temporary background on the two screens' shared
+ancestor during the crossfade), not touching either sky gradient.
