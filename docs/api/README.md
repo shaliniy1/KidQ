@@ -95,6 +95,11 @@ Admin screens show `studio_state`, one of five. Show one tile or filter per stat
    - `POST /children/:id/sessions` with `{ minutes }` (15, 30, 45, 60 or 90; other lengths snap to 30-minute blocks) returns the session, already started. Its `slots` are ~15 minutes of whole videos from the child's library, each with its `break_after` (`MOVEMENT`, `QUIET`, or `WIND_DOWN` for the last). A preset is saved as the child's next default.
    - `short_by_minutes` > 0 means the library couldn't fill the time; tell the parent afterwards and suggest adding videos.
    - Optional `mode` (`AUTO`, `MORNING`, `DAYTIME`, `BEDTIME`) is remembered for the child; `AUTO` follows India's clock. Optional `lean_toward` (a parent category key) steers this session only. The response's `opener.band` is the KidQ Agent's opener, played before slot 1 and outside the chosen minutes; `wind_down` is `STANDARD`, `CALM` or `SLEEP`.
+   - **Child mode** (`design/` prototype):
+     - Open on `GET /children/:id/sessions/current`. `{ session: null }` means no live session today: the "sun is still asleep" screen.
+     - Each slot's `break_activity` is the break to run after it (title, `spoken_instruction` for the device voice, `variant` such as the colour). Record it with `activity_started` / `activity_completed` events using its `id`. The final `WIND_DOWN` slot's break is the sunset and all-done ending.
+     - The sky: `planned_seconds` is the whole arc and `progress_seconds` is how far the sun has moved. Send `watched_seconds` and `position_seconds` on `PATCH /sessions/:id/items/:itemId` as the video plays; `outcome` is optional there.
+     - Replay an earlier session as a new one: `POST /sessions/:id/replay` (the same videos and order, minus any no longer in the library).
    - **Trust badge**: parent screens show each card's `kidq_check` (plain words per dimension), never `content_score`'s numbers. Show `parent_category`, not the admin `category`.
    - After each video: `PATCH /sessions/:id/items/:itemId` with `{ outcome: "COMPLETED" | "SKIPPED" | "EXITED", watched_seconds }`.
    - `POST /sessions/:id/end` with `{ outcome: "COMPLETED" | "EXITED" }`. There's no resume; a new session starts fresh.

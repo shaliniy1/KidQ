@@ -206,7 +206,7 @@ defineRoute(
 
 defineRoute(
   parentRouter,
-  { method: "patch", path: "/sessions/:id/items/:itemId", summary: "Record how one video went: COMPLETED, SKIPPED or EXITED", tag: "Sessions", roles, params: sessionItemParams, body: sessionItemBody, response: sessionSchema },
+  { method: "patch", path: "/sessions/:id/items/:itemId", summary: "Record how one video went (COMPLETED, SKIPPED or EXITED) and where it stopped", tag: "Sessions", roles, params: sessionItemParams, body: sessionItemBody, response: sessionSchema },
   async ({ user, params, body }) => sessions.recordItemOutcome(user, params.id, params.itemId, body),
 );
 
@@ -259,4 +259,33 @@ defineRoute(
     response: submissionPreviewSchema,
   },
   async ({ user, params, body }) => parents.previewSubmission(user, params.id, body.url),
+);
+
+defineRoute(
+  parentRouter,
+  {
+    method: "get",
+    path: "/children/:id/sessions/current",
+    summary: "Child mode opens on this: today's live session, or null when the sun is still asleep",
+    tag: "Sessions",
+    roles,
+    params: childParams,
+    response: z.object({ session: z.union([sessionSchema, z.null()]) }),
+  },
+  async ({ user, params }) => sessions.currentSession(user, params.id),
+);
+
+defineRoute(
+  parentRouter,
+  {
+    method: "post",
+    path: "/sessions/:id/replay",
+    summary: "Play an earlier session again as a new one: same videos and order, minus any no longer in the library",
+    tag: "Sessions",
+    roles,
+    params: sessionParams,
+    response: sessionSchema,
+    status: 201,
+  },
+  async ({ user, params }) => sessions.replaySession(user, params.id),
 );

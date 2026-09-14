@@ -1041,6 +1041,18 @@
               "null"
             ]
           },
+          "planned_seconds": {
+            "type": "number",
+            "description": "The chosen time: the sun's whole arc"
+          },
+          "filled_seconds": {
+            "type": "number",
+            "description": "The queued videos' total length"
+          },
+          "progress_seconds": {
+            "type": "number",
+            "description": "Watched so far, each video counted up to its length: rewatching never moves the sun on"
+          },
           "slots": {
             "type": "array",
             "items": {
@@ -1056,7 +1068,52 @@
                     "QUIET",
                     "WIND_DOWN"
                   ],
-                  "description": "The break after this slot; the last is always WIND_DOWN"
+                  "description": "The break after this slot; the last is always WIND_DOWN, shown in child mode as the sunset"
+                },
+                "break_activity": {
+                  "type": [
+                    "object",
+                    "null"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "description": "The activity id, for activity_started / activity_completed events"
+                    },
+                    "key": {
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "instruction": {
+                      "type": "string"
+                    },
+                    "spoken_instruction": {
+                      "type": "string",
+                      "description": "Read aloud by the device voice (en-IN)"
+                    },
+                    "variant": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "e.g. the colour for Find 3 things; for the sunset, the session's wind_down"
+                    },
+                    "duration_seconds": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "key",
+                    "title",
+                    "instruction",
+                    "spoken_instruction",
+                    "variant",
+                    "duration_seconds"
+                  ]
                 },
                 "items": {
                   "type": "array",
@@ -1088,6 +1145,13 @@
                           "null"
                         ]
                       },
+                      "position_seconds": {
+                        "type": [
+                          "number",
+                          "null"
+                        ],
+                        "description": "Where the video last stopped"
+                      },
                       "card": {
                         "$ref": "#/components/schemas/ContentCard"
                       }
@@ -1097,6 +1161,7 @@
                       "position",
                       "outcome",
                       "watched_seconds",
+                      "position_seconds",
                       "card"
                     ]
                   }
@@ -1105,6 +1170,7 @@
               "required": [
                 "slot",
                 "break_after",
+                "break_activity",
                 "items"
               ]
             }
@@ -1123,6 +1189,9 @@
           "opener",
           "wind_down",
           "lean_toward",
+          "planned_seconds",
+          "filled_seconds",
+          "progress_seconds",
           "slots"
         ]
       },
@@ -7376,7 +7445,7 @@
     },
     "/sessions/{id}/items/{itemId}": {
       "patch": {
-        "summary": "Record how one video went: COMPLETED, SKIPPED or EXITED",
+        "summary": "Record how one video went (COMPLETED, SKIPPED or EXITED) and where it stopped",
         "tags": [
           "Sessions"
         ],
@@ -7422,12 +7491,16 @@
                   "watched_seconds": {
                     "type": "integer",
                     "minimum": 0,
-                    "maximum": 86400
+                    "maximum": 86400,
+                    "description": "Only ever grows: a smaller value is ignored"
+                  },
+                  "position_seconds": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 86400,
+                    "description": "Where the video stopped, for resuming it"
                   }
-                },
-                "required": [
-                  "outcome"
-                ]
+                }
               }
             }
           }
@@ -8591,6 +8664,173 @@
                     "parent_category",
                     "kidq_check"
                   ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/children/{id}/sessions/current": {
+      "get": {
+        "summary": "Child mode opens on this: today's live session, or null when the sun is still asleep",
+        "tags": [
+          "Sessions"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "session": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/Session"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "session"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sessions/{id}/replay": {
+      "post": {
+        "summary": "Play an earlier session again as a new one: same videos and order, minus any no longer in the library",
+        "tags": [
+          "Sessions"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Session"
                 }
               }
             }
