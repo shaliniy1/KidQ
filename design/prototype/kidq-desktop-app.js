@@ -588,9 +588,57 @@
     return ppd;
   }
 
+  const followField = $("#follow-field");
+  const followBall  = $("#follow-ball");
+  const MIN_PASS_MS = 1600; // a shorter pass reads as a flicker, not as a target
+
+  // Travel is the field's measured box minus one ball diameter, per axis.
+  function legGeometry(dir) {
+    const r = followField.getBoundingClientRect();
+    const d = followBall.getBoundingClientRect().width;
+    const maxX = Math.max(0, r.width  - d);
+    const maxY = Math.max(0, r.height - d);
+    const midX = maxX / 2, midY = maxY / 2;
+    const legs = {
+      across:   { from: {x: 0,    y: midY}, to: {x: maxX, y: midY} },
+      updown:   { from: {x: midX, y: 0   }, to: {x: midX, y: maxY} },
+      diagonal: { from: {x: 0,    y: maxY}, to: {x: maxX, y: 0   } }
+    };
+    const leg = legs[dir];
+    leg.travel = Math.hypot(leg.to.x - leg.from.x, leg.to.y - leg.from.y);
+    return leg;
+  }
+
+  // Duration is derived so that ANGULAR speed is constant: a short leg takes
+  // proportionally less time than a long one. The floor stops a very short pass
+  // reading as a flicker; it binds on a phone's horizontal pass and nowhere on
+  // a television.
+  function passMs(travel) {
+    return Math.max(MIN_PASS_MS, (travel / (DEG_PER_SEC * pxPerDeg())) * 1000);
+  }
+
+  function placeBall(pt) {
+    followBall.style.transform = `translate(${pt.x}px, ${pt.y}px)`;
+  }
+
+  function movePass(to, ms) {
+    followBall.style.setProperty("--sweep", ms + "ms");
+    placeBall(to);
+    return ms;
+  }
+
   function startFollow() {
     applyContext();
     showScreen("screen-follow");
+    hold(() => say("Follow the ball! Keep your head still, just your eyes."), 600);
+    const leg = legGeometry("across");
+    followBall.style.setProperty("--sweep", "0ms");
+    placeBall(leg.from);
+    hold(() => {
+      const ms = passMs(leg.travel);
+      movePass(leg.to, ms);
+      hold(() => movePass(leg.from, ms), ms);
+    }, 700);
   }
 
   /* ---------- after-break choice (within the parent's picks) ---------- */
