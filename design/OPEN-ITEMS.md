@@ -237,3 +237,51 @@ earlier "no switching before completion". Already flagged, and easy to revert.
 `kidq-mockups-v1.html` still shows the pre-round-3 design — "The End" card, "Up
 next" instead of the session strip, the old arc colour. Only worth doing if
 those frames are still referenced.
+
+### [ ] 25. Can a small child actually get out of a break?
+A break ends on "Tap the sun for your next video", and nothing continues until
+that tap lands. Raised as a doubt that a child at the younger end of 0–6 will
+reliably manage it, and that they are then stuck with no way forward.
+
+The tap is not arbitrary — it is the thing that makes a break a break.
+`concept.md` ends its loop with "Nothing plays without the tap"; `README.md`
+draws the line as "autoplay runs between videos, but never **out of a break**",
+because sliding straight from an activity back into video undoes the
+interruption the activity existed to create. So autoplaying out of a break is
+not a small change: it removes the mechanism, and the break becomes an interlude
+between videos rather than a stop.
+
+Against that, three things make the worry real rather than theoretical:
+
+- **The child has done this before, but only once.** The same gesture starts the
+  day on the sunrise screen. Mid-session, after an activity, there is no
+  equivalent teaching moment and no prompt if they simply do not act.
+- **On a television it may not be their tap to make.** Item 9 is unresolved, and
+  on the Cast path the tap arrives from the sender — the parent's phone, which
+  in the flow `concept.md` calls natural is in another room. A remote (the
+  wrapper path) a grandparent can use; a parent's phone they cannot.
+- **There is no nudge and no timeout.** The sun waits indefinitely and says
+  nothing more. `concept.md` treats waiting as a designed state, not an error,
+  which is right for a child who wandered off — and wrong for one who is sitting
+  there not realising it is their move.
+
+Directions, not yet chosen:
+
+1. **Keep the tap, make it easier to find.** A gentle repeat of the spoken line
+   after a few seconds, or the sun's existing breathing animation growing more
+   pronounced. Cheapest, keeps the principle intact. Bounded by `brand.md`'s rule
+   against nagging, and by open item 21 — there is still no way to turn the voice
+   off.
+2. **Keep the tap, add a quiet timeout.** After a long wait with no tap, end the
+   session gently into the all-done screen rather than advancing into a video.
+   Honours "nothing plays without the tap" literally, since nothing plays.
+3. **Autoplay out of the break.** What was proposed. Solves it outright and costs
+   the principle; would need `concept.md` and `README.md` amended rather than
+   worked around.
+4. **Make it a parent-side setting.** Defers the judgement to the family. Adds a
+   preference where `break_type` and `session_minutes` already live, so it is
+   cheap on the API — but a setting is also a way of not deciding.
+
+Needs the user's call on direction before anything is built. Logged rather than
+resolved because 3 reverses a locked decision, and 1 and 2 change no principle
+but do need design.
