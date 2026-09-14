@@ -367,6 +367,21 @@ button{font-family:inherit; -webkit-tap-highlight-color:transparent}
 #screen-find.celebrate .kq-findhead{animation:pop .7s cubic-bezier(.34,1.56,.64,1)}
 
 /* ---------- SETTLE: follow the ball ---------- */
+/* Ink, not a game colour: pursuit accuracy rises with contrast, and ink on the
+   day sky measures 11.1:1 against the game palette's 3.02-4.24:1. The gloss is
+   the splash balloons' idiom (css:99-102) rebuilt for a disc in ink - there is
+   no ink balloon to reuse. No cast shadow: a shadow implies a floor, and this
+   ball is in the sky. */
+.kq-ball{position:absolute; left:0; top:0; border-radius:50%;
+  width:var(--ball); height:var(--ball);
+  display:flex; align-items:center; justify-content:center; gap:calc(var(--ball) * .13);
+  background:radial-gradient(circle at 32% 24%,
+    #7A7264 0%, #574F45 26%, #3A352E 58%, #2E2A24 82%, #221F1A 100%);
+  transition:transform var(--sweep, 2s) ease-in-out, opacity .3s ease;
+  will-change:transform}
+.kq-ball .eye{width:calc(var(--ball) * .13); height:calc(var(--ball) * .13);
+  border-radius:50%; background:var(--cream); margin-top:calc(var(--ball) * -.08)}
+.kq-ball.gone{opacity:0}
 #screen-follow .kq-centercol{gap:20px}
 
 /* ---------- after-break choice ---------- */

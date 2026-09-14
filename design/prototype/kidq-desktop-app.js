@@ -561,7 +561,35 @@
   });
 
   /* --- SETTLE: follow the ball with your eyes --- */
+  /* The clinical evidence for smooth pursuit is in DEGREES OF VISUAL ANGLE, so
+     the design holds degrees constant and lets pixels fall out. Holding pixels
+     constant cannot hold degrees constant: both pixel density and viewing
+     distance change per device.
+
+     near: CSS px per mm is roughly constant across phones and laptops, so one
+     number works (phone ~32, laptop ~40, so 36).
+     far:  a TV shell's viewport width is NOT fixed - 1280 and 960 are as common
+           as 1920 - but a set's angular width in the room is stable. A 43" at
+           ~2m subtends ~26.8 degrees. 2m, not 3m: small children sit closer than
+           adults do. */
+  const DEG_BALL = 2, DEG_PER_SEC = 8, NEAR_PX_PER_DEG = 36, TV_ANGULAR_WIDTH = 26.8;
+  const appEl = $("#app");
+
+  function pxPerDeg() {
+    return appEl.dataset.context === "far"
+      ? appEl.clientWidth / TV_ANGULAR_WIDTH
+      : NEAR_PX_PER_DEG;
+  }
+
+  function applyContext() {
+    const ppd = pxPerDeg();
+    appEl.style.setProperty("--px-per-deg", ppd);
+    appEl.style.setProperty("--ball", (DEG_BALL * ppd) + "px");
+    return ppd;
+  }
+
   function startFollow() {
+    applyContext();
     showScreen("screen-follow");
   }
 
