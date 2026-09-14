@@ -455,6 +455,10 @@ button{font-family:inherit; -webkit-tap-highlight-color:transparent}
 /* Landing: rays out (Task 8), ring pulses "catch me", and only now is the sun
    a pointer target. The pulse reuses the ringout vocabulary as a loop. */
 .kq-fsun.landed{cursor:pointer}
+/* Every other control gets the teal focus ring; the hero button never had one
+   (final review M2) - land() moves keyboard focus here (js), so a keyboard
+   child had no visible indicator that the sun was the live target. */
+.kq-fsun:focus-visible{outline:3px solid var(--teal-deep); outline-offset:6px}
 /* A child aims at what they see, not at the 72px disc underneath it: the rays
    ARE the "catch me!" art, up to 1.8x the disc, and pointer-events:none on
    them (css:409) meant a tap on a ray - or the empty gaps between rays,
