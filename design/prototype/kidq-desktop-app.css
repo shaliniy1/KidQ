@@ -762,3 +762,9 @@ button{font-family:inherit; -webkit-tap-highlight-color:transparent}
   *, *::before, *::after{animation-duration:.001ms !important; animation-iteration-count:1 !important;
     transition-duration:.12s !important}
 }
+
+/* In saccade mode the head should NOT be still - the eyes are meant to jump - so
+   the copy changes rather than shrinking. */
+.m-reduced{display:none}
+.reduce-motion .m-full{display:none}
+.reduce-motion .m-reduced{display:inline}

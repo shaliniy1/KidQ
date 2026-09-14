@@ -682,7 +682,7 @@
     followDots.forEach((d) => d.classList.remove("on"));
     followBall.classList.remove("gone");
     followScreen.classList.remove("celebrate");
-    $("#follow-headline").textContent = "Follow the ball!";
+    $("#follow-headline").innerHTML = '<span class="m-full">Follow the ball!</span><span class="m-reduced">Where\'s the ball?</span>';
     showScreen("screen-follow");
     hold(() => say("Follow the ball! Keep your head still, just your eyes."), 600);
     let i = 0;
@@ -696,7 +696,7 @@
     placeHidden({ x: (r.width - d) / 2, y: (r.height - d) / 2 }, () => {
       hold(() => {
         followScreen.classList.add("celebrate");
-        $("#follow-headline").textContent = "You did it! ✨";
+        $("#follow-headline").innerHTML = '<span class="m-full">You did it! ✨</span><span class="m-reduced">You did it! ✨</span>';
         say("You did it!");
         safePlay(chime);
         // hold, not later: later would fire this at 200ms under reduced motion
@@ -871,6 +871,7 @@
     document.documentElement.classList.toggle("reduce-motion", reducedMotion);
     e.currentTarget.setAttribute("aria-pressed", String(reducedMotion));
     e.currentTarget.textContent = reducedMotion ? "Motion reduced" : "Reduce motion";
+    if (followScreen.classList.contains("active")) { clearTimers(); startFollow(); }
   });
   if (reducedMotion) {
     document.documentElement.classList.add("reduce-motion");
