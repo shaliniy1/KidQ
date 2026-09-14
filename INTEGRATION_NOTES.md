@@ -133,3 +133,30 @@ the real implementation needs to satisfy**, and **what swapping it in requires**
     if the thin seed catalog exhausts the no-repeat pool before every slot is filled, the
     algorithm falls back to allowing repeats rather than ship an empty break slot (found via
     direct testing of the algorithm against the seed data, fixed before commit).
+
+## 5. Recommendation shelf's trust badge — no real scoring dimensions
+
+- **Ticket:** T08 (Recommendation shelf + Browse-myself, P5)
+- **File/module:** `api/src/controllers/recommendations.controller.ts` (`toCard`'s
+  `trustBadge` field).
+- **What's faked and why:** Every card on the P5 shelf shows a trust badge, and spec
+  Section 11 #19 says tapping it optionally expands into a plain-language readout of 5
+  scoring dimensions (pacing, language, content, visual, audio). That data comes from the
+  same content scoring engine Session Assembly is waiting on (see #4 above) — not yet
+  callable. Rather than fabricate plausible-looking per-dimension scores, every card gets
+  a plain **"Reviewed"** badge (true of the underlying data — these are genuinely
+  `content_status === "APPROVED"` catalog records) and the frontend's tap-to-expand states
+  explicitly that per-dimension detail isn't available yet, instead of inventing numbers.
+- **Real contract:** `toCard(record)` needs the scoring engine's assessment result per
+  content item — at minimum a badge label and, for the expandable detail, 5 named
+  dimension results (pacing/language/content/visual/audio), each with at least a
+  pass/fail/concern-level and a short plain-language note (mirroring the
+  `CriterionAssessment { status, evidence }` shape already used for `filter_out`/
+  `filter_in` on `KidqContentRecord` — reusing that shape rather than inventing a new one
+  is the natural fit if the real engine doesn't dictate otherwise).
+- **To swap in:** Once the scoring engine exposes a callable "assess this content item"
+  result, replace `toCard`'s hardcoded `trustBadge: "Reviewed"` with the real badge label,
+  and add the 5-dimension detail to `RecommendationCard` (`api/src/types/recommendation.ts`)
+  for the frontend's expand-on-tap to render. The same swap point covers P9a's trust badge
+  (ticket 11) and the P8 session-log badge (ticket 10) once those are built — all three
+  consume the same engine output, so wiring it once here sets the pattern.
