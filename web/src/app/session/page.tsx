@@ -112,9 +112,15 @@ export default function StartSessionPage() {
     setPhase("starting");
     setErrorMessage(null);
     try {
-      const session = await startSession(userRef.current, selectedChildId, duration, mode);
+      const result = await startSession(userRef.current, selectedChildId, duration, mode);
       try {
-        sessionStorage.setItem(`kidq:last-session:${selectedChildId}`, JSON.stringify(session));
+        // Session data + the schedule-reminder flag both ride along to
+        // /play — no extra tap on this screen (spec Section 11 #27), the
+        // note just appears on the next screen the parent already sees.
+        sessionStorage.setItem(
+          `kidq:last-session:${selectedChildId}`,
+          JSON.stringify({ ...result.session, outsideScheduledWindow: result.outsideScheduledWindow })
+        );
       } catch {
         // best-effort only — the player stub just has less to show if this fails
       }
@@ -275,6 +281,12 @@ export default function StartSessionPage() {
             style={{ background: "none", border: "none", color: "var(--kq-text-secondary)", textDecoration: "underline", cursor: "pointer", padding: 8, fontSize: "var(--kq-text-caption)" }}
           >
             Activity
+          </button>
+          <button
+            onClick={() => router.push("/settings")}
+            style={{ background: "none", border: "none", color: "var(--kq-text-secondary)", textDecoration: "underline", cursor: "pointer", padding: 8, fontSize: "var(--kq-text-caption)" }}
+          >
+            ⚙️ Settings
           </button>
           <button
             onClick={() => router.push("/inbox")}

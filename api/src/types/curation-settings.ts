@@ -18,6 +18,13 @@ export const BREAK_TYPES: BreakType[] = ["movement", "quiet_calm", "alternate"];
 export const DURATION_OPTIONS = [10, 15, 30, 45, 60, 90] as const;
 export const BREAK_INTERVAL_OPTIONS = [10, 15, 20] as const;
 
+export interface DailySchedule {
+  enabled: boolean;
+  /** 24h "HH:MM" — display only in phase 1, reminder never gates a session (spec Section 11 #27). */
+  startTime: string;
+  endTime: string;
+}
+
 export interface CurationSettings {
   childId: string;
   /** Subset of the config category list (ticket 01) — never validated against a hardcoded list. */
@@ -35,5 +42,15 @@ export interface CurationSettings {
   durationDefault: (typeof DURATION_OPTIONS)[number];
   breakInterval: (typeof BREAK_INTERVAL_OPTIONS)[number];
   breakType: BreakType;
+  /**
+   * Settings (P7) fields — same store as the Hub's curation fields above,
+   * per spec ("same field the Hub's Screen-time block edits; changing it
+   * in either place updates the one shared value"). Kept per-child, not
+   * per-family, for consistency with breakType/breakInterval already
+   * being per-child here.
+   */
+  autoplay: boolean;
+  sensoryMode: boolean;
+  dailySchedule: DailySchedule;
   updatedAt: string;
 }

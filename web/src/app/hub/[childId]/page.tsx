@@ -121,14 +121,14 @@ export default function HubPage() {
         // back a patch (sessionStorage bridge, never the backend — ticket
         // 05's "nothing persists until Done" stays true either way).
         const incomingPatch = readAndClearHubDraftPatch(childId);
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { childId: _childId, updatedAt: _updatedAt, ...settingsRest } = settings;
         setDraft({
+          ...settingsRest, // carries autoplay/sensoryMode/dailySchedule (Settings' fields, ticket 13) through untouched
           interests: incomingPatch?.interests ?? settings.interests,
           contentMixMode: incomingPatch?.contentMixMode ?? settings.contentMixMode,
           contentMixCategories: incomingPatch?.contentMixCategories ?? settings.contentMixCategories,
           regulationGoals: incomingPatch?.regulationGoals ?? settings.regulationGoals,
-          durationDefault: settings.durationDefault,
-          breakInterval: settings.breakInterval,
-          breakType: settings.breakType,
         });
         setPhase("ready");
       } catch (error) {

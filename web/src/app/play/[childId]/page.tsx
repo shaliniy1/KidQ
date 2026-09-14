@@ -26,6 +26,7 @@ export default function ChildPlayerStub() {
   const router = useRouter();
   const params = useParams<{ childId: string }>();
   const [session, setSession] = useState<AssembledSession | null>(null);
+  const [outsideScheduledWindow, setOutsideScheduledWindow] = useState(false);
   const [logging, setLogging] = useState(false);
   const userRef = useRef<User | null>(null);
 
@@ -43,7 +44,11 @@ export default function ChildPlayerStub() {
       await Promise.resolve();
       try {
         const raw = sessionStorage.getItem(`kidq:last-session:${params.childId}`);
-        if (raw) setSession(JSON.parse(raw) as AssembledSession);
+        if (raw) {
+          const parsed = JSON.parse(raw) as AssembledSession & { outsideScheduledWindow?: boolean };
+          setSession(parsed);
+          setOutsideScheduledWindow(Boolean(parsed.outsideScheduledWindow));
+        }
       } catch {
         // no session to show — fine, this is a stub
       }
@@ -83,6 +88,12 @@ export default function ChildPlayerStub() {
               {session.durationMinutes} min · every {session.breakIntervalMinutes} min ·{" "}
               {session.totalBreaks} break{session.totalBreaks === 1 ? "" : "s"} · {session.timeBand}
             </p>
+            {outsideScheduledWindow && (
+              <p style={{ color: "var(--kq-terracotta)", fontSize: "var(--kq-text-caption)" }}>
+                This is outside the daily schedule you saved in Settings — just a reminder,
+                nothing&apos;s blocked.
+              </p>
+            )}
             {session.usedFallback && (
               <p style={{ color: "var(--kq-terracotta)", fontSize: "var(--kq-text-caption)" }}>
                 A couple of videos today came from a neighboring age range — content was a

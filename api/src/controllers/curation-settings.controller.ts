@@ -8,7 +8,22 @@ import {
   DURATION_OPTIONS,
   REGULATION_GOAL_TAGS,
   type CurationSettings,
+  type DailySchedule,
 } from "../types/curation-settings";
+
+const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+function isValidDailySchedule(value: unknown): value is DailySchedule {
+  if (typeof value !== "object" || value === null) return false;
+  const schedule = value as Partial<DailySchedule>;
+  return (
+    typeof schedule.enabled === "boolean" &&
+    typeof schedule.startTime === "string" &&
+    TIME_PATTERN.test(schedule.startTime) &&
+    typeof schedule.endTime === "string" &&
+    TIME_PATTERN.test(schedule.endTime)
+  );
+}
 
 export async function getSettings(req: Request, res: Response) {
   const childId = req.params.childId;
@@ -53,6 +68,15 @@ export async function putSettings(req: Request, res: Response) {
   if (!body.breakType || !BREAK_TYPES.includes(body.breakType)) {
     return res.status(400).json({ error: `breakType must be one of ${BREAK_TYPES.join(", ")}` });
   }
+  if (typeof body.autoplay !== "boolean") {
+    return res.status(400).json({ error: "autoplay must be a boolean" });
+  }
+  if (typeof body.sensoryMode !== "boolean") {
+    return res.status(400).json({ error: "sensoryMode must be a boolean" });
+  }
+  if (!isValidDailySchedule(body.dailySchedule)) {
+    return res.status(400).json({ error: "dailySchedule must be { enabled: boolean, startTime: 'HH:MM', endTime: 'HH:MM' }" });
+  }
 
   const saved = await saveCurationSettings(childId, {
     interests,
@@ -62,6 +86,9 @@ export async function putSettings(req: Request, res: Response) {
     durationDefault: body.durationDefault as CurationSettings["durationDefault"],
     breakInterval: body.breakInterval as CurationSettings["breakInterval"],
     breakType: body.breakType,
+    autoplay: body.autoplay,
+    sensoryMode: body.sensoryMode,
+    dailySchedule: body.dailySchedule,
   });
 
   return res.json({ settings: saved });

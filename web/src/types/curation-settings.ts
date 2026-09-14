@@ -18,6 +18,12 @@ export const BREAK_TYPES: { label: string; value: BreakType }[] = [
   { label: "Let KidQ alternate", value: "alternate" },
 ];
 
+export interface DailySchedule {
+  enabled: boolean;
+  startTime: string;
+  endTime: string;
+}
+
 export interface CurationSettings {
   childId: string;
   interests: string[];
@@ -27,6 +33,9 @@ export interface CurationSettings {
   durationDefault: (typeof DURATION_OPTIONS)[number];
   breakInterval: (typeof BREAK_INTERVAL_OPTIONS)[number];
   breakType: BreakType;
+  autoplay: boolean;
+  sensoryMode: boolean;
+  dailySchedule: DailySchedule;
   updatedAt: string;
 }
 

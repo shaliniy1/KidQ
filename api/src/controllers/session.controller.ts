@@ -4,6 +4,7 @@ import { getCurationSettings } from "../services/curation-settings-store";
 import { assembleSession } from "../services/session-assembly";
 import { resolveTimeBand, TIME_BAND_MODES, type TimeBandMode } from "../services/time-band";
 import { getExcludedContentIds } from "../services/exclude-list-store";
+import { isOutsideSchedule } from "../services/daily-schedule";
 import { DURATION_OPTIONS } from "../types/curation-settings";
 
 export async function postStartSession(req: Request, res: Response) {
@@ -38,5 +39,10 @@ export async function postStartSession(req: Request, res: Response) {
 
   await setLastUsedSessionChoices(childId, durationMinutes, timeBandMode);
 
-  return res.json({ session: assembled });
+  return res.json({
+    session: assembled,
+    // Reminder-only (spec Section 11 #27) — never blocks the session above,
+    // just tells the client whether to show the soft terracotta note.
+    outsideScheduledWindow: isOutsideSchedule(settings.dailySchedule),
+  });
 }

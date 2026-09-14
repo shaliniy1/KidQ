@@ -19,6 +19,9 @@ async function defaultSettings(childId: string): Promise<CurationSettings> {
     durationDefault: 30,
     breakInterval: 15,
     breakType: "alternate",
+    autoplay: true,
+    sensoryMode: false,
+    dailySchedule: { enabled: false, startTime: "07:00", endTime: "19:00" },
     updatedAt: new Date().toISOString(),
   };
 }
