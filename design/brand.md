@@ -170,9 +170,10 @@ Scale in use (size / weight / face):
 - **Break-screen suns:** three sizes, and the order between them is the point —
   find `min(30cqw,132px)` < seam `min(34cqw,160px)` < breathing
   `min(40cqw,190px)`. The breathing sun is largest because the child breathes
-  with it; the find sun is smallest because swatches share its screen. At the
-  desktop tier (container ≥1100px) they step to 176 / 208 / 240 so the break
-  screens grow as one piece with their headlines, keeping the same order.
+  with it; the find sun is smallest because swatches share its screen. They step
+  up twice — to 154 / 184 / 214 at the tablet tier (container ≥601px) and
+  176 / 208 / 240 at the desktop tier (≥1100px) — so the break screens grow as
+  one piece with their headlines and keep the same order at every width.
   **Set these in CSS, never inline on the element** — an inline width cannot be
   overridden by a container query, which is how the find and seam suns came to
   be the only things on those screens that never scaled.

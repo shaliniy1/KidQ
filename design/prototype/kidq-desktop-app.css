@@ -623,6 +623,16 @@ button{font-family:inherit; -webkit-tap-highlight-color:transparent}
   .kq-swatchrow{gap:19px}
   .kq-swatchrow i{width:56px; height:56px}
   .kq-pthead{font-size:40px}
+  /* This tier already grew the swatches and the seam headline but left the
+     headlines, the sub-line and all three suns at phone size — the same
+     partial scale the desktop tier had, one step down. These are the
+     midpoints between the base sizes and the 1100px ones, so the break
+     screens now grow evenly across all three tiers. */
+  .kq-breathhead,.kq-findhead{font-size:34px}
+  .kq-findsub{font-size:17.5px}
+  .kq-findsun{width:min(30cqw,154px)}
+  .kq-ptsun{width:min(34cqw,184px)}
+  #screen-breathing .kq-bsunwrap{width:min(40cqw,214px)}
 }
 
 /* ---------- wide tier ---------- */
