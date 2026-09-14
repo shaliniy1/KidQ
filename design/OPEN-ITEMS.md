@@ -290,7 +290,7 @@ seconds, the next video starts on its own.
 
 This reverses "nothing plays without the tap", and the reversal was raised as a
 conflict and confirmed rather than assumed. `concept.md`, `design/README.md` and
-the comment above `startChoice` have all been amended, so no document still
+the comment above `autoAdvance` have all been amended, so no document still
 asserts the old rule. The principle that survives is narrower and, on reflection,
 the one that was actually load-bearing: **the interruption is the activity plus
 the choice screen** — not an indefinite wait that a three-year-old has no way out

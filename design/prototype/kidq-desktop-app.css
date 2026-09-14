@@ -370,8 +370,7 @@ button{font-family:inherit; -webkit-tap-highlight-color:transparent}
 /* Ink, not a game colour: pursuit accuracy rises with contrast, and ink on the
    day sky measures 11.1:1 against the game palette's 3.02-4.24:1. The gloss is
    the splash balloons' idiom (css:99-102) rebuilt for a disc in ink - there is
-   no ink balloon to reuse. No cast shadow: a shadow implies a floor, and this
-   ball is in the sky. */
+   no ink balloon to reuse. */
 /* The ball is a CHARACTER, not a disc. Every other break hero on this app has a
    face and a halo - the sun has rays, two eyes, a smile and a warm glow - and a
    bare gradient circle with two dots reads as a hole punched in the sky rather
@@ -384,8 +383,8 @@ button{font-family:inherit; -webkit-tap-highlight-color:transparent}
   display:flex; align-items:center; justify-content:center; gap:calc(var(--ball) * .15);
   background:radial-gradient(circle at 32% 24%,
     #7A7264 0%, #574F45 26%, #3A352E 58%, #2E2A24 82%, #221F1A 100%);
-  box-shadow:0 0 0 calc(var(--ball) * .10) rgba(240,167,46,.16),
-             0 0 calc(var(--ball) * .42) calc(var(--ball) * .10) rgba(240,167,46,.20);
+  box-shadow:0 0 0 calc(var(--ball) * .10) color-mix(in srgb, var(--sun-deep) 16%, transparent),
+             0 0 calc(var(--ball) * .42) calc(var(--ball) * .10) color-mix(in srgb, var(--sun-deep) 20%, transparent);
   transition:transform var(--sweep, 2s) ease-in-out, opacity .3s ease;
   will-change:transform}
 .kq-ball .eye{width:calc(var(--ball) * .14); height:calc(var(--ball) * .14);
@@ -404,17 +403,22 @@ button{font-family:inherit; -webkit-tap-highlight-color:transparent}
    very bottom with 516px of dead cream between them. Every other break screen
    has a BOUNDED hero (the sun, 190-240px), which is what lets .kq-centercol
    actually centre the cluster. A bounded height restores that and still leaves
-   the vertical leg 5.6deg on a phone and 9.1deg on a desktop, well over the 4deg
-   floor, with the diagonal still clamped to 30deg.
+   the vertical leg ~4.9deg on a phone and ~7.2deg on a desktop, well over the 4deg
+   floor, with the diagonal still clamped to 30deg. The cap is expressed in
+   DEGREES (9.2 * --px-per-deg), not a fixed 330px: in the near context (ppd 36)
+   it still resolves to ~331px, unchanged, but a fixed 330px cap broke the far/TV
+   context - there the ball is 2deg = 2*ppd, and at 1920px a 330px field dropped
+   the vertical leg to 2.6deg, under the 4deg floor. A degree cap scales with the
+   ball, holding the far-context leg at a constant ~7.2deg.
    align-self and min-height are both load-bearing: an empty div in a centred
    flex column has zero width, and without min-height:0 the column will not let
    it shrink on a short viewport. Do NOT use cqh here - #app is
    container-type:inline-size, so cqh does not resolve against it. */
-.kq-followfield{flex:0 0 auto; align-self:stretch; height:min(64cqw,330px);
+.kq-followfield{flex:0 0 auto; align-self:stretch; height:min(64cqw, calc(var(--px-per-deg) * 9.2px));
   position:relative}
 #screen-follow .kq-centercol{gap:20px}
 .kq-followsun{position:absolute; left:50%; top:50%; width:min(30cqw,132px);
-  transform:translate(-50%,-50%) scale(.6); opacity:0; pointer-events:none;
+  translate:-50% -50%; scale:.6; opacity:0; pointer-events:none;
   transition:opacity .3s ease}
 #screen-follow.celebrate .kq-followsun{opacity:1; animation:pop .55s ease-out forwards}
 #screen-follow.celebrate .ring1{animation:ringout .9s ease-out}

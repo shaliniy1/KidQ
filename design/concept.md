@@ -40,7 +40,7 @@ no code yet. Working prototype being built in Figma.
    3 videos · 25 min").
 3. **Watch** — child gets autonomy *inside* the boundary: one tap starts
    the day; the queue advances itself; the ending is always visible.
-4. **Stop** — no autoplay, ever. The session ends the way a day ends:
+4. **Stop** — no autoplay past the last video, ever. The session ends the way a day ends:
    sun sets, moon rises, "All done for today!", high five, and the
    parent-set next step ("Now: blocks with Dadi 🧱").
 

@@ -682,6 +682,7 @@
     followDots.forEach((d) => d.classList.remove("on"));
     followBall.classList.remove("gone");
     followScreen.classList.remove("celebrate");
+    $("#follow-headline").textContent = "Follow the ball!";
     showScreen("screen-follow");
     hold(() => say("Follow the ball! Keep your head still, just your eyes."), 600);
     let i = 0;
