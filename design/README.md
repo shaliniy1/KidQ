@@ -40,6 +40,7 @@ screen time rather than extend it.
 | Playtime | Seam into a break |
 | Break: breathe | Three slow breaths with the sun |
 | Break: find 3 | Find three things of one colour in the room |
+| Break: follow the sun | Track the sun with your eyes and catch it, three times |
 | After-break choice | Tap the sun for next, or pick any remaining video |
 | Sunset → All done | High five, then what's next |
 | No session | "The sun is still asleep" — deliberately no child CTA |
