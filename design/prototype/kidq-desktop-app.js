@@ -792,7 +792,7 @@
   function startFollow() {
     applyContext();
     followDots.forEach((d) => d.classList.remove("on"));
-    followHero.classList.remove("gone");
+    followHero.classList.remove("gone", "tapped");
     followScreen.classList.remove("celebrate");
     // A resize or motion-toggle restart can arrive mid-landing: clear the catch
     // state so a stale onCatch can never fire against the new run.
@@ -811,6 +811,12 @@
     const r = followField.getBoundingClientRect();
     const d = followHero.getBoundingClientRect().width;
     placeHidden({ x: (r.width - d) / 2, y: (r.height - d) / 2 }, () => {
+      // .celebrate and .tapped's rules tie at CSS specificity (final review
+      // M1): if pop()'s own 950ms cleanup hadn't already removed .tapped by
+      // now, the later .celebrate rule wouldn't win, and the pop wouldn't
+      // (re)start. Removing it here makes that explicit instead of relying on
+      // timing that happened to work out.
+      followHero.classList.remove("tapped");
       followScreen.classList.add("celebrate");
       $("#follow-headline").innerHTML = '<span class="m-full">You did it! ✨</span><span class="m-reduced">You did it! ✨</span>';
       sayLine($("#voice-follow-done"), "You did it!");

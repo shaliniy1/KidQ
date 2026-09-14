@@ -469,7 +469,13 @@ button{font-family:inherit; -webkit-tap-highlight-color:transparent}
 .kq-fsun.landed .ring1{animation:catchpulse 1.4s ease-out infinite}
 @keyframes catchpulse{0%{transform:scale(.85); opacity:0}
   35%{opacity:.85}100%{transform:scale(1.3); opacity:0}}
-/* the hero celebrates itself - no separate sun pops in */
+/* the hero celebrates itself - no separate sun pops in. This rule and .tapped
+   below tie at specificity (1,2,0), so if both classes were ever present at
+   once the LATER rule (.tapped, being declared after) would win and the
+   celebration pop would silently not (re)start - same animation, so no value
+   change to trigger it. endFollow() (js) removes .tapped itself before adding
+   .celebrate so the two are never simultaneous; this comment is the guard
+   against "clean up" removing that line as redundant (final review M1). */
 #screen-follow.celebrate .kq-fsun{animation:pop .55s ease-out}
 /* pop() adds .tapped; every screen scopes its own rule for it (css:361-363) */
 #screen-follow .kq-fsun.tapped{animation:pop .55s ease-out}
