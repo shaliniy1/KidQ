@@ -418,6 +418,13 @@ button{font-family:inherit; -webkit-tap-highlight-color:transparent}
 /* Landing: rays out (Task 8), ring pulses "catch me", and only now is the sun
    a pointer target. The pulse reuses the ringout vocabulary as a loop. */
 .kq-fsun.landed{cursor:pointer}
+/* A child aims at what they see, not at the 72px disc underneath it: the rays
+   ARE the "catch me!" art, up to 1.8x the disc, and pointer-events:none on
+   them (css:409) meant a tap on a ray - or the empty gaps between rays,
+   still inside the svg's own box - hit the field behind the sun instead of
+   the button. Scoped to .landed only: during a glide the rays are
+   display:none anyway, so this never widens the pursuit target. */
+.kq-fsun.landed .frays{pointer-events:auto}
 .kq-fsun.landed .ring1{animation:catchpulse 1.4s ease-out infinite}
 @keyframes catchpulse{0%{transform:scale(.85); opacity:0}
   35%{opacity:.85}100%{transform:scale(1.3); opacity:0}}
