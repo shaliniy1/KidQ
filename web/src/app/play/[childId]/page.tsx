@@ -7,19 +7,33 @@
  * target for P7a's "Start session" action, and shows the real assembled
  * queue (read from the sessionStorage bridge P7a wrote) so the full
  * Session Assembly pipeline is visibly provable end-to-end, not just a
- * blank landing page.
+ * blank landing page. It also calls the real session-log ingestion
+ * endpoint (ticket 09) on "End session" — standing in for the real Child
+ * Player, which would call it automatically when a session actually ends.
  */
 
-import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import type { User } from "firebase/auth";
+import { onAuthChange } from "@/services/auth";
+import { logSessionOutcome } from "@/services/inbox";
 import type { AssembledSession } from "@/types/session";
+import type { SessionOutcome } from "@/types/inbox";
+import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
 
 export default function ChildPlayerStub() {
+  const router = useRouter();
   const params = useParams<{ childId: string }>();
   const [session, setSession] = useState<AssembledSession | null>(null);
+  const [logging, setLogging] = useState(false);
+  const userRef = useRef<User | null>(null);
 
   useEffect(() => {
+    const unsubscribe = onAuthChange((user) => {
+      userRef.current = user;
+    });
+
     // sessionStorage is only readable client-side, so this can't be
     // computed during render/SSR — genuinely needs an effect. Deferred
     // past a microtask (matching the async-fetch pattern the rest of this
@@ -34,7 +48,20 @@ export default function ChildPlayerStub() {
         // no session to show — fine, this is a stub
       }
     })();
+
+    return unsubscribe;
   }, [params.childId]);
+
+  async function handleEndSession(outcome: SessionOutcome) {
+    if (!session || !userRef.current) return;
+    setLogging(true);
+    try {
+      await logSessionOutcome(userRef.current, params.childId, session, outcome);
+      router.push("/inbox");
+    } finally {
+      setLogging(false);
+    }
+  }
 
   return (
     <main style={{ minHeight: "100vh", display: "flex", justifyContent: "center", padding: "24px" }}>
@@ -44,7 +71,8 @@ export default function ChildPlayerStub() {
         </h1>
         <p style={{ color: "var(--kq-text-secondary)", fontSize: "var(--kq-text-caption)" }}>
           The child-facing player is an existing, unchanged screen outside this build&apos;s
-          scope — this is a stand-in so the assembled queue can be verified.
+          scope — this is a stand-in so the assembled queue and the session-end flow can be
+          verified.
         </p>
 
         {!session && <p style={{ color: "var(--kq-text-secondary)" }}>No session data found.</p>}
@@ -76,6 +104,15 @@ export default function ChildPlayerStub() {
                 ))}
               </div>
             ))}
+
+            <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
+              <Button variant="primary" disabled={logging} onClick={() => handleEndSession("completed")}>
+                {logging ? "…" : "End session (completed)"}
+              </Button>
+              <Button variant="secondary" disabled={logging} onClick={() => handleEndSession("exited")}>
+                End early
+              </Button>
+            </div>
           </>
         )}
       </Card>

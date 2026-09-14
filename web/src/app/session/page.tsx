@@ -251,12 +251,20 @@ export default function StartSessionPage() {
           {phase === "starting" ? "Starting…" : "Start session"}
         </Button>
 
-        <button
-          onClick={() => router.push(`/hub/${selectedChild.id}`)}
-          style={{ background: "none", border: "none", color: "var(--kq-text-secondary)", textDecoration: "underline", cursor: "pointer", padding: 8, fontSize: "var(--kq-text-caption)" }}
-        >
-          Change content preferences
-        </button>
+        <div style={{ display: "flex", justifyContent: "space-between" }}>
+          <button
+            onClick={() => router.push(`/hub/${selectedChild.id}`)}
+            style={{ background: "none", border: "none", color: "var(--kq-text-secondary)", textDecoration: "underline", cursor: "pointer", padding: 8, fontSize: "var(--kq-text-caption)" }}
+          >
+            Change content preferences
+          </button>
+          <button
+            onClick={() => router.push("/inbox")}
+            style={{ background: "none", border: "none", color: "var(--kq-text-secondary)", textDecoration: "underline", cursor: "pointer", padding: 8, fontSize: "var(--kq-text-caption)" }}
+          >
+            🔔 Notifications
+          </button>
+        </div>
       </Card>
     </main>
   );
