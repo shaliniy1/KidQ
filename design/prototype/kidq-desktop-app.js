@@ -255,27 +255,20 @@
 
   /* ---------- sun-on-arc positioning (Q bezier of the arc svg) ---------- */
   function positionSun(el, p) {
-    // t=0.06 put the sun's centre only ~16-24 SVG units above the horizon
-    // line at p=0/1, far less than the sun's own radius, so it visibly
-    // overlapped the line at the start and end of every session. A design
-    // review then found the real constraint was worse than the line: the
-    // wide tier's #screen-watching.wide content was leaking a top:92px
-    // (OPEN-ITEMS item 37) that put the video player's own box inside the
-    // arc's territory, so the sun's lower rays were being sliced by the
-    // player card, not just brushing a line - and a first attempt to fix
-    // the line clearance alone (0.37/0.26) crushed the curve so close to
-    // its own t=0.5 vertex that the sun barely rose between session start
-    // and midday. Fixed properly instead: the horizontal line is gone
-    // (it added nothing a calmer design review didn't already flag - flat
-    // colour that vanished on the dawn sky and clashed on dusk, and the
-    // player's own rounded top edge already read as the real horizon), the
-    // leaked top:92px is reset back to 148px, and this offset now targets
-    // that restored 148px boundary instead of the old line. 0.22/0.56
-    // clears it with margin, keeps the p=0.5 midday peak exactly where it
-    // was (0.22 and 1-0.22 stay symmetric around 0.5, same as the old
-    // 0.06/0.94), and recovers most of the horizontal sweep the first
-    // attempt gave up (~53% of the sky's width, not ~28%).
-    const t = 0.25 + p * 0.50;
+    // History: t=0.06 overlapped the horizon line (since removed); a fix
+    // targeting the line alone (0.37/0.26) turned out to still overlap the
+    // video player's own top edge and had nearly flattened the sun's rise
+    // to midday; 0.25/0.50 fixed both against the wide tier's then-92px
+    // sun and 150px arc. Retuned again for the wide tier's shallower arc
+    // (150px->80px) and smaller sun (92px->44px, kidq-desktop-app.css
+    // #screen-watching.wide block) - matching KidQ's own deployed
+    // early-access build, which uses a shallow arc + small sun that barely
+    // competes with the player for height. 0.22/0.56 clears the smaller
+    // sun against the shorter arc with margin, keeps the p=0.5 midday peak
+    // exactly where it was (0.22 and 1-0.22 stay symmetric around 0.5,
+    // same as every version before this), and recovers most of the
+    // horizontal sweep (~53% of the sky's width, not ~28%).
+    const t = 0.22 + p * 0.56;
     const bx = (1 - t) * (1 - t) * 30 + 2 * (1 - t) * t * 500 + t * t * 970;
     const by = (1 - t) * (1 - t) * 215 + 2 * (1 - t) * t * 5 + t * t * 215;
     el.style.left = (bx / 1000 * 100) + "%";

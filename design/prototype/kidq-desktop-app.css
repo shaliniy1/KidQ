@@ -780,18 +780,20 @@ button{font-family:inherit; -webkit-tap-highlight-color:transparent}
      with ID+class+class specificity, which beats this tier's plain-class
      rules regardless of source order - so once wide became the default
      state rather than an opt-in toggle, those tablet values leaked into
-     this 1100px+ tier too (OPEN-ITEMS item 37). Two of the leaked values
-     (arcwrap height, content top) pushed the player's own box up into the
-     arc's territory - not just tight against the sun, genuinely overlapping
-     it, confirmed by a design review. Reset those two back to this tier's
-     own intended values (matching the plain, non-wide rules just above),
-     and give --playerw a fresh, deliberately-budgeted big-player formula
-     instead of inheriting the leaked one - the leaked formula's height
-     budget (100vh-305) assumed the leaked top:92px; restoring top:148px
-     needs 56px more reserved, so the budget becomes 100vh-361. */
-  #screen-watching.wide .kq-arcwrap{height:150px}
-  #screen-watching.wide .kq-content{top:148px; gap:11px;
-    --playerw:min(88cqw, 1040px, max(440px, calc((100vh - 361px) * 16 / 9)))}
+     this 1100px+ tier too (OPEN-ITEMS item 37, resolved). Give this tier
+     its own deliberate values instead of inheriting anything by accident.
+     Shrunk the arc/sun deliberately (not just resetting the leak) to match
+     KidQ's own deployed early-access build, which uses a shallow arc and a
+     small sun that barely competes with the player for vertical room -
+     the sun here goes from 92px to 44px, the arc from 150px to 80px, which
+     frees real height for --playerw's budget (298, not 361 - the arc used
+     to need 63px more headroom than it does now). positionSun() (js) was
+     retuned to match this shallower geometry in the same pass. */
+  #screen-watching.wide .kq-arcwrap{height:80px}
+  #screen-watching.wide .kq-sun{width:44px; height:44px}
+  #screen-watching.wide .kq-timeleft{top:53px}
+  #screen-watching.wide .kq-content{top:85px; gap:11px;
+    --playerw:min(88cqw, 1040px, max(440px, calc((100vh - 298px) * 16 / 9)))}
   .kq-bigpause{width:84px; height:84px}
   .kq-whotitle{font-size:46px}
   .kq-whorow{gap:56px}
