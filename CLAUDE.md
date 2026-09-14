@@ -40,7 +40,7 @@ Domain terms are in `CONTEXT.md`.
 ## Running and testing
 
 - **Tests**: `npm test -w api` needs local Postgres with a `kidq_test` database. Tests run on recorded fixtures (`api/test/fixtures`) and spend no YouTube or Gemini quota.
-- **Local auth**: with `AUTH_MODE=dev`, the API accepts `Bearer dev:<admin|parent>:<uuid>`. The admin app signs in with any email when the Supabase env vars are unset.
+- **Local auth**: with `AUTH_MODE=dev`, the API accepts `Bearer dev:<admin|parent>:<uuid>`. `npm run dev` turns it on unless `AUTH_MODE` is already set; QA and production run `start` and use Supabase. The admin app signs in with any email when the Supabase env vars are unset.
 - **Next.js types**: `LayoutProps` and `PageProps` are generated — run `npx next typegen` before a bare `tsc`. The root `npm run typecheck` does this.
 - **Env on Render**: `NEXT_PUBLIC_*` values are baked in at build time, so redeploy after changing them.
 
