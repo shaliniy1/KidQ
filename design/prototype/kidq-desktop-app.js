@@ -255,7 +255,22 @@
 
   /* ---------- sun-on-arc positioning (Q bezier of the arc svg) ---------- */
   function positionSun(el, p) {
-    const t = 0.06 + p * 0.88;
+    // t=0.06 put the sun's centre only ~16-24 SVG units above the horizon
+    // line at p=0/1, far less than the sun's own radius, so it visibly
+    // overlapped the line at the start and end of every session. Worst
+    // real case: wide tier's 46px-radius sun (.kq-sun:764) against its
+    // arcwrap, which is only 110px tall there (not the 150px this tier
+    // otherwise implies) because #screen-watching.wide's tablet-only
+    // arcwrap override now applies here too, ever since wide mode became
+    // the default instead of an opt-in toggle - 46/110 needs ~43% of the
+    // arc's height in clearance. 0.37/0.26 clears that (and every looser
+    // tier/sun-size combination) with margin, while keeping the p=0.5
+    // midday peak exactly where it was (0.37 and 1-0.37 stay symmetric
+    // around 0.5, same as the old 0.06/0.94) - the trade-off is a smaller
+    // horizontal sweep (~28% of the sky's width instead of ~83%), which is
+    // the honest cost of clearing a sun this big against an arc this
+    // short, not something to silently minimise.
+    const t = 0.37 + p * 0.26;
     const bx = (1 - t) * (1 - t) * 30 + 2 * (1 - t) * t * 500 + t * t * 970;
     const by = (1 - t) * (1 - t) * 215 + 2 * (1 - t) * t * 5 + t * t * 215;
     el.style.left = (bx / 1000 * 100) + "%";
