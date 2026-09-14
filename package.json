@@ -18,7 +18,7 @@
     "build:web": "npm run build --workspace=web",
     "build:api": "npm run build --workspace=api",
     "typecheck": "npm run typecheck --workspace=api && npm run typecheck --workspace=admin && npx tsc -p packages/kidq-player && (cd web && npx next typegen && npx tsc --noEmit)",
-    "test": "npm run test --workspace=api"
+    "test": "npm run test --workspace=api && npm run test --workspace=web"
   },
   "devDependencies": {
     "concurrently": "^9.1.0"
