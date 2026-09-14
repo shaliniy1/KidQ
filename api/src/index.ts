@@ -16,6 +16,7 @@ import inboxRoutes from "./routes/inbox.routes";
 import feedbackRoutes from "./routes/feedback.routes";
 import excludeListRoutes from "./routes/exclude-list.routes";
 import myVideosRoutes from "./routes/my-videos.routes";
+import analyticsRoutes from "./routes/analytics.routes";
 
 const app = express();
 
@@ -36,6 +37,7 @@ app.use(inboxRoutes);
 app.use(feedbackRoutes);
 app.use(excludeListRoutes);
 app.use(myVideosRoutes);
+app.use(analyticsRoutes);
 
 app.listen(env.port, () => {
   console.log(`kidq-api listening on port ${env.port}`);
