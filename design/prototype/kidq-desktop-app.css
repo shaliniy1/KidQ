@@ -382,6 +382,12 @@ button{font-family:inherit; -webkit-tap-highlight-color:transparent}
 .kq-ball .eye{width:calc(var(--ball) * .13); height:calc(var(--ball) * .13);
   border-radius:50%; background:var(--cream); margin-top:calc(var(--ball) * -.08)}
 .kq-ball.gone{opacity:0}
+/* The field takes the column's leftover space rather than being given a height.
+   align-self and min-height are both load-bearing: an empty div in a centred
+   flex column has zero width, and without min-height:0 the column will not let
+   it shrink on a short viewport. Do NOT use cqh here - #app is
+   container-type:inline-size, so cqh does not resolve against it. */
+.kq-followfield{flex:1 1 auto; align-self:stretch; min-height:0; position:relative}
 #screen-follow .kq-centercol{gap:20px}
 
 /* ---------- after-break choice ---------- */
