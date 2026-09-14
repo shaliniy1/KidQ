@@ -592,6 +592,19 @@
   const followBall  = $("#follow-ball");
   const MIN_PASS_MS = 1600; // a shorter pass reads as a flicker, not as a target
 
+  // Corner-to-corner is NOT good enough for the diagonal: its angle is then at
+  // the mercy of the field's aspect ratio, and on a wide desktop field the
+  // diagonal flattens to ~23 degrees off horizontal - close enough to the first
+  // leg that it stops being a third direction. Clamp the horizontal extent so
+  // the angle is at least 30 degrees, and centre what remains. Narrow fields are
+  // untouched, since their diagonal is already steeper than 30.
+  const MIN_DIAGONAL_DEG = 30;
+  function diagonalLeg(maxX, maxY) {
+    const dx = Math.min(maxX, maxY / Math.tan(MIN_DIAGONAL_DEG * Math.PI / 180));
+    const off = (maxX - dx) / 2;
+    return { from: {x: off, y: maxY}, to: {x: off + dx, y: 0} };
+  }
+
   // Travel is the field's measured box minus one ball diameter, per axis.
   function legGeometry(dir) {
     const r = followField.getBoundingClientRect();
@@ -602,7 +615,7 @@
     const legs = {
       across:   { from: {x: 0,    y: midY}, to: {x: maxX, y: midY} },
       updown:   { from: {x: midX, y: 0   }, to: {x: midX, y: maxY} },
-      diagonal: { from: {x: 0,    y: maxY}, to: {x: maxX, y: 0   } }
+      diagonal: diagonalLeg(maxX, maxY)
     };
     const leg = legs[dir];
     leg.travel = Math.hypot(leg.to.x - leg.from.x, leg.to.y - leg.from.y);
