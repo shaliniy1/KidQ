@@ -433,13 +433,15 @@
   // after a short dip, with no tap. This is not feed autoplay - the list is
   // finite, parent-chosen, and still ends at sunset.
   //
-  // Breaks used to be the exception, needing a tap to come back from. They no
-  // longer are: the choice screen after a break advances on its own after a few
-  // seconds if the child does not act (tracker item 25). The break still
-  // interrupts - the activity and the choice screen are the interruption - but a
-  // child who does not realise it is their move is no longer stranded, and on a
-  // cast TV the device that can tap may not even be in the room. A tap still
-  // wins: it picks the video, and picking a card picks a different one.
+  // Breaks are still the exception: the choice screen after a break (startChoice,
+  // below) waits indefinitely for a tap and does not advance on its own. Adding
+  // that too, after a pause, is DECIDED but NOT YET BUILT - see OPEN-ITEMS.md
+  // item 25 for the full reasoning; it lives unreconciled on the separate
+  // design/autoplay-item25 branch (commit 9836604), not in this file (final
+  // review I2). Until it lands, a child who does not realise it is their move
+  // is stranded on the choice screen, and on a cast TV the device that can tap
+  // may not even be in the room. A tap still wins once it lands: it picks the
+  // video, and picking a card picks a different one.
   //
   // No jingle here: the jingle marks a child's choice, and this isn't one. If the
   // child taps a different card during the dip, their startWatching clears this
