@@ -9,6 +9,8 @@ export interface ChildProfile {
   mascotColor: MascotColorId;
   createdAt: string;
   ageBandAssignedAt: string;
+  lastUsedDurationMinutes: number | null;
+  lastTimeBandMode: "auto" | "morning" | "daytime" | "bedtime";
 }
 
 export interface CreateChildInput {

@@ -38,10 +38,25 @@ export async function createChildren(uid: string, inputs: CreateChildInput[]): P
         mascotColor: input.mascotColor,
         createdAt: now,
         ageBandAssignedAt: now,
+        lastUsedDurationMinutes: null,
+        lastTimeBandMode: "auto",
       };
       all[child.id] = child;
       created.push(child);
     }
   });
   return created;
+}
+
+/** Called whenever a session actually starts (ticket 07) — never shared across children. */
+export async function setLastUsedSessionChoices(
+  childId: string,
+  minutes: number,
+  timeBandMode: ChildProfile["lastTimeBandMode"]
+): Promise<void> {
+  await children.write((all) => {
+    const existing = all[childId];
+    if (!existing) return;
+    all[childId] = { ...existing, lastUsedDurationMinutes: minutes, lastTimeBandMode: timeBandMode };
+  });
 }

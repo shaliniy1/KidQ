@@ -23,6 +23,18 @@ export interface ChildProfile {
    * implemented yet.
    */
   ageBandAssignedAt: string;
+  /**
+   * Remembered independently per child, never shared (spec Section 4 point
+   * 0) — null until this child's first session is ever started.
+   */
+  lastUsedDurationMinutes: number | null;
+  /**
+   * Same tier as duration, not a curation-time setting (spec Section 9) —
+   * remembered per child until the parent changes it, not per browser (a
+   * browser-local preference would break for the second caregiver signing
+   * into the same shared account on their own device, spec Section 0).
+   */
+  lastTimeBandMode: "auto" | "morning" | "daytime" | "bedtime";
 }
 
 export interface CreateChildInput {
