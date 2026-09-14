@@ -618,6 +618,20 @@
   const DEG_BALL = 2, DEG_PER_SEC = 8, NEAR_PX_PER_DEG = 36, TV_ANGULAR_WIDTH = 26.8;
   const appEl = $("#app");
 
+  // data-context was never set anywhere, so pxPerDeg() always fell through to
+  // the near default (final review I4). Spec S3's `@media (hover:none) and
+  // (min-width:1100px)` can gate a stylesheet rule but not a dataset attribute
+  // a script reads - matchMedia is the same query, evaluated in JS, so it can
+  // actually flip the attribute. Re-checked on resize too: the query's own
+  // change event covers a TV browser's own resolution changes, but the
+  // existing resize listener is the belt-and-suspenders re-evaluation.
+  const farQuery = window.matchMedia("(hover: none) and (min-width: 1100px)");
+  function refreshContext() {
+    appEl.dataset.context = farQuery.matches ? "far" : "near";
+  }
+  refreshContext();
+  if (farQuery.addEventListener) farQuery.addEventListener("change", refreshContext);
+
   function pxPerDeg() {
     return appEl.dataset.context === "far"
       ? appEl.clientWidth / TV_ANGULAR_WIDTH
