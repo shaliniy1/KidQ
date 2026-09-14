@@ -265,6 +265,12 @@ export default function StartSessionPage() {
             Watched videos
           </button>
           <button
+            onClick={() => router.push("/videos")}
+            style={{ background: "none", border: "none", color: "var(--kq-text-secondary)", textDecoration: "underline", cursor: "pointer", padding: 8, fontSize: "var(--kq-text-caption)" }}
+          >
+            My Videos
+          </button>
+          <button
             onClick={() => router.push("/inbox")}
             style={{ background: "none", border: "none", color: "var(--kq-text-secondary)", textDecoration: "underline", cursor: "pointer", padding: 8, fontSize: "var(--kq-text-caption)" }}
           >

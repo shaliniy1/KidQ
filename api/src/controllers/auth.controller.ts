@@ -11,5 +11,9 @@ export async function createSession(req: Request, res: Response) {
   return res.json({
     onboardingComplete: account.onboardingComplete,
     email: account.email,
+    // Used for My Videos' "Picked by [Parent name]" tag (spec Section 7) —
+    // added here rather than a new endpoint since /auth/session already
+    // runs on every app load.
+    parentName: account.parentName,
   });
 }

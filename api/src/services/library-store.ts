@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { createJsonFileStore } from "../lib/json-file-store";
-import type { LibraryEntry } from "../types/library";
+import type { LibraryEntry, SubmissionStatus } from "../types/library";
 
 const library = createJsonFileStore<LibraryEntry>("library.json");
 
@@ -31,4 +31,32 @@ export async function addToLibrary(
     }
   });
   return created;
+}
+
+export async function removeFromLibrary(uid: string, entryId: string): Promise<boolean> {
+  let removed = false;
+  await library.write((all) => {
+    const existing = all[entryId];
+    if (!existing || existing.uid !== uid) return;
+    delete all[entryId];
+    removed = true;
+  });
+  return removed;
+}
+
+export async function setSubmissionStatus(entryId: string, status: SubmissionStatus): Promise<LibraryEntry | null> {
+  let result: LibraryEntry | null = null;
+  await library.write((all) => {
+    const existing = all[entryId];
+    if (!existing) return;
+    result = { ...existing, submissionStatus: status };
+    all[entryId] = result;
+  });
+  return result;
+}
+
+export async function getLibraryEntry(uid: string, entryId: string): Promise<LibraryEntry | null> {
+  const all = await library.readAll();
+  const entry = all[entryId];
+  return entry && entry.uid === uid ? entry : null;
 }

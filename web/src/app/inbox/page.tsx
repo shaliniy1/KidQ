@@ -14,11 +14,22 @@ const OUTCOME_LABELS: Record<string, string> = {
   exited: "Ended early",
 };
 
+function summaryFor(notification: InboxNotification): string {
+  switch (notification.type) {
+    case "session_complete":
+      return `Session finished — ${notification.payload.durationMinutes} min`;
+    case "submission_approved":
+      return `${notification.payload.title} was approved`;
+    case "submission_rejected":
+      return `Update on ${notification.payload.title}`;
+  }
+}
+
 /**
- * P8a Session-Complete Notification, rendered as an inbox — surfaced on
- * next app open (spec Section 5 / Table B #12), not a push notification.
- * Copy stays neutral and factual throughout, per spec's existing
- * behavioral-precaution rules.
+ * P8a Session-Complete Notification (+ P9b / P9b-reject, ticket 11),
+ * rendered as an inbox — surfaced on next app open (spec Section 5 /
+ * Table B #12), not a push notification. Copy stays neutral and factual
+ * throughout, per spec's existing behavioral-precaution rules.
  */
 export default function InboxPage() {
   const router = useRouter();
@@ -84,38 +95,51 @@ export default function InboxPage() {
 
         {notifications.map((notification) => {
           const isExpanded = expandedId === notification.id;
-          const { payload } = notification;
           return (
             <Card key={notification.id} style={{ cursor: "pointer" }} onClick={() => handleOpen(notification)}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <p style={{ fontWeight: notification.read ? 600 : 800, color: "var(--kq-charcoal)" }}>
                   {!notification.read && <span style={{ color: "var(--kq-saffron)" }}>● </span>}
-                  Session finished — {payload.durationMinutes} min
+                  {summaryFor(notification)}
                 </p>
                 <span style={{ fontSize: "var(--kq-text-caption)", color: "var(--kq-text-secondary)" }}>
                   {new Date(notification.createdAt).toLocaleDateString()}
                 </span>
               </div>
 
-              {isExpanded && (
+              {isExpanded && notification.type === "session_complete" && (
                 <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 6 }}>
                   <p style={{ fontSize: "var(--kq-text-caption)", color: "var(--kq-text-secondary)" }}>
-                    How it ended: {OUTCOME_LABELS[payload.outcome] ?? payload.outcome}
+                    How it ended: {OUTCOME_LABELS[notification.payload.outcome] ?? notification.payload.outcome}
                   </p>
                   <p style={{ fontSize: "var(--kq-text-caption)", fontWeight: 700, color: "var(--kq-charcoal)" }}>
                     Watched:
                   </p>
-                  {payload.watched.map((video, index) => (
+                  {notification.payload.watched.map((video, index) => (
                     <p key={index} style={{ fontSize: "var(--kq-text-caption)", color: "var(--kq-text-secondary)" }}>
                       {video.title} · {Math.round(video.durationSeconds / 60)} min
                     </p>
                   ))}
-                  {payload.thinPoolDisclosure && (
+                  {notification.payload.thinPoolDisclosure && (
                     <p style={{ fontSize: "var(--kq-text-caption)", color: "var(--kq-terracotta)", marginTop: 6 }}>
-                      {payload.thinPoolDisclosure}
+                      {notification.payload.thinPoolDisclosure}
                     </p>
                   )}
                 </div>
+              )}
+
+              {isExpanded && notification.type === "submission_approved" && (
+                <p style={{ marginTop: 10, fontSize: "var(--kq-text-caption)", color: "var(--kq-text-secondary)" }}>
+                  Thank you for the recommendation — {notification.payload.title} is now approved and may be
+                  suggested to other families too.
+                </p>
+              )}
+
+              {isExpanded && notification.type === "submission_rejected" && (
+                <p style={{ marginTop: 10, fontSize: "var(--kq-text-caption)", color: "var(--kq-text-secondary)" }}>
+                  We won&apos;t be suggesting {notification.payload.title} to other families right now. It&apos;s
+                  still available in your own library, unaffected.
+                </p>
               )}
             </Card>
           );

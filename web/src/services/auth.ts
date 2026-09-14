@@ -33,6 +33,7 @@ export function onAuthChange(callback: (user: User | null) => void): () => void 
 export interface SessionRouting {
   onboardingComplete: boolean;
   email: string | null;
+  parentName: string | null;
 }
 
 /**

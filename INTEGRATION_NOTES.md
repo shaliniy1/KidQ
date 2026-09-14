@@ -160,3 +160,54 @@ the real implementation needs to satisfy**, and **what swapping it in requires**
   for the frontend's expand-on-tap to render. The same swap point covers P9a's trust badge
   (ticket 11) and the P8 session-log badge (ticket 10) once those are built — all three
   consume the same engine output, so wiring it once here sets the pattern.
+- **Update (T11):** P9a's `POST /videos/detect` (`api/src/controllers/my-videos.controller.ts`)
+  now uses this exact same placeholder — `trustBadge: "Reviewed"`, no fabricated
+  per-dimension scores — confirming the "same swap point" prediction above.
+
+## 6. My Videos' Public-submission decision — Admin review queue is stubbed, not real
+
+- **Ticket:** T11 (My Videos + Add-a-Video + approval notifications, P9/P9a/P9b)
+- **File/module:** `api/src/controllers/my-videos.controller.ts`
+  (`postSimulateAdminDecision`); route `POST /library/:entryId/simulate-admin-decision`.
+- **What's faked and why:** The real Admin review queue (spec Table B #11) is owned by
+  the Admin flow, and ticket 11 itself instructs building "against a stub/mocked queue
+  until the contract is available" — so this is a deliberate, ticket-sanctioned stub, not
+  an undisclosed gap. A parent-facing "Also suggest this to other families" toggle sets a
+  library entry's `submissionStatus` to `"pending"`; a separate, parent-triggered endpoint
+  simulates the Admin decision (approve/reject) so the resulting P9b/P9b-reject inbox
+  notification path (ticket 09's inbox store) can be verified end-to-end without a real
+  Admin flow existing yet. In the real product this decision would arrive as a webhook/
+  callback *from* the Admin flow, never something the parent's own client triggers.
+- **Real contract:** Whatever hand-off contract the Admin flow settles on needs to reach
+  this backend as an inbound call carrying at minimum `{ libraryEntryId (or contentId),
+  decision: "approved" | "rejected" }`, authenticated as the Admin flow (not as the
+  submitting parent) — the current stub abuses `requireAuth` (the parent's own token) only
+  because nothing else exists yet to call it.
+- **To swap in:** Once the Admin flow's hand-off contract is confirmed (spec Section 10
+  item 7 territory — confirm this is being built as a separate component), add a new
+  endpoint (or webhook receiver) that authenticates the Admin flow itself, look up the
+  library entry by whatever identifier the contract uses, and call the same
+  `setSubmissionStatus` + `addNotification("submission_approved" | "submission_rejected",
+  ...)` pair this stub already calls. Delete `postSimulateAdminDecision`; nothing on the
+  frontend needs to change since it doesn't call that endpoint directly today (it's a
+  manual verification aid).
+
+## 7. YouTube Data API — env-var placeholder, not a real key
+
+- **Ticket:** T11 (My Videos + Add-a-Video, P9a)
+- **File/module:** `api/src/services/youtube.ts`; config surface: `api/.env.example`
+  (`YOUTUBE_DATA_API_KEY`).
+- **What's faked and why:** Same pattern as Firebase (#1 above) — the integration itself
+  is real (`fetchYouTubeMetadata` makes an actual call to
+  `googleapis.com/youtube/v3/videos`), but `YOUTUBE_DATA_API_KEY` is unset. Unlike the
+  scoring-engine gaps above, nothing here is faked with placeholder data: with the key
+  missing, `POST /videos/detect` returns `501 "YouTube Data API is not configured"` —
+  never fabricated video metadata. URL parsing (`extractYouTubeVideoId`, all 3 common
+  YouTube URL shapes) and ISO 8601 duration parsing were verified directly and work
+  correctly independent of the API key.
+- **Real contract:** `fetchYouTubeMetadata(videoId: string): Promise<{ videoId, title,
+  channel, thumbnailUrl, durationSeconds }>` — already the final shape; no changes needed
+  once a key is supplied.
+- **To swap in:** Get a YouTube Data API v3 key (Google Cloud Console → enable "YouTube
+  Data API v3" → Credentials → API key) and set `YOUTUBE_DATA_API_KEY` in `api/.env`. No
+  code changes — `fetchYouTubeMetadata` picks it up automatically.

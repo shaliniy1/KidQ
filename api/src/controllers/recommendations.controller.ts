@@ -66,6 +66,11 @@ export async function postAddToLibrary(req: Request, res: Response) {
       thumbnailUrl: record.thumbnail_url,
       embedUrl: record.embed_url,
       tag: "kidq_recommended" as const,
+      // KidQ-recommended entries never go through the parent Public-submission
+      // workflow (that's picked_by_parent-only, ticket 11) — no visibility/
+      // submission state applies to them.
+      visibility: "private" as const,
+      submissionStatus: "none" as const,
     }))
   );
 

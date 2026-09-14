@@ -1,5 +1,3 @@
-export type NotificationType = "session_complete" | "submission_approved" | "submission_rejected";
-
 export interface SessionCompletePayload {
   childId: string;
   durationMinutes: number;
@@ -9,11 +7,12 @@ export interface SessionCompletePayload {
   thinPoolDisclosure: string | null;
 }
 
-export interface InboxNotification {
-  id: string;
-  uid: string;
-  type: NotificationType;
-  payload: SessionCompletePayload; // widen to a union if other notification types add their own payload shape (tickets 11)
-  read: boolean;
-  createdAt: string;
+export interface SubmissionDecisionPayload {
+  title: string;
 }
+
+export type InboxNotification =
+  | { id: string; uid: string; type: "session_complete"; payload: SessionCompletePayload; read: boolean; createdAt: string }
+  | { id: string; uid: string; type: "submission_approved" | "submission_rejected"; payload: SubmissionDecisionPayload; read: boolean; createdAt: string };
+
+export type NotificationType = InboxNotification["type"];

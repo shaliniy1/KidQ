@@ -6,6 +6,8 @@
  * read/write this same store.
  */
 export type LibraryTag = "kidq_recommended" | "picked_by_parent" | "admin_approved_from_submission";
+export type LibraryVisibility = "private" | "public";
+export type SubmissionStatus = "none" | "pending" | "approved" | "rejected";
 
 export interface LibraryEntry {
   id: string;
@@ -18,5 +20,13 @@ export interface LibraryEntry {
   thumbnailUrl: string | null;
   embedUrl: string | null;
   tag: LibraryTag;
+  /**
+   * Default Private — usable by this family instantly, no admin approval
+   * needed (spec Section 7). Public means the parent asked to also suggest
+   * it to other families; never changes this family's own instant access.
+   */
+  visibility: LibraryVisibility;
+  /** "none" for anything never submitted publicly; "pending" until the Admin queue decides. */
+  submissionStatus: SubmissionStatus;
   addedAt: string;
 }
