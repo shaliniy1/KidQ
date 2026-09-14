@@ -221,9 +221,14 @@ under the App Router. Layout is driven by container queries on `#app` at three
 tiers, with one element inventory at every size.
 
 ### [ ] 17. Three more activity breaks
-Designed but not built: stand like a tree, count to 10 with eyes closed, follow
-me with your eyes. The cadence and rotation already support more entries with no
-other change.
+**"Follow me with your eyes" is done — shipped as follow the sun**, built on
+`design/follow-the-ball-break` (Tasks 1–10 plus the closing verification
+sweep) per `docs/superpowers/specs/2026-09-14-kidq-follow-the-ball-break-design.md`.
+Still designed but not built: stand like a tree, count to 10 with eyes closed.
+The cadence and rotation already support more entries with no other change.
+
+Building it surfaced follow-ups that were logged in the spec (sections 11 and
+13.7) but not yet tracked anywhere in this file — now items 26–35 below.
 
 ### [ ] 18. Decide: resume or restart a half-watched video
 Returning to a partly watched video currently restarts it at 0:00. Resuming
@@ -305,3 +310,78 @@ Implementation notes for whoever picks it up:
   other timer on that screen;
 - the wait wants tuning against a real child, not a number chosen at a desk;
   ~4s was the starting point discussed.
+
+---
+
+## Surfaced by follow the sun (item 17), not yet tracked elsewhere
+
+Logged in the follow-the-ball-break spec (sections 11 and 13.7) while building
+the break; none are fixed there, and none are fixed by this sweep.
+
+### [ ] 26. `brand.md:160` no longer matches what break screens render
+Documents an empty seat as a dashed circle (`r11`) during breaks. No break
+screen implements that — they are full-bleed sky. Correct the line to say so.
+
+### [ ] 27. `brand.md:214`'s instruction-voice example is stale
+Uses *"Keep your head still — follow me with your eyes!"* as the canonical
+instruction-voice example — this break's round-1 copy, before the §13
+redesign. The break now says "Follow the sun! / Keep your head still — just
+your eyes" (and "Where's the sun? / Find it each time it hops" under reduced
+motion). Update the example.
+
+### [ ] 28. The lean-back multiplier (~1.7×) is still missing
+Belongs in `brand.md` section 5 beside the tier table, scaling hero suns, the
+big pause and headlines for `far` context — not just this ball. **Load-bearing,
+not cosmetic:** until it lands, a `far`-context ball is larger than the find
+sun's 176px cap, a real hierarchy inversion confirmed again by this sweep's
+Step 2 (`heroVsFindSun` measured negative, not positive, at every tested `far`
+width in the current build — see task-7-report.md — meaning the inversion the
+spec predicted has not yet actually surfaced in measured geometry, but the
+missing multiplier is still the documented gap). Must land as one `--lean`
+custom property folded into existing formulas (`--lean: 1`,
+`[data-context=far] { --lean: 1.7 }`), never a parallel far-context table.
+
+### [ ] 29. Item 9 (casting) should be reframed
+Not "Cast vs. wrapper" but "which shim first, and who holds the tap": a custom
+Cast receiver is one HTML page on our HTTPS origin plus Google's framework
+script; Shalini's TV wrapper (`docs/api/README.md:101`) loads that same HTTPS
+URL. Both put our HTML on the television. Gated on one spike: does a YouTube
+embed play inside a Cast receiver.
+
+### [ ] 30. Item 15 (TV remote focus) has two concrete child-mode rules now
+Focus lands on the sun on entry wherever the sun is the action (Enter/Space
+fires the button's click — already implemented for follow the sun's landings);
+the after-break choice screen is the only child screen with several
+focusables. Blocking for the wrapper path only, not for Cast.
+
+### [ ] 31. Breathing's reduced-motion collapse
+Pre-existing, not introduced by this break: 19.2s of breathing becomes ~1.2s
+because its phase timers use `later()`, which clamps to 200ms under reduced
+motion. `hold()` (added for follow the sun, spec 9.2) is the fix; breathing
+itself is untouched.
+
+### [ ] 32. Breaks cannot be paused
+`.paused` reaches only watching (`js:414`) and cast (`js:676`); `css:22-23`
+freezes a six-selector allow-list a break element would not be in; no break
+screen has a pause control. Pre-existing, matters more on a television where a
+parent may want to interrupt.
+
+### [ ] 33. Item 13's device-voice premise weakens on television
+The device voice (item 13) was accepted for the MVP partly because it speaks
+whatever copy a break carries at runtime. Cast Web Receivers and the
+webOS/Tizen web engines generally ship no speech-synthesis voice, so on the
+device `concept.md:29` calls dominant, the app may speak nothing — nothing
+breaks (`sayLine`'s fallback chain degrades silently), but "spoken
+instructions" should not be counted on when designing any future break.
+
+### [ ] 34. Production licensing for the generated neural voice clips
+`proposal-src/voice-follow-intro.mp3` and `voice-follow-done.mp3` are
+generated (edge-tts) neural-voice output, prototype-only until licensing for
+production use is cleared.
+
+### [ ] 35. `brand.md`'s game-content-colours reasoning needs an outlined-gold-hero note
+The find-game colours section reasons about contrast from ink-on-fill. The
+SETTLE hero (follow the sun) is gold with no ink ring — contrast against the
+day sky is carried entirely by the amber rim outline (measured 3.9–4.7:1
+across the three day-sky stops, task-7-report.md). `brand.md` should note this
+second contrast mechanism exists alongside the ink-on-fill one.
