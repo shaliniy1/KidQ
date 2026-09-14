@@ -382,12 +382,20 @@ button{font-family:inherit; -webkit-tap-highlight-color:transparent}
 .kq-ball .eye{width:calc(var(--ball) * .13); height:calc(var(--ball) * .13);
   border-radius:50%; background:var(--cream); margin-top:calc(var(--ball) * -.08)}
 .kq-ball.gone{opacity:0}
-/* The field takes the column's leftover space rather than being given a height.
+/* The field is sized, NOT stretched. An earlier version used flex:1 1 auto so it
+   took all the column's leftover space - which fixed a too-flat field but ate the
+   whole screen, pinning the headline to the very top edge and the dots to the
+   very bottom with 516px of dead cream between them. Every other break screen
+   has a BOUNDED hero (the sun, 190-240px), which is what lets .kq-centercol
+   actually centre the cluster. A bounded height restores that and still leaves
+   the vertical leg 5.6deg on a phone and 9.1deg on a desktop, well over the 4deg
+   floor, with the diagonal still clamped to 30deg.
    align-self and min-height are both load-bearing: an empty div in a centred
    flex column has zero width, and without min-height:0 the column will not let
    it shrink on a short viewport. Do NOT use cqh here - #app is
    container-type:inline-size, so cqh does not resolve against it. */
-.kq-followfield{flex:1 1 auto; align-self:stretch; min-height:0; position:relative}
+.kq-followfield{flex:0 0 auto; align-self:stretch; height:min(70cqw,400px);
+  position:relative}
 #screen-follow .kq-centercol{gap:20px}
 .kq-followsun{position:absolute; left:50%; top:50%; width:min(30cqw,132px);
   transform:translate(-50%,-50%) scale(.6); opacity:0; pointer-events:none;
