@@ -417,7 +417,7 @@
     if (!watching.classList.contains("active")) return; // stray ended after a demo jump
     state.watched.add(state.current.id);
     renderStrip();
-    if (unwatched().length === 0) startSunset();
+    if (unwatched().length === 0) startSunset(false);
     else if (breakIsDue()) startPlaytimeSeam();
     else autoAdvance();
   });
@@ -465,9 +465,15 @@
   });
 
   /* ---------- sunset → all done ---------- */
-  function startSunset() {
+  // afterBreak: startChoice's empty-queue shortcut lands here immediately
+  // after a break's own ending (a chime for find/follow, a spoken line for
+  // breathing) - chiming again here restarted the same <audio> element mid-
+  // playback, or landed right on top of breathing's voice line (final review
+  // M6). The plain end-of-session path (video `ended` with nothing left) is
+  // the only place nothing has sounded yet, so it's the only path that chimes.
+  function startSunset(afterBreak) {
     watching.classList.add("setting");
-    safePlay(chime);
+    if (!afterBreak) safePlay(chime);
     later(startAllDone, 1500);
   }
 
@@ -836,7 +842,7 @@
     // would strand the child (its sun-tap would start undefined). The rule
     // lives HERE, not in the callers, so no break - present or future - can
     // reach a dead choice screen.
-    if (unwatched().length === 0) { startSunset(); return; }
+    if (unwatched().length === 0) { startSunset(true); return; }
     const p = sessionProgress();
     positionSun(choiceSun, p);
     $("#choice-time").textContent = minutesLeft(p) + " min left";
