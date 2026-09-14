@@ -330,15 +330,29 @@ your eyes" (and "Where's the sun? / Find it each time it hops" under reduced
 motion). Update the example.
 
 ### [ ] 28. The lean-back multiplier (~1.7×) is still missing
+**Measured (task-7-report.md, Step 2): no hierarchy inversion at any of the 8
+tested `far` widths.** Far hero diameter = `clientWidth/13.4` (2° × ppd, ppd =
+`clientWidth/26.8`) — 143px at a 1920px container, still under the find sun's
+176px cap at every tested width. The hero would only exceed that cap above
+**~2358px** container width (`176 × 13.4`) — a width this sweep did not test
+and that no realistic device hits today, so the inversion the spec originally
+predicted is not currently present.
+
+The multiplier stays open anyway, but on the spec's real ground: **angular
+size**, not a present pixel-overflow inversion. At a fixed 2° visual angle,
+the far-context sun subtends the same angle on a 43" TV at 2m regardless of
+container pixel width — pixel size vs. the find sun's cap is a proxy that
+just doesn't happen to trip yet at realistic container widths. The actual
+problem the multiplier fixes is that, without it, the far-context sun still
+reads *smaller in visual angle* than the near-context breathing/find suns do
+on their own devices (spec §11 item 3: ~2.9° on a 55" TV at 3m vs. ~4.9° on a
+phone, where `40cqw` binds under the 190px cap) — a real hierarchy problem
+independent of whether any single element's pixel size happens to cross
+another element's cap at today's tested widths.
+
 Belongs in `brand.md` section 5 beside the tier table, scaling hero suns, the
-big pause and headlines for `far` context — not just this ball. **Load-bearing,
-not cosmetic:** until it lands, a `far`-context ball is larger than the find
-sun's 176px cap, a real hierarchy inversion confirmed again by this sweep's
-Step 2 (`heroVsFindSun` measured negative, not positive, at every tested `far`
-width in the current build — see task-7-report.md — meaning the inversion the
-spec predicted has not yet actually surfaced in measured geometry, but the
-missing multiplier is still the documented gap). Must land as one `--lean`
-custom property folded into existing formulas (`--lean: 1`,
+big pause and headlines for `far` context — not just this ball. Must land as
+one `--lean` custom property folded into existing formulas (`--lean: 1`,
 `[data-context=far] { --lean: 1.7 }`), never a parallel far-context table.
 
 ### [ ] 29. Item 9 (casting) should be reframed
