@@ -167,6 +167,15 @@ Scale in use (size / weight / face):
   stays in flow above the sun, where it is a mode badge introducing the break.
   Never place either pill directly above a heading — that is the eyebrow
   pattern, which this design does not use.
+- **Break-screen suns:** three sizes, and the order between them is the point —
+  find `min(30cqw,132px)` < seam `min(34cqw,160px)` < breathing
+  `min(40cqw,190px)`. The breathing sun is largest because the child breathes
+  with it; the find sun is smallest because swatches share its screen. At the
+  desktop tier (container ≥1100px) they step to 176 / 208 / 240 so the break
+  screens grow as one piece with their headlines, keeping the same order.
+  **Set these in CSS, never inline on the element** — an inline width cannot be
+  overridden by a container query, which is how the find and seam suns came to
+  be the only things on those screens that never scaled.
 - **Player card:** 16:9, radius 24, soft shadow `0 12px 28px -16px
   rgba(46,42,36,.4)`, at (20, 310) width 350. Corner pause: 44 px cream
   circle, teal-deep icon, top-right 14,14. Playing bars: 3 teal bars

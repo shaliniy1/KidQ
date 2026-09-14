@@ -271,6 +271,11 @@ button{font-family:inherit; -webkit-tap-highlight-color:transparent}
   color:var(--ink); text-wrap:balance; min-height:1.2em}
 .kq-breathrow{display:flex; align-items:center; justify-content:center; gap:clamp(18px,6cqw,90px)}
 .kq-bsunwrap{position:relative; width:min(40cqw,190px); aspect-ratio:1; flex-shrink:0}
+/* The seam's sun is deliberately smaller than the breathing one. This was an
+   inline style, with the same consequence as the find sun: the seam's headline
+   grew at the desktop tier and its sun could not follow. It has to sit after
+   .kq-bsunwrap to narrow it - same specificity, so order decides. */
+.kq-ptsun{width:min(34cqw,160px)}
 .kq-bsunwrap .halo{inset:-30px;
   background:radial-gradient(circle, rgba(255,198,77,.45) 0%, rgba(255,198,77,0) 68%);
   animation:kq-halopulse 3s ease-in-out -1.5s infinite}
@@ -342,7 +347,12 @@ button{font-family:inherit; -webkit-tap-highlight-color:transparent}
 /* The sun itself is the "I found them" control, matching the sun-as-button used
    on sunrise and on the after-break choice screen. One tap target per screen,
    and it is the mascot the child is already looking at. */
-.kq-findsun{border:none; background:none; padding:0; cursor:pointer; display:block;
+/* Width lives here, not inline on the button. It was an inline style, which no
+   container query can override, so the sun stayed 132px at every size while the
+   headline and swatches around it grew - the one element on this screen that
+   never scaled, and it is also the button. */
+.kq-findsun{width:min(30cqw,132px);
+  border:none; background:none; padding:0; cursor:pointer; display:block;
   transition:transform .22s cubic-bezier(.34,1.56,.64,1)}
 .kq-findsun:hover:not(:disabled){transform:translateY(-3px) scale(1.04)}
 .kq-findsun:active:not(:disabled){transform:scale(.94)}
@@ -660,7 +670,18 @@ button{font-family:inherit; -webkit-tap-highlight-color:transparent}
   .kq-breathhead,.kq-findhead{font-size:38px}
   .kq-swatchrow{gap:22px}
   .kq-swatchrow i{width:64px; height:64px}
+  /* the sun and the sub-line take the same step the swatches do, so the game
+     scales as one piece. Capped: it stays the centred game it is on a phone,
+     not a wall of sun. */
+  .kq-findsun{width:min(30cqw,176px)}
+  .kq-findsub{font-size:19px}
   .kq-pthead{font-size:46px}
+  .kq-ptsun{width:min(34cqw,208px)}
+  /* the offline fallback sun, shown only when the Lottie doesn't load. Scaled
+     with the rest so the break screens grow as one piece either way, and so it
+     stays larger than the seam's sun, which is the relationship the base sizes
+     already set (40cqw/190 against 34cqw/160). */
+  #screen-breathing .kq-bsunwrap{width:min(40cqw,240px)}
 }
 
 /* ---------- reduced motion ---------- */
