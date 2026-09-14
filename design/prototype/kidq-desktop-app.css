@@ -433,6 +433,12 @@ button{font-family:inherit; -webkit-tap-highlight-color:transparent}
   border-bottom-width:calc(var(--ball) * .06);
   border-radius:0 0 50% 50% / 0 0 100% 100%}
 .kq-fsun.gone{opacity:0}
+/* Suppresses the translate transition while the sun repositions hidden
+   between legs - see the placeHidden() comment in the JS for why --sweep
+   alone isn't enough under reduced motion. Two classes beats .reduce-motion
+   *'s one class, so this !important wins in every motion mode; it's removed
+   again before opacity fades back in, so that transition is untouched. */
+.kq-fsun.jump{transition:none !important}
 /* Rays are a STATE, not a costume: display:none while gliding (a clean pursuit
    target, and display - not opacity or visibility - so the oversize svg adds no
    scrollable overflow to the field), out at landings and the celebration. */

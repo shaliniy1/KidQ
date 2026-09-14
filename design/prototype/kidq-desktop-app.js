@@ -760,9 +760,18 @@
   function placeHidden(pt, then) {
     followHero.classList.add("gone");
     hold(() => {
-      followHero.style.setProperty("--sweep", "0ms");
+      // --sweep:0ms alone can't reach a zero transition duration under
+      // reduced motion: .reduce-motion * forces transition-duration:.12s
+      // !important on everything, which outranks the custom property and
+      // turned this "instant while hidden" reposition into a real, if brief,
+      // glide - visible as a semi-transparent slide because the opacity
+      // fade-in below starts concurrently (final review I3). .jump has two
+      // classes against .reduce-motion *'s one, so its own !important wins
+      // regardless of motion mode.
+      followHero.classList.add("jump");
       placeHero(pt);
       followHero.offsetWidth;            // commit the jump before fading back in
+      followHero.classList.remove("jump");
       followHero.classList.remove("gone");
       hold(then, FADE_MS + BEAT_MS);
     }, FADE_MS);
