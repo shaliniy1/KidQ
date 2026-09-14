@@ -105,10 +105,6 @@ button{font-family:inherit; -webkit-tap-highlight-color:transparent}
   86%{transform:translateY(-3px) scale(1.07,.94)}100%{opacity:1; transform:none}}
 @keyframes deflate{to{opacity:0; transform:translateY(34px) scale(1.25,.55)}}
 @keyframes bob2{50%{transform:translateY(-9px) scale(1.02,.98)}}
-.spark{position:absolute; top:42%; left:54%; width:6px; height:6px; border-radius:50%;
-  background:var(--sun); opacity:0}
-#screen-splash.go .spark{animation:spark-pop 1.5s ease-out .9s}
-@keyframes spark-pop{20%{opacity:1}100%{opacity:0; transform:translateY(-34px) scale(.5)}}
 
 /* ---------- login (who's watching) ---------- */
 .kq-whotitle{font-family:var(--disp); font-weight:800; font-size:34px; line-height:1.1;
