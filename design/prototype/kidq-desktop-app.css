@@ -91,6 +91,10 @@ button{font-family:inherit; -webkit-tap-highlight-color:transparent}
 .balloon{position:relative; font-family:var(--disp); font-weight:800; font-size:clamp(66px,12cqw,120px);
   line-height:1; display:inline-block; opacity:0; -webkit-background-clip:text; background-clip:text;
   color:transparent; filter:drop-shadow(0 10px 14px rgba(46,42,36,.3))}
+.balloon-slot{position:relative; display:inline-flex; font-size:clamp(66px,12cqw,120px)}
+.seed{position:absolute; left:50%; top:50%; width:4px; height:4px; border-radius:50%;
+  background:#FAF4E8; opacity:0; transform:translate(-50%,-50%) scale(0)}
+.s1{opacity:1; transform:translate(-50%,-50%) scale(1)}
 #screen-splash.go .balloon{animation:inflate .95s cubic-bezier(.22,1,.36,1) both, bob2 3.4s ease-in-out 1.4s infinite}
 #screen-splash.go .b2{animation-delay:.12s, 1.55s}
 #screen-splash.go .b3{animation-delay:.24s, 1.7s}
