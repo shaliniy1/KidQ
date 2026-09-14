@@ -17,6 +17,7 @@ export interface SessionSlot {
 }
 
 export interface AssembledSession {
+  sessionId: string;
   childId: string;
   durationMinutes: number;
   breakIntervalMinutes: number;

@@ -21,3 +21,18 @@ export async function startSession(
     body: JSON.stringify({ durationMinutes, timeBandMode }),
   });
 }
+
+/**
+ * The real Child Player would call this the moment it actually receives/
+ * loads a queue (ticket 15) — the /play stub calls it on mount, since
+ * "the device has the queue" is implicitly true the moment that screen
+ * successfully renders the session data.
+ */
+export async function acknowledgeSync(user: User, childId: string, sessionId: string): Promise<void> {
+  const idToken = await user.getIdToken();
+  await apiFetch(`/children/${childId}/sync-ack`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${idToken}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ sessionId }),
+  });
+}

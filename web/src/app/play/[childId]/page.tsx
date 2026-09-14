@@ -17,6 +17,7 @@ import { useParams, useRouter } from "next/navigation";
 import type { User } from "firebase/auth";
 import { onAuthChange } from "@/services/auth";
 import { logSessionOutcome } from "@/services/inbox";
+import { acknowledgeSync } from "@/services/session";
 import type { AssembledSession } from "@/types/session";
 import type { SessionOutcome } from "@/types/inbox";
 import { Button } from "@/components/Button";
@@ -48,6 +49,14 @@ export default function ChildPlayerStub() {
           const parsed = JSON.parse(raw) as AssembledSession & { outsideScheduledWindow?: boolean };
           setSession(parsed);
           setOutsideScheduledWindow(Boolean(parsed.outsideScheduledWindow));
+          // "The device has the queue" is implicitly true the moment this
+          // screen successfully renders it — the real Child Player would
+          // call this the moment it actually loads a queue (ticket 15).
+          if (userRef.current) {
+            acknowledgeSync(userRef.current, params.childId, parsed.sessionId).catch(() => {
+              // best-effort — a failed ack just leaves the sync record "pending"
+            });
+          }
         }
       } catch {
         // no session to show — fine, this is a stub

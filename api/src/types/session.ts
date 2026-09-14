@@ -18,6 +18,8 @@ export interface SessionSlot {
 }
 
 export interface AssembledSession {
+  /** Unique per assembly — the join key device-sync tracking (ticket 15) uses to know which queue it's acknowledging. */
+  sessionId: string;
   childId: string;
   durationMinutes: number;
   breakIntervalMinutes: number;

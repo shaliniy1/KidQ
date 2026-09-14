@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { getCandidates } from "./content-catalog";
 import type { AgeBand } from "../types/parent-config";
 import type { BreakType, ContentMixMode } from "../types/curation-settings";
@@ -113,6 +114,7 @@ export async function assembleSession(input: AssembleSessionInput): Promise<Asse
   }
 
   return {
+    sessionId: randomUUID(),
     childId: input.childId,
     durationMinutes: input.durationMinutes,
     breakIntervalMinutes: input.breakIntervalMinutes,
