@@ -564,7 +564,7 @@
     later(startChoice, 1900);
   });
 
-  /* --- SETTLE: follow the ball with your eyes --- */
+  /* --- SETTLE: follow the sun with your eyes --- */
   /* The clinical evidence for smooth pursuit is in DEGREES OF VISUAL ANGLE, so
      the design holds degrees constant and lets pixels fall out. Holding pixels
      constant cannot hold degrees constant: both pixel density and viewing
@@ -593,7 +593,7 @@
   }
 
   const followField = $("#follow-field");
-  const followBall  = $("#follow-ball");
+  const followHero  = $("#follow-hero");
   const followScreen = $("#screen-follow");
   const MIN_PASS_MS = 1600; // a shorter pass reads as a flicker, not as a target
 
@@ -613,7 +613,7 @@
   // Travel is the field's measured box minus one ball diameter, per axis.
   function legGeometry(dir) {
     const r = followField.getBoundingClientRect();
-    const d = followBall.getBoundingClientRect().width;
+    const d = followHero.getBoundingClientRect().width;
     const maxX = Math.max(0, r.width  - d);
     const maxY = Math.max(0, r.height - d);
     const midX = maxX / 2, midY = maxY / 2;
@@ -635,13 +635,13 @@
     return Math.max(MIN_PASS_MS, (travel / (DEG_PER_SEC * pxPerDeg())) * 1000);
   }
 
-  function placeBall(pt) {
-    followBall.style.transform = `translate(${pt.x}px, ${pt.y}px)`;
+  function placeHero(pt) {
+    followHero.style.translate = `${pt.x}px ${pt.y}px`;
   }
 
   function movePass(to, ms) {
-    followBall.style.setProperty("--sweep", ms + "ms");
-    placeBall(to);
+    followHero.style.setProperty("--sweep", ms + "ms");
+    placeHero(to);
     return ms;
   }
 
@@ -650,17 +650,17 @@
   const FADE_MS = 300, BEAT_MS = 400;
   const STILL_HOLD_MS = 2000;
 
-  // The ball ends each leg where it began, so it must be repositioned for the
+  // The sun ends each leg where it began, so it must be repositioned for the
   // next one. A jump cut reads as a glitch and breaks the pursuit; an untracked
   // glide is a fourth direction the child will try to follow. So: fade out,
   // reposition while invisible, fade in, beat.
   function placeHidden(pt, then) {
-    followBall.classList.add("gone");
+    followHero.classList.add("gone");
     hold(() => {
-      followBall.style.setProperty("--sweep", "0ms");
-      placeBall(pt);
-      followBall.offsetWidth;            // commit the jump before fading back in
-      followBall.classList.remove("gone");
+      followHero.style.setProperty("--sweep", "0ms");
+      placeHero(pt);
+      followHero.offsetWidth;            // commit the jump before fading back in
+      followHero.classList.remove("gone");
       hold(then, FADE_MS + BEAT_MS);
     }, FADE_MS);
   }
@@ -680,11 +680,11 @@
   function startFollow() {
     applyContext();
     followDots.forEach((d) => d.classList.remove("on"));
-    followBall.classList.remove("gone");
+    followHero.classList.remove("gone");
     followScreen.classList.remove("celebrate");
-    $("#follow-headline").innerHTML = '<span class="m-full">Follow the ball!</span><span class="m-reduced">Where\'s the ball?</span>';
+    $("#follow-headline").innerHTML = '<span class="m-full">Follow the sun!</span><span class="m-reduced">Where\'s the sun?</span>';
     showScreen("screen-follow");
-    hold(() => say("Follow the ball! Keep your head still, just your eyes."), 600);
+    hold(() => say("Follow the sun with your eyes. Tap it when it stops!"), 600);
     let i = 0;
     const next = () => { i += 1; if (i < FOLLOW_LEGS.length) runLeg(i, next); else endFollow(); };
     runLeg(0, next);
@@ -692,7 +692,7 @@
 
   function endFollow() {
     const r = followField.getBoundingClientRect();
-    const d = followBall.getBoundingClientRect().width;
+    const d = followHero.getBoundingClientRect().width;
     placeHidden({ x: (r.width - d) / 2, y: (r.height - d) / 2 }, () => {
       hold(() => {
         followScreen.classList.add("celebrate");

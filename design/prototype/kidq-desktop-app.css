@@ -366,37 +366,57 @@ button{font-family:inherit; -webkit-tap-highlight-color:transparent}
   color-mix(in srgb, var(--find-colour,#FFC64D) 55%, transparent) 0%, transparent 70%)}
 #screen-find.celebrate .kq-findhead{animation:pop .7s cubic-bezier(.34,1.56,.64,1)}
 
-/* ---------- SETTLE: follow the ball ---------- */
-/* Ink, not a game colour: pursuit accuracy rises with contrast, and ink on the
-   day sky measures 11.1:1 against the game palette's 3.02-4.24:1. The gloss is
-   the splash balloons' idiom (css:99-102) rebuilt for a disc in ink - there is
-   no ink balloon to reuse. */
-/* The ball is a CHARACTER, not a disc. Every other break hero on this app has a
-   face and a halo - the sun has rays, two eyes, a smile and a warm glow - and a
-   bare gradient circle with two dots reads as a hole punched in the sky rather
-   than as something alive. It gets the same vocabulary: a face, and a warm halo
-   that seats it in the sky instead of cutting through it.
+/* ---------- SETTLE: follow the sun ---------- */
+/* The hero IS the sun - "the sun comes down to play" is the break concept, and
+   the tap target on every other screen. Contrast for pursuit is carried by the
+   RIM: the gold fill alone is ~1.9:1 against the pale sky, under the 3:1
+   moving-object floor. A pure ink ring measured 11.1:1 but read as a hard
+   black boundary on the gold disc (user call, 2026-09-14), so the rim is a
+   warm deep-amber mix instead - the sun's own shaded edge, not an outline
+   drawn on top of it - which still clears the floor at ~4.6:1 against the
+   lightest sky stop and ~3.5:1 against the darkest. box-sizing is border-box
+   (css:12), so the rim sits INSIDE the 2-degree diameter.
+   Positioning uses the `translate` PROPERTY, never `transform`: the catch pop
+   and the celebration animate `transform` (scale), and an animation on
+   transform clobbers a transform-based position - the exact defect Task 5's
+   review caught on the old celebration sun.
    The halo is a glow, never a cast shadow: a shadow implies a floor, and this
-   ball is in mid-air. Gold, so it belongs to the same world as the sun. */
-.kq-ball{position:absolute; left:0; top:0; border-radius:50%;
-  width:var(--ball); height:var(--ball);
+   sun is in the sky. */
+.kq-fsun{position:absolute; left:0; top:0; border-radius:50%;
+  width:var(--ball); height:var(--ball); padding:0; cursor:default;
   display:flex; align-items:center; justify-content:center; gap:calc(var(--ball) * .15);
   background:radial-gradient(circle at 32% 24%,
-    #7A7264 0%, #574F45 26%, #3A352E 58%, #2E2A24 82%, #221F1A 100%);
+    #FFE3A1 0%, #FFC64D 34%, #F5B03A 66%, #F0A72E 84%, #DB921F 100%);
+  border:max(2px, calc(var(--ball) * .07)) solid color-mix(in srgb, var(--sun-deep) 50%, var(--ink));
   box-shadow:0 0 0 calc(var(--ball) * .10) color-mix(in srgb, var(--sun-deep) 16%, transparent),
              0 0 calc(var(--ball) * .42) calc(var(--ball) * .10) color-mix(in srgb, var(--sun-deep) 20%, transparent);
-  transition:transform var(--sweep, 2s) ease-in-out, opacity .3s ease;
-  will-change:transform}
-.kq-ball .eye{width:calc(var(--ball) * .14); height:calc(var(--ball) * .14);
-  border-radius:50%; background:var(--cream); margin-top:calc(var(--ball) * -.10)}
-/* the smile, drawn the way the sun's is: an arc, cream on ink, below the eyes */
-.kq-ball::after{content:""; position:absolute; left:50%; top:54%;
+  transition:translate var(--sweep, 2s) ease-in-out, opacity .3s ease;
+  will-change:translate}
+.kq-fsun .eye{width:calc(var(--ball) * .12); height:calc(var(--ball) * .12);
+  border-radius:50%; background:var(--ink); margin-top:calc(var(--ball) * -.10)}
+/* the smile, the same arc every sun face wears - ink on gold now */
+.kq-fsun::after{content:""; position:absolute; left:50%; top:54%;
   width:calc(var(--ball) * .38); height:calc(var(--ball) * .19);
   transform:translateX(-50%);
-  border:0 solid var(--cream);
+  border:0 solid var(--ink);
   border-bottom-width:calc(var(--ball) * .06);
   border-radius:0 0 50% 50% / 0 0 100% 100%}
-.kq-ball.gone{opacity:0}
+.kq-fsun.gone{opacity:0}
+/* Rays are a STATE, not a costume: display:none while gliding (a clean pursuit
+   target, and display - not opacity or visibility - so the oversize svg adds no
+   scrollable overflow to the field), out at landings and the celebration. */
+.kq-fsun .frays{display:none; position:absolute; inset:calc(var(--ball) * -.4);
+  pointer-events:none}
+.kq-fsun .frays line{stroke:var(--sun-deep); stroke-width:3.4; stroke-linecap:round}
+.kq-fsun.landed .frays, #screen-follow.celebrate .frays{display:block;
+  animation:raysin .3s ease-out}
+@keyframes raysin{0%{transform:scale(.55); opacity:0}100%{transform:scale(1); opacity:1}}
+/* the ring: base geometry here; ringout on celebrate is already at css:424,
+   and Task 9 adds the landing pulse on the same span */
+#screen-follow .ring1{position:absolute; inset:-12%; border-radius:50%;
+  border:3px solid var(--sun); opacity:0; pointer-events:none}
+/* the hero celebrates itself - no separate sun pops in */
+#screen-follow.celebrate .kq-fsun{animation:pop .55s ease-out}
 /* The field is sized, NOT stretched. An earlier version used flex:1 1 auto so it
    took all the column's leftover space - which fixed a too-flat field but ate the
    whole screen, pinning the headline to the very top edge and the dots to the
@@ -417,14 +437,7 @@ button{font-family:inherit; -webkit-tap-highlight-color:transparent}
 .kq-followfield{flex:0 0 auto; align-self:stretch; height:min(64cqw, calc(var(--px-per-deg) * 9.2px));
   position:relative}
 #screen-follow .kq-centercol{gap:20px}
-.kq-followsun{position:absolute; left:50%; top:50%; width:min(30cqw,132px);
-  translate:-50% -50%; scale:.6; opacity:0; pointer-events:none;
-  transition:opacity .3s ease}
-#screen-follow.celebrate .kq-followsun{opacity:1; animation:pop .55s ease-out forwards}
 #screen-follow.celebrate .ring1{animation:ringout .9s ease-out}
-#screen-follow.celebrate .kq-ball{opacity:0}
-@container (min-width:601px){ .kq-followsun{width:min(30cqw,154px)} }
-@container (min-width:1100px){ .kq-followsun{width:min(30cqw,176px)} }
 
 /* ---------- after-break choice ---------- */
 .kq-pickhead{font-family:var(--disp); font-weight:800; font-size:30px; line-height:1.15;
