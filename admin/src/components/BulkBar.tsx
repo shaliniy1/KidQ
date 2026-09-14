@@ -13,7 +13,8 @@ export function BulkBar({ selectedIds, onDone }: { selectedIds: string[]; onDone
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
-  if (selectedIds.length === 0) return null;
+  // After publishing, the selection clears; keep the bar long enough to show what happened.
+  if (selectedIds.length === 0) return message ? <div className="selection-bar"><p className="selection-message">{message}</p></div> : null;
 
   async function decide(decision: "APPROVED" | "REJECTED") {
     setBusy(true);
