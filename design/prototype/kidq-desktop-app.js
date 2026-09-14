@@ -787,6 +787,12 @@
   const choiceScreen = $("#screen-choice");
   const choiceSun = $("#choice-sun");
   function startChoice() {
+    // No video left: the day is over, and the decided flow ends at the moon -
+    // sunset, then the all-done screen. A choice screen with nothing to choose
+    // would strand the child (its sun-tap would start undefined). The rule
+    // lives HERE, not in the callers, so no break - present or future - can
+    // reach a dead choice screen.
+    if (unwatched().length === 0) { startSunset(); return; }
     const p = sessionProgress();
     positionSun(choiceSun, p);
     $("#choice-time").textContent = minutesLeft(p) + " min left";
