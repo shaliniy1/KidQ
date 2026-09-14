@@ -31,8 +31,10 @@ Node.js 22 (see `.node-version`), npm 10+, PostgreSQL 16 for local development.
 npm install
 cp api/.env.example api/.env          # AUTH_MODE=dev + local Postgres
 cp web/.env.example web/.env.local
+cp admin/.env.example admin/.env.local
 createdb kidq && createdb kidq_test
 npm run db:migrate -w api
+npm run seed:sample -w api            # the team's sample library: no API keys needed
 npm run dev                           # web :3000, admin :3001, api :4000 (the job worker runs inside the API)
 ```
 
@@ -43,11 +45,15 @@ With `AUTH_MODE=dev`:
 
 ## Seed content
 
+`npm run seed:sample -w api` (in the setup above) loads the team's sample library from `api/db/seed/sample-content.json.gz`: the pulled videos and picture books with their scores, categories and review history, so the admin looks the same on every laptop. It only loads into an empty database. It contains content only, never families, sessions or keys. To refresh the file from your own database, run `npm run seed:sample:export -w api` and commit the result.
+
+To pull fresh content from the sources instead:
+
 ```bash
 npm run seed:discover -w api -- --drain
 ```
 
-Loads ~270 videos from YouTube, NASA and Wikimedia, and ~48 StoryWeaver picture books. YouTube needs `YOUTUBE_DATA_API_KEY`; add `GEMINI_API_KEY` for AI scores.
+This loads ~270 videos from YouTube, NASA and Wikimedia, and ~48 StoryWeaver picture books. YouTube needs `YOUTUBE_DATA_API_KEY`; add `GEMINI_API_KEY` for AI scores.
 
 ## Checks
 
