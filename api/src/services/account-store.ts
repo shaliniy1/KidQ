@@ -15,17 +15,24 @@ export async function getOrCreateAccount(uid: string, email: string | null): Pro
       result = all[uid];
       return;
     }
-    result = { uid, email, createdAt: new Date().toISOString(), onboardingComplete: false };
+    result = { uid, email, parentName: null, createdAt: new Date().toISOString(), onboardingComplete: false };
     all[uid] = result;
   });
   return result!;
 }
 
-/** Called by the Child profile store (ticket 04) once the first child profile is saved. */
-export async function markOnboardingComplete(uid: string): Promise<void> {
+/**
+ * Saves the parent's name and marks onboarding complete, in one write.
+ * Called once, when P2 Screen 1 (ticket 04) saves the first child profile —
+ * this is what actually flips the Section 0 routing flag from false to true.
+ */
+export async function completeOnboarding(uid: string, parentName: string): Promise<AccountRecord> {
+  let result: AccountRecord | undefined;
   await accounts.write((all) => {
     const existing = all[uid];
     if (!existing) throw new Error(`No account found for uid ${uid}`);
-    all[uid] = { ...existing, onboardingComplete: true };
+    result = { ...existing, parentName, onboardingComplete: true };
+    all[uid] = result;
   });
+  return result!;
 }

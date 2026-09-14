@@ -8,6 +8,8 @@ export interface AccountRecord {
   uid: string;
   email: string | null;
   createdAt: string;
+  /** Set during P2 Screen 1 (ticket 04), alongside the first child profile. */
+  parentName: string | null;
   /**
    * Flips to true once the account has completed onboarding for at least
    * one child (spec Section 0 routing rule). Set by the Child profile
