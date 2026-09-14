@@ -487,6 +487,11 @@
     showScreen("screen-playtime");
     const game = forceGame || gameForBreak(state.breaksTaken);
     if (!forceGame) state.breaksTaken += 1;
+    // hold(), not later(): spec §9.2 wants this seam felt as a pause, not
+    // skipped, even under reduced motion. Deliberate, not a regression - it
+    // grew breathe/find's reduced-motion seam from later()'s 200ms cap to the
+    // full 1600ms (final review M8), called out here since nothing else in
+    // the diff said so.
     hold(() => (BREAK_START[game] || startBreathing)(), 1600);
   }
 
