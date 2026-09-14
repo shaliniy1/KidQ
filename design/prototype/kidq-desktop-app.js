@@ -615,7 +615,7 @@
            as 1920 - but a set's angular width in the room is stable. A 43" at
            ~2m subtends ~26.8 degrees. 2m, not 3m: small children sit closer than
            adults do. */
-  const DEG_BALL = 2, DEG_PER_SEC = 8, NEAR_PX_PER_DEG = 36, TV_ANGULAR_WIDTH = 26.8;
+  const DEG_SUN = 2, DEG_PER_SEC = 8, NEAR_PX_PER_DEG = 36, TV_ANGULAR_WIDTH = 26.8;
   const appEl = $("#app");
 
   // data-context was never set anywhere, so pxPerDeg() always fell through to
@@ -641,7 +641,7 @@
   function applyContext() {
     const ppd = pxPerDeg();
     appEl.style.setProperty("--px-per-deg", ppd);
-    appEl.style.setProperty("--ball", (DEG_BALL * ppd) + "px");
+    appEl.style.setProperty("--ball", (DEG_SUN * ppd) + "px");
     return ppd;
   }
 
@@ -663,7 +663,7 @@
     return { from: {x: off, y: maxY}, to: {x: off + dx, y: 0} };
   }
 
-  // Travel is the field's measured box minus one ball diameter, per axis.
+  // Travel is the field's measured box minus one sun diameter, per axis.
   function legGeometry(dir) {
     const r = followField.getBoundingClientRect();
     const d = followHero.getBoundingClientRect().width;

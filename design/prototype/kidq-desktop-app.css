@@ -479,9 +479,9 @@ button{font-family:inherit; -webkit-tap-highlight-color:transparent}
    floor, with the diagonal still clamped to 30deg. The cap is expressed in
    DEGREES (9.2 * --px-per-deg), not a fixed 330px: in the near context (ppd 36)
    it still resolves to ~331px, unchanged, but a fixed 330px cap broke the far/TV
-   context - there the ball is 2deg = 2*ppd, and at 1920px a 330px field dropped
+   context - there the sun is 2deg = 2*ppd, and at 1920px a 330px field dropped
    the vertical leg to 2.6deg, under the 4deg floor. A degree cap scales with the
-   ball, holding the far-context leg at a constant ~7.2deg.
+   sun, holding the far-context leg at a constant ~7.2deg.
    align-self and min-height are both load-bearing: an empty div in a centred
    flex column has zero width, and without min-height:0 the column will not let
    it shrink on a short viewport. Do NOT use cqh here - #app is
