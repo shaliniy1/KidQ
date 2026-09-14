@@ -87,7 +87,7 @@ button{font-family:inherit; -webkit-tap-highlight-color:transparent}
 .halo{position:absolute; border-radius:50%; pointer-events:none}
 
 /* ---------- splash ---------- */
-#screen-splash{background:var(--cream); display:flex; align-items:center; justify-content:center; gap:4px}
+#screen-splash{display:flex; align-items:center; justify-content:center; gap:4px}
 .balloon{position:relative; font-family:var(--disp); font-weight:800; font-size:clamp(66px,12cqw,120px);
   line-height:1; display:inline-block; opacity:0; -webkit-background-clip:text; background-clip:text;
   color:transparent; filter:drop-shadow(0 10px 14px rgba(46,42,36,.3))}
