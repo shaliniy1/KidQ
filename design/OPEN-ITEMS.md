@@ -437,7 +437,7 @@ login — would stack backwards without one).
 
 ## Surfaced by making the watching screen's wide mode the default, not yet tracked elsewhere
 
-### [ ] 37. `#screen-watching.wide`'s tablet-only rules now also apply at the 1100px+ tier, by accident
+### [x] 37. `#screen-watching.wide`'s tablet-only rules now also apply at the 1100px+ tier, by accident
 `#screen-watching.wide`'s overrides (`kidq-desktop-app.css:725-733`) were
 written inside the `@container (min-width:601px)` block, meaning they were
 only ever exercised at the 601-1099px tablet tier while `wide` was an
@@ -450,17 +450,23 @@ tier's own plain-class rules on specificity regardless of source order —
 confirmed by measurement: `.kq-arcwrap` reports **110px** tall at the wide
 tier, not the 150px `kidq-desktop-app.css:763` says it should be.
 
-**Deliberately not fixed as part of this discovery.** The tablet formula's
-`--playerw` is *also* one of the leaked properties, and it's what's
-actually giving the wide tier its bigger player (measured 640px, matching
-the tablet-tier's `min(94cqw,1100px,max(340px,(100vh-305)*16/9))` formula
-— not this tier's own `min(72cqw,980px,max(440px,(100vh-385)*16/9))`,
-which alone gives only 498px). A first attempt at resetting the leaked
-`.kq-arcwrap`/`.kq-content` properties back to this tier's intended values
-correctly restored the 150px arcwrap, but also reverted the player to
-498px — undoing the exact improvement item (wide-default) shipped. Left
-as-is; the sun-position fix (item logged in the commit history, not here)
-was tuned against the *actual* 110px/46px-sun geometry instead.
+**Resolved (2026-09-14, same day).** Left unfixed at first — a naive reset
+of the leaked `.kq-arcwrap`/`.kq-content` properties back to this tier's
+intended values also reverted the player from 640px to 498px, undoing the
+wide-default improvement, since the leaked `--playerw` formula
+(`min(94cqw,1100px,max(340px,(100vh-305)*16/9))`) was the same leak giving
+the bigger player. A design review then found the leak had a worse
+consequence than "smaller arc" — the leaked `content:top:92px` pushed the
+player's own box into the arc's territory, visibly slicing the sun's rays
+on the player card's top edge. Real fix: gave `#screen-watching.wide` its
+own *deliberate* wide-tier values (`kidq-desktop-app.css`, wide-tier
+block) — `.kq-arcwrap{height:150px}`, `.kq-content{top:148px}`, and a
+freshly-budgeted `--playerw:min(88cqw,1040px,max(440px,(100vh-361px)*16/9))`
+(361, not 305, since content now correctly starts 56px lower) — instead
+of inheriting the tablet tier's values by accident. Player is ~440-540px
+depending on window height (down from the leaked 640px, but not
+overlapping the arc); `positionSun()` retuned to match (see commit
+history, same day).
 
 **Real fix, when someone has time to do it properly:** decide on purpose
 whether the wide tier should use its own formula or the tablet one, name
