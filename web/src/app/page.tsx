@@ -1,71 +1,63 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { getHealth } from "@/services/api";
-import { getCategories } from "@/services/parent-config";
-import { Button } from "@/components/Button";
-import { Card } from "@/components/Card";
-import { Pill } from "@/components/Pill";
-import { Avatar } from "@/components/Avatar";
-import { MASCOT_COLORS, mascotColorForIndex } from "@/lib/mascot-colors";
+import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { onAuthChange, fetchSessionRouting } from "@/services/auth";
 
-export default function Home() {
-  const [apiStatus, setApiStatus] = useState<"checking" | "connected" | "unreachable">(
-    "checking"
-  );
-  const [categories, setCategories] = useState<string[] | null>(null);
-  const [selected, setSelected] = useState<string | null>(null);
+/**
+ * App entry point — implements the spec Section 0 "Login & entry routing"
+ * rule: not signed in -> /login; signed in -> ask the backend whether
+ * onboarding is complete for this account and route to /onboarding/consent
+ * (first-time) or /session (returning parent) accordingly.
+ */
+export default function RootRoutingPage() {
+  const router = useRouter();
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const hasRouted = useRef(false);
 
   useEffect(() => {
-    getHealth()
-      .then(() => setApiStatus("connected"))
-      .catch(() => setApiStatus("unreachable"));
+    const unsubscribe = onAuthChange(async (user) => {
+      if (hasRouted.current) return;
 
-    getCategories()
-      .then((res) => setCategories(res.categories))
-      .catch(() => setCategories([]));
-  }, []);
+      if (!user) {
+        hasRouted.current = true;
+        router.replace("/login");
+        return;
+      }
+
+      try {
+        const routing = await fetchSessionRouting(user);
+        hasRouted.current = true;
+        router.replace(routing.onboardingComplete ? "/session" : "/onboarding/consent");
+      } catch (error) {
+        setErrorMessage(error instanceof Error ? error.message : "Couldn't determine routing");
+      }
+    });
+
+    return unsubscribe;
+  }, [router]);
 
   return (
-    <main style={{ maxWidth: 640, margin: "0 auto", padding: "32px 20px", display: "flex", flexDirection: "column", gap: 24 }}>
-      <div>
-        <h1 className="kq-heading" style={{ fontSize: "var(--kq-text-hero)", color: "var(--kq-charcoal)" }}>
-          KidQ
-        </h1>
-        <p style={{ color: "var(--kq-text-secondary)", fontSize: "var(--kq-text-caption)" }}>
-          API: {apiStatus}
-        </p>
-      </div>
-
-      <Card style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-        <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-          {MASCOT_COLORS.map((mascot, index) => (
-            <Avatar key={mascot.id} color={mascotColorForIndex(index)} label={mascot.id[0].toUpperCase()} size={48} />
-          ))}
-        </div>
-
-        <div style={{ display: "flex", gap: 12 }}>
-          <Button variant="primary">Start using KidQ</Button>
-          <Button variant="secondary">Customize</Button>
-        </div>
-
-        <div>
-          <p className="kq-heading" style={{ fontSize: "var(--kq-text-interactive)", marginBottom: 8 }}>
-            Categories (from backend config, not hardcoded)
-          </p>
-          {categories === null && <p style={{ color: "var(--kq-text-secondary)" }}>Loading…</p>}
-          {categories !== null && categories.length === 0 && (
-            <p style={{ color: "var(--kq-terracotta)" }}>Couldn&apos;t load categories from the API.</p>
-          )}
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-            {categories?.map((category) => (
-              <Pill key={category} selected={selected === category} onClick={() => setSelected(category)}>
-                {category}
-              </Pill>
-            ))}
-          </div>
-        </div>
-      </Card>
+    <main
+      style={{
+        minHeight: "100vh",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 8,
+        padding: "24px",
+        textAlign: "center",
+      }}
+    >
+      <h1 className="kq-heading" style={{ fontSize: "var(--kq-text-hero)", color: "var(--kq-charcoal)" }}>
+        KidQ
+      </h1>
+      {errorMessage ? (
+        <p style={{ color: "var(--kq-terracotta)", fontSize: "var(--kq-text-body)" }}>{errorMessage}</p>
+      ) : (
+        <p style={{ color: "var(--kq-text-secondary)", fontSize: "var(--kq-text-body)" }}>Loading…</p>
+      )}
     </main>
   );
 }
