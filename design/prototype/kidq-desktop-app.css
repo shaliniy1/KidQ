@@ -94,7 +94,12 @@ button{font-family:inherit; -webkit-tap-highlight-color:transparent}
 .balloon-slot{position:relative; display:inline-flex; font-size:clamp(66px,12cqw,120px)}
 .seed{position:absolute; left:50%; top:50%; width:4px; height:4px; border-radius:50%;
   background:#FAF4E8; opacity:0; transform:translate(-50%,-50%) scale(0)}
-.s1{opacity:1; transform:translate(-50%,-50%) scale(1)}
+#screen-splash .s1{opacity:1; transform:translate(-50%,-50%) scale(1)}
+/* The 68%/70% hold-end marks and the seed-twinkle delays (1.40/1.52/1.64/1.76s)
+   are hand-derived from .balloon's own .95s inflate + 0/.12/.24/.36s stagger
+   (kidq-desktop-app.css:124-127) - retuning either one silently breaks this
+   choreography. No .off rule exists for seeds by design (spec section 7):
+   they stay lit through the letters' deflate and vanish at the screen cut. */
 @keyframes seed-hold-left{
   0%{transform:translate(-50%,-50%) scale(1) translate(0,0); animation-timing-function:ease-out}
   68%{transform:translate(-50%,-50%) scale(1) translate(0,0)}

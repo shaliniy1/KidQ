@@ -402,20 +402,32 @@ second contrast mechanism exists alongside the ink-on-fill one.
 
 ## Surfaced by the splash redesign ("Constellation Seeds"), not yet tracked elsewhere
 
-### [ ] 36. Screen-cut crossfade briefly shows ~25% raw cream
+### [ ] 36. Screen-cut crossfade briefly shows ~25% raw cream — affects every screen cut in the app, not just this one
 Measured, not assumed: sampling `#screen-splash`/`#screen-login`'s computed
 `opacity` every animation frame through the `.5s` crossfade
 (`kidq-desktop-app.css:19-21`) shows the two curves sum to ≈1 throughout (both
-screens share the same `.5s ease-out`, triggered in the same tick), but that
-doesn't make the composite opaque — at the ~200ms midpoint (login≈0.53,
-splash≈0.47), the multiplicative gap `(1-login_op)×(1-splash_op)` peaks at
-≈25%, letting `#app`'s flat `background:var(--cream)` (`:17`) show through
-that fraction of every pixel where neither screen's own content is opaque.
-The old cream→indigo splash→login cut never exposed this (a cream flash atop
-an already-cream splash was invisible); the new predawn→predawn cut might
-show it as a brief warm/light pulse — flagged as measured-but-not-eyeballed,
-since a reliable screenshot of this exact ~150ms window kept losing the race
-against browser-automation round-trip timing. If a human eye check confirms
-it's visible, the fix is giving `#app` a dark ground for this specific
-transition (or scoping a temporary background on the two screens' shared
-ancestor during the crossfade), not touching either sky gradient.
+screens share the same `.5s ease-out`, triggered in the same tick). With
+`login_op + splash_op ≈ 1`, the raw-cream fraction reduces to `s×(1-s)` for
+`s` = either curve — algebraically maxed at exactly **25%** (not an estimate;
+`s=0.5` is the peak by construction), reached where the shared ease-out
+curve crosses its own 50% progress point, around 170ms into the .5s
+transition. That 25% of `#app`'s flat `background:var(--cream)` (`:17`)
+shows through every pixel where neither screen's own content is opaque.
+
+**This is a structural property of every screen cut in the app**, not
+something specific to the splash→login pair — any two `.screen`s crossfading
+via this shared mechanism hit the same 25% cream ceiling at their own
+midpoint. The old cream→indigo splash→login cut never exposed it visually
+(cream-on-cream is invisible); predawn→predawn is the first pair dark enough
+on both sides that a warm/light pulse would actually read. Flagged as
+measured-but-not-eyeballed — a reliable screenshot of this exact ~150ms
+window kept losing the race against browser-automation round-trip timing,
+though the frame-by-frame opacity data itself is solid.
+
+**Fix, if a human eye check confirms it's visible:** not a per-transition
+patch (giving `#app` a dark ground would just move the pulse to the
+cream-sky cuts instead). The general fix is structural — hold the outgoing
+screen at opacity 1 and only fade the incoming screen in on top of it,
+which needs a `z-index` bump on `.screen.active` (currently DOM order alone
+decides stacking, so "Restart full flow" — which re-shows splash after
+login — would stack backwards without one).
