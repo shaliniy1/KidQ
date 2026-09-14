@@ -1,13 +1,13 @@
+/*
+  Bridges next/font's optimized, self-hosted font loading into the
+  kidq-design-tokens.css variable names every component reads
+  (--kq-font-display / --kq-font-body), so token consumers never need to
+  know how the fonts were loaded.
+*/
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --kq-font-display: var(--kq-font-display-family), "Baloo 2", "Fredoka", "Nunito",
+    system-ui, sans-serif;
+  --kq-font-body: var(--kq-font-body-family), "Nunito", system-ui, sans-serif;
 }
 
 html {
@@ -24,9 +24,10 @@ body {
   min-height: 100%;
   display: flex;
   flex-direction: column;
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  color: var(--kq-charcoal);
+  background: var(--kq-cream);
+  font-family: var(--kq-font-body);
+  font-size: var(--kq-text-body);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -42,8 +43,13 @@ a {
   text-decoration: none;
 }
 
-@media (prefers-color-scheme: dark) {
-  html {
-    color-scheme: dark;
-  }
+h1,
+h2,
+h3,
+.kq-heading {
+  font-family: var(--kq-font-display);
+}
+
+button {
+  font-family: inherit;
 }

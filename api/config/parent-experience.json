@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "note": "Canonical, backend-owned config for the KidQ Parent Experience. Read at runtime, not compiled into the TS build — editing this file and restarting (or, once hot-reload is added, without even restarting) changes what the web app shows, with no client release. Category list corresponds to KidQ_Parent_Experience_Spec_6.md Section 1 Block B (12-category taxonomy). A future 7-category taxonomy swap (spec Section 10 item 10) happens by editing this file, not the app.",
+  "categories": [
+    "Animation",
+    "Stories",
+    "Storybooks",
+    "Crafts",
+    "Painting",
+    "Science",
+    "Maths",
+    "Yoga",
+    "Activities",
+    "Educational",
+    "Music/Rhymes",
+    "Knowledge/General Learning"
+  ],
+  "contentMixDefault": "surprise_us",
+  "ageBands": ["0-2", "2-3", "3-4", "4-5", "5-6"],
+  "ageBandDefaults": {
+    "0-2": { "developmentGoals": ["Motor Skills", "Communication", "Emotional"] },
+    "2-3": { "developmentGoals": ["Communication", "Emotional", "Social"] },
+    "3-4": { "developmentGoals": ["Social", "Emotional", "Creativity"] },
+    "4-5": { "developmentGoals": ["Cognitive", "Creativity", "Problem Solving"] },
+    "5-6": { "developmentGoals": ["Cognitive", "Problem Solving", "Learning"] }
+  }
+}
