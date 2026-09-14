@@ -1,6 +1,6 @@
 import type { Request, Response } from "express";
 import { assertChildOwnedBy } from "../services/child-profile-store";
-import { createSessionLog } from "../services/session-log-store";
+import { createSessionLog, listSessionLogs } from "../services/session-log-store";
 import { addNotification } from "../services/inbox-store";
 import type { SessionOutcome, WatchedVideoEntry } from "../types/session-log";
 
@@ -57,4 +57,14 @@ export async function postSessionLog(req: Request, res: Response) {
   });
 
   return res.status(201).json({ log, notification });
+}
+
+/** P8 Handoff / Insight log — the same factual watched-content log ticket 09 ingests. */
+export async function getWatchedLog(req: Request, res: Response) {
+  const childId = req.params.childId;
+  const child = await assertChildOwnedBy(childId, req.identity!.uid);
+  if (!child) return res.status(404).json({ error: "Child not found" });
+
+  const logs = await listSessionLogs(req.identity!.uid, childId);
+  return res.json({ logs });
 }

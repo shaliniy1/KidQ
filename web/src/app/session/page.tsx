@@ -251,12 +251,18 @@ export default function StartSessionPage() {
           {phase === "starting" ? "Starting…" : "Start session"}
         </Button>
 
-        <div style={{ display: "flex", justifyContent: "space-between" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap" }}>
           <button
             onClick={() => router.push(`/hub/${selectedChild.id}`)}
             style={{ background: "none", border: "none", color: "var(--kq-text-secondary)", textDecoration: "underline", cursor: "pointer", padding: 8, fontSize: "var(--kq-text-caption)" }}
           >
             Change content preferences
+          </button>
+          <button
+            onClick={() => router.push(`/watched/${selectedChild.id}`)}
+            style={{ background: "none", border: "none", color: "var(--kq-text-secondary)", textDecoration: "underline", cursor: "pointer", padding: 8, fontSize: "var(--kq-text-caption)" }}
+          >
+            Watched videos
           </button>
           <button
             onClick={() => router.push("/inbox")}

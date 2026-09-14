@@ -3,6 +3,7 @@ import { assertChildOwnedBy, setLastUsedSessionChoices } from "../services/child
 import { getCurationSettings } from "../services/curation-settings-store";
 import { assembleSession } from "../services/session-assembly";
 import { resolveTimeBand, TIME_BAND_MODES, type TimeBandMode } from "../services/time-band";
+import { getExcludedContentIds } from "../services/exclude-list-store";
 import { DURATION_OPTIONS } from "../types/curation-settings";
 
 export async function postStartSession(req: Request, res: Response) {
@@ -20,6 +21,7 @@ export async function postStartSession(req: Request, res: Response) {
 
   const settings = await getCurationSettings(childId);
   const timeBand = resolveTimeBand(timeBandMode);
+  const excludeContentIds = await getExcludedContentIds(childId);
 
   const assembled = await assembleSession({
     childId,
@@ -30,7 +32,7 @@ export async function postStartSession(req: Request, res: Response) {
     contentMixMode: settings.contentMixMode,
     contentMixCategories: settings.contentMixCategories,
     regulationGoals: settings.regulationGoals,
-    excludeContentIds: [], // ticket 10 wires in the real per-child exclude list
+    excludeContentIds,
     timeBand,
   });
 
