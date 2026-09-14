@@ -816,6 +816,13 @@ button{font-family:inherit; -webkit-tap-highlight-color:transparent}
     transition-duration:.12s !important}
 }
 
+/* The blanket rule above never zeroes animation-delay, and later() clamps the
+   splash's own screen-transition timers to 200ms under reduced motion - so
+   without this, d/Q (240ms/360ms delay) and their seeds never visibly land
+   before the screen moves on. */
+.reduce-motion #screen-splash .balloon,
+.reduce-motion #screen-splash .seed{ animation-delay:0s !important }
+
 /* In saccade mode the head should NOT be still - the eyes are meant to jump - so
    the copy changes rather than shrinking. */
 .m-reduced{display:none}
