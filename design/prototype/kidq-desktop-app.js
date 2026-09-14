@@ -120,7 +120,31 @@
       speech.speak(u);
     } catch (e) { /* never let a missing voice break a break */ }
   }
-  function hush() { try { if (speech) speech.cancel(); } catch (e) {} }
+  /* Recorded lines (spec 13.5): a bundled clip is the same warm voice on every
+     device - including TVs, whose web engines generally ship NO speechSynthesis
+     voice - so the recording is the primary and the device TTS the fallback,
+     not the other way around. Any failure falls back: missing file (play()
+     rejects), blocked autoplay, or a throw. Fallback fires once. */
+  let speakingClip = null;
+  function sayLine(clip, text) {
+    if (!clip) { say(text); return; }
+    let fellBack = false;
+    const fallBack = () => { if (!fellBack) { fellBack = true; say(text); } };
+    try {
+      clip.currentTime = 0;
+      speakingClip = clip;
+      const p = clip.play();
+      if (p && p.catch) p.catch(fallBack);
+    } catch (e) { fallBack(); }
+  }
+
+  function hush() {
+    try { if (speech) speech.cancel(); } catch (e) {}
+    if (speakingClip) {
+      try { speakingClip.pause(); speakingClip.currentTime = 0; } catch (e) {}
+      speakingClip = null;
+    }
+  }
 
   function showScreen(id) {
     clearTimers();
@@ -739,7 +763,7 @@
     followHero.setAttribute("aria-disabled", "true");
     $("#follow-headline").innerHTML = '<span class="m-full">Follow the sun!</span><span class="m-reduced">Where\'s the sun?</span>';
     showScreen("screen-follow");
-    hold(() => say("Follow the sun with your eyes. Tap it when it stops!"), 600);
+    hold(() => sayLine($("#voice-follow-intro"), "Follow the sun with your eyes. Tap it when it stops!"), 600);
     let i = 0;
     const next = () => { i += 1; if (i < FOLLOW_LEGS.length) runLeg(i, next); else endFollow(); };
     runLeg(0, next);
@@ -751,7 +775,7 @@
     placeHidden({ x: (r.width - d) / 2, y: (r.height - d) / 2 }, () => {
       followScreen.classList.add("celebrate");
       $("#follow-headline").innerHTML = '<span class="m-full">You did it! ✨</span><span class="m-reduced">You did it! ✨</span>';
-      say("You did it!");
+      sayLine($("#voice-follow-done"), "You did it!");
       safePlay(chime);
       // hold, not later: later would fire this at 200ms under reduced motion
       // and cut the celebration off mid-word.
