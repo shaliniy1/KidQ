@@ -68,23 +68,27 @@ export function onAuthChange(callback: (user: KidQUser | null) => void): () => v
 
 export interface SessionRouting {
   onboardingComplete: boolean;
+  /** The parent's real display name from GET /me — null for a new parent (nothing saved yet). */
+  parentName: string | null;
 }
 
 /**
  * Asks the real backend whether this parent has finished onboarding, via GET /me.
  * A 404 NOT_ONBOARDED response means "new parent, show onboarding"; anything else that
- * succeeds means "returning parent, go straight to session." Replaces the old Firebase-only
- * POST /auth/session exchange — main's real /me already answers this question directly.
+ * succeeds means "returning parent, go straight to session," and also returns their real
+ * saved name. Replaces the old Firebase-only POST /auth/session exchange — main's real /me
+ * already answers both questions directly.
  */
 export async function fetchSessionRouting(user: KidQUser): Promise<SessionRouting> {
   const apiUrl = process.env.NEXT_PUBLIC_API_URL;
   if (!apiUrl) throw new Error("NEXT_PUBLIC_API_URL is not set");
   const idToken = await user.getIdToken();
   const res = await fetch(`${apiUrl}/me`, { headers: { Authorization: `Bearer ${idToken}` } });
-  if (res.status === 404) return { onboardingComplete: false };
+  if (res.status === 404) return { onboardingComplete: false, parentName: null };
   if (!res.ok) {
     const body = await res.json().catch(() => null);
     throw new Error(body?.error?.message || `GET /me failed with status ${res.status}`);
   }
-  return { onboardingComplete: true };
+  const me: { parent: { name: string } } = await res.json();
+  return { onboardingComplete: true, parentName: me.parent.name };
 }

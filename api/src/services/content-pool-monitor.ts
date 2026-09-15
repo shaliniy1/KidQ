@@ -1,4 +1,4 @@
-import { readAllContent } from "./content-store";
+import { loadApprovedCandidates } from "./content-catalog";
 import { getParentExperienceConfig } from "./parent-config";
 import { AGE_BANDS } from "../types/parent-config";
 import type { PoolDepthEntry, PoolDepthReport } from "../types/pool-depth";
@@ -16,14 +16,16 @@ const flagsStore = createJsonFileStore<PoolDepthReport>("pool-depth-flags.json")
  * see, not just "thin" ones that already have a few).
  */
 export async function computePoolDepth(threshold = DEFAULT_THIN_THRESHOLD): Promise<PoolDepthReport> {
-  const [catalog, config] = await Promise.all([readAllContent(), getParentExperienceConfig()]);
-  const approved = catalog.filter((record) => record.content_status === "APPROVED");
+  // loadApprovedCandidates() already reads the real, admin-approved catalog and only returns
+  // playable videos (see content-catalog.ts) — the right pool to judge "thin" against, since a
+  // storybook or unplayable item was never going to fill a session slot anyway.
+  const [approved, config] = await Promise.all([loadApprovedCandidates(), getParentExperienceConfig()]);
 
   const entries: PoolDepthEntry[] = [];
   for (const ageBand of AGE_BANDS) {
     for (const category of config.categories) {
       const count = approved.filter(
-        (record) => record.age_band.includes(ageBand) && record.category === category
+        (candidate) => candidate.age_band.includes(ageBand) && candidate.category === category
       ).length;
       entries.push({ ageBand, category, count, isThin: count <= threshold });
     }
