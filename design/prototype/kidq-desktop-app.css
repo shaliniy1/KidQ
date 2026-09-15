@@ -449,7 +449,7 @@ button{font-family:inherit; -webkit-tap-highlight-color:transparent}
 #screen-breathing.lottie-on .kq-breathrow{display:none}
 
 /* ---------- find-a-colour break ---------- */
-.kq-findhead,.kq-followhead,.kq-treehead,.kq-counthead{font-family:var(--disp); font-weight:800; font-size:30px; line-height:1.15;
+.kq-findhead,.kq-followhead,.kq-treehead,.kq-counthead,.kq-flowerhead{font-family:var(--disp); font-weight:800; font-size:30px; line-height:1.15;
   color:var(--ink); text-wrap:balance; min-height:1.2em}
 .kq-findsub,.kq-followsub{font-size:16.5px; font-weight:500; color:var(--ink-soft)}
 /* The colour the child is hunting for. For a pre-reader these swatches ARE the
@@ -877,6 +877,88 @@ button{font-family:inherit; -webkit-tap-highlight-color:transparent}
 #screen-count.celebrate .kq-countsun .bsun{animation:pop .55s ease-out}
 #screen-count.celebrate .kq-breakcount{display:none}
 
+/* ---------- SETTLE: flower and candle breathing ----------
+   Spec 2026-09-16 kidq-flower-candle-break-design.md. Promoted from
+   breathing's own offline-fallback SVG row (index.html, #screen-breathing) -
+   same trio geometry, translated rather than reinvented. Every rule below is
+   scoped to THIS screen's own ID and its own .ph-smell/.ph-blow/.celebrate
+   state classes (Opus finding 9): #screen-breathing's .ph-in/.ph-out rules
+   above are scoped to that ID alone and this screen inherits nothing from
+   them - not even by class-name coincidence. .bsun/.eyesOpen/.eyesClosed/
+   .mouthO/.mouthSmile/.petalsB/.flameB/.smokeB/.ring1/.kq-prop/.kq-bsunwrap
+   ARE the same shared, unscoped base classes breathing already declares
+   (kidq-desktop-app.css above) and are reused as markup/geometry on purpose
+   (spec §3 - "translate the reference, don't reinvent it") - only their
+   ID-scoped BEHAVIOURAL toggle rules are breathing's own and are not reused;
+   every toggle this screen needs is re-declared here instead.
+
+   Sizing (spec §3, Opus finding 4): .kq-prop (css above, width:min(20cqw,
+   86px)) and .kq-bsunwrap (width:min(40cqw,190px)) themselves stay
+   untouched, so resizing this screen's hero row can never resize breathing's
+   own fallback row. All hero sizing lives on the ID-scoped rules below
+   instead - the props are the heroes here (not the sun, unlike breathing),
+   so they scale up more than breathing's own 86px cap while the sun stays a
+   notch SMALLER than breathing's own, mirroring the seam's own smaller-
+   companion relationship (.kq-ptsun, css above) rather than inventing a new
+   one. Base (phone) tier below is deliberately more modest than the
+   ~120-160px desktop-tier target (spec §3) - three elements plus two flex
+   gaps at flat caps already come within ~35px of the 390px tier's usable
+   width (measured live, spec §7); tablet/wide tier overrides (in their own
+   @container blocks below) do the actual growing. */
+#screen-flower-candle .kq-prop{width:min(22cqw,78px)}
+#screen-flower-candle .kq-bsunwrap{width:min(26cqw,92px)}
+
+/* Halo swell (spec §3, Opus finding 5). The shared ambient kq-halopulse
+   animation (css above) animates `transform` and would fight any
+   transition-driven swell dead on arrival, so it's switched off here and the
+   swell instead runs on a plain transform transition - grows on smell,
+   settles on blow (Forest reference, spec §2), timed with the same
+   0.9 x FC_PHASE_MS duration as the sun/petals below so the whole cluster
+   moves as one piece. */
+#screen-flower-candle .kq-bsunwrap .halo{animation:none; transform:scale(1);
+  transition:transform 3.15s ease-in-out}
+#screen-flower-candle.ph-smell .kq-bsunwrap .halo{transform:scale(1.22)}
+
+/* Sun (re-authored against .ph-smell/.ph-blow, Opus finding 9) - transitions
+   retuned to this screen's own measured phase (Opus finding 10) rather than
+   inheriting breathing's PHASE=3200-tuned 3.2s: 0.9 x FC_PHASE_MS (3500ms,
+   kidq-desktop-app.js) = 3.15s, leaving a real ~350ms cushion before the
+   phase timer fires the next state (breathing's own 3.2s-into-3200ms leaves
+   none - deliberately not copied). */
+#screen-flower-candle .bsun{transition:transform 3.15s ease-in-out}
+#screen-flower-candle.ph-smell .bsun{transform:scale(1.16)}
+#screen-flower-candle.ph-smell .bsun .eyesClosed{opacity:1}
+#screen-flower-candle.ph-smell .bsun .eyesOpen{opacity:0}
+#screen-flower-candle.ph-blow .bsun .mouthO{opacity:1}
+#screen-flower-candle.ph-blow .bsun .mouthSmile{opacity:0}
+
+/* Petals (re-authored) - same 3.15s transition as the sun above, so the
+   whole "inhale" reads as one gesture, not two independently-timed parts. */
+#screen-flower-candle .petalsB{transition:transform 3.15s ease-in-out}
+#screen-flower-candle.ph-smell .petalsB{transform:scale(1)}
+
+/* Flame choreography (spec §3, amended 2026-09-16 - the flame carries no
+   face; only the flower does). A single .ph-blow flip drives the whole
+   sequence via transition-delay, the same one-state-flip-drives-a-timed-
+   sequence idiom breathing's own flameB/smokeB already use (css above) -
+   re-timed to this screen's own numbers instead of breathing's 1.2s/1.35s:
+     - the flame fades over ~500ms starting ~600ms into the blow phase, so
+       the fade follows the voice cue rather than racing it;
+     - the smoke curl starts at ~750ms (inside the fade, not after it) and
+       runs its shared 1.6s puff (kq-desktop-app.css smokeup keyframe,
+       unedited) - 750ms + 1.6s = 2.35s, comfortably inside the 3.5s phase.
+   Relight (next round's .ph-smell) fades back in over ~400ms - quicker than
+   the 500ms fade-out, since relighting reads snappier than going out. */
+#screen-flower-candle.ph-blow .flameB{opacity:0; transition:opacity .5s ease .6s}
+#screen-flower-candle.ph-blow .smokeB{animation:smokeup 1.6s ease-out .75s}
+#screen-flower-candle.ph-smell .flameB{opacity:1; transition:opacity .4s ease}
+
+/* Celebration - ID-scoped, #screen-flower-candle inherits nothing (the trap
+   every break screen hits, spec §6/§9). Same ringout flourish breathing uses
+   (css above) - a fixed decorative duration, not phase-derived, so it is
+   reused as-is rather than retuned. */
+#screen-flower-candle.celebrate .ring1{animation:ringout .9s ease-out}
+
 /* ---------- after-break choice ---------- */
 .kq-pickhead{font-family:var(--disp); font-weight:800; font-size:30px; line-height:1.15;
   color:var(--ink); text-wrap:balance}
@@ -1221,13 +1303,18 @@ button{font-family:inherit; -webkit-tap-highlight-color:transparent}
      partial scale the desktop tier had, one step down. These are the
      midpoints between the base sizes and the 1100px ones, so the break
      screens now grow evenly across all three tiers. */
-  .kq-breathhead,.kq-findhead,.kq-followhead,.kq-treehead,.kq-counthead{font-size:34px}
+  .kq-breathhead,.kq-findhead,.kq-followhead,.kq-treehead,.kq-counthead,.kq-flowerhead{font-size:34px}
   .kq-findsub,.kq-followsub{font-size:17.5px}
   .kq-findsun{width:min(30cqw,154px)}
   .kq-ptsun{width:min(34cqw,184px)}
   #screen-breathing .kq-bsunwrap,#screen-count .kq-bsunwrap{width:min(40cqw,214px)}
   .kq-treestage{width:min(46cqw,228px)}
   #screen-tree .kq-breakcount,#screen-count .kq-breakcount{--cnt:44px}
+  /* flower-candle (spec §3): props toward the ~120-160px-tall desktop
+     target (112px wide x 1.209 aspect = ~135px tall); sun stays a notch
+     smaller than the props, same relationship as the base tier above. */
+  #screen-flower-candle .kq-prop{width:min(22cqw,112px)}
+  #screen-flower-candle .kq-bsunwrap{width:min(26cqw,102px)}
 }
 
 /* ---------- wide tier ---------- */
@@ -1294,7 +1381,7 @@ button{font-family:inherit; -webkit-tap-highlight-color:transparent}
   #screen-choice .kq-qrow{gap:14px}
   #screen-choice .kq-qcard{width:120px; height:68px; border-radius:14px}
   #screen-choice .kq-qname{max-width:120px}
-  .kq-breathhead,.kq-findhead,.kq-followhead,.kq-treehead,.kq-counthead{font-size:38px}
+  .kq-breathhead,.kq-findhead,.kq-followhead,.kq-treehead,.kq-counthead,.kq-flowerhead{font-size:38px}
   .kq-swatchrow{gap:22px}
   .kq-swatchrow i{width:64px; height:64px}
   /* the sun and the sub-line take the same step the swatches do, so the game
@@ -1312,6 +1399,10 @@ button{font-family:inherit; -webkit-tap-highlight-color:transparent}
   .kq-treestage{width:min(46cqw,264px)}
   .kq-treesun{width:min(16cqw,96px)}
   #screen-tree .kq-breakcount,#screen-count .kq-breakcount{--cnt:54px}
+  /* flower-candle (spec §3): 132px wide x 1.209 aspect = ~160px tall, the
+     top of the desktop-tier target; sun stays a notch smaller. */
+  #screen-flower-candle .kq-prop{width:min(22cqw,132px)}
+  #screen-flower-candle .kq-bsunwrap{width:min(26cqw,120px)}
 }
 
 /* ---------- reduced motion ---------- */
