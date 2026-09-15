@@ -141,33 +141,195 @@ button{font-family:inherit; -webkit-tap-highlight-color:transparent}
 @keyframes deflate{to{opacity:0; transform:translateY(34px) scale(1.25,.55)}}
 @keyframes bob2{50%{transform:translateY(-9px) scale(1.02,.98)}}
 
-/* Small decorative balloons drifting behind the splash's KidQ letters (user
-   request 2026-09-15, Givingli reference - mobbin.com screen def2a712 -
-   scattered colour balloons around otherwise-plain card content). Pulled
-   DIRECTLY from the break-count digit balloon markup (`.kq-digitballoon` +
-   `.kq-balloon-body/-knot/-string`, same hue classes, same flattened/muted
-   recipe above) rather than a new shape - only a local `--cnt` (13-18px,
-   versus the break screens' 36-54px) makes them small, and `.kq-splashdrift`
-   adds absolute positioning + reduced opacity so they read as background,
-   not a fifth letter competing with K/i/d/Q. Three, not four - matching the
-   reference's own asymmetric scatter, not a literal hue-for-hue echo of the
-   letters. Same `.go`/`.off` lifecycle as the letters: fade in staggered
-   after the inflate sequence starts, gentle infinite bob once settled
-   (slower and calmer than the letters' own bob2 - this is ambient, not the
-   hero), quick fade out with the letters on `.off`. */
-.kq-splashdrift{position:absolute; opacity:0; pointer-events:none;
+/* Large edge-anchored framing balloons behind the splash's KidQ letters
+   (user request 2026-09-15, second pass on this same feature). The first
+   attempt - still visible in this branch's prior WIP commit - reused the
+   digit-balloon shape at 13-18px and .6 opacity; checked live against the
+   user's own Givingli reference (mobbin.com screen def2a712) and rejected
+   as reading like confetti, not the reference's calm balloon framing.
+   Reworked to match that reference's actual structure: a few LARGE
+   balloons (roughly a quarter of screen width), anchored at the screen
+   edges and partially cropped off them, fully opaque flat colour - never
+   drifting loose in the middle of the frame competing with the centred
+   letters.
+
+   Four balloons now (was three) - the reference itself reads as four
+   distinct edge positions (top-left corner, left edge lower down, right
+   edge at mid-height, one rising off the bottom), not an odd-numbered
+   scatter, and four also means all four `.kq-digitballoon` hues (css:809,
+   the flattened/muted recipe) get used with none skipped. Still the SAME
+   `.kq-digitballoon` markup/shape/hue classes as before, not a new system -
+   only size (`--cnt`, now set per position/tier instead of an inline
+   one-off) and position change.
+
+   Size and position are both tiered off the same 601px/1100px container
+   query breakpoints the rest of the file already uses (css:1276/1338), not
+   a new breakpoint: this base ruleset holds the phone-tier numbers, and the
+   two `@container` blocks below add the tablet/wide-tier overrides. Phone
+   stays deliberately smaller (bodies roughly 75-105px) than wide's
+   ~140-200px - at ~390px width the crop margin against the centred letters
+   is much tighter, checked against the letters' own actual rendered box
+   (index.html:62, measured via the frozen-animation technique documented
+   for this repo) at both a 390px and a 1440px viewport before picking
+   these numbers, not just eyeballed.
+
+   Position is a small set of `pos-*` classes (top-left/left/right/bottom)
+   rather than the old per-balloon inline `left/top` - each position needs
+   different values at each tier, which a single inline style can't carry.
+   left/top/right/bottom mix a fixed negative px (how much of the balloon
+   bleeds off its anchored edge, kept proportional to that balloon's own
+   `--cnt` rather than the viewport) with a percentage on the other axis
+   (where along that edge it sits) - fixed crop, proportional placement.
+
+   Opacity is now full (was .6) - the earlier low-opacity treatment was
+   itself part of why these read as faint background dust instead of the
+   reference's confidently solid, opaque balloons. Bob is slower and
+   smaller than before (was -7px/4.4s) - a balloon this large moving as
+   fast as the old 13-18px specks did reads as jitter, not a gentle drift.
+
+   REVIEW-ONLY NOTE (temporary, strip with the rest of the switch below):
+   this ruleset is the `?backdrop=balloons` (default) candidate. See
+   `#screen-splash[data-backdrop]` further down for the glow/lanterns
+   alternates being compared against it.
+
+   Incidental fix while verifying this live: `.kq-digitballoon{position:
+   relative}` (css:789) sits AFTER this rule in the file, so at equal
+   specificity it was winning the cascade and silently overriding
+   `position:absolute` below - true for the original 13-18px WIP balloons
+   too (checked git history), just invisible at that size since a few px
+   of flow-stacking offset didn't read as wrong. At this scale it broke
+   edge-anchoring outright (caught via the frozen-state measurement, not
+   eyeballing), so the selector below is now `.kq-digitballoon.kq-
+   splashdrift` (two classes) to win on specificity rather than source
+   order - the only line here that isn't purely about the visual rework. */
+.kq-digitballoon.kq-splashdrift{position:absolute; opacity:0; pointer-events:none;
   filter:drop-shadow(0 2px 3px rgba(46,42,36,.22))}
 .kq-splashdrift .kq-balloon-string{opacity:.35}
+.kq-splashdrift.pos-tl{left:-24px; top:-18px; --cnt:78px}
+.kq-splashdrift.pos-l{left:-22px; top:60%; --cnt:68px}
+.kq-splashdrift.pos-r{right:-24px; top:34%; --cnt:74px}
+.kq-splashdrift.pos-b{bottom:-20px; left:14%; --cnt:64px}
 #screen-splash.go .kq-splashdrift{animation:kq-splashfade .8s ease-out forwards,
-  kq-splashbob 4.4s ease-in-out infinite}
+  kq-splashbob 5.6s ease-in-out infinite}
 #screen-splash.go .sd1{animation-delay:.15s, .95s}
-#screen-splash.go .sd2{animation-delay:.3s, 1.1s; animation-duration:.8s, 4.9s}
-#screen-splash.go .sd3{animation-delay:.45s, 1.25s; animation-duration:.8s, 4.1s}
+#screen-splash.go .sd2{animation-delay:.3s, 1.1s; animation-duration:.8s, 6.2s}
+#screen-splash.go .sd3{animation-delay:.45s, 1.25s; animation-duration:.8s, 5.0s}
+#screen-splash.go .sd4{animation-delay:.6s, 1.4s; animation-duration:.8s, 5.8s}
 #screen-splash.off .kq-splashdrift{animation:kq-splashfade-out .3s ease-in forwards}
 @keyframes kq-splashfade{from{opacity:0; transform:translateY(10px) scale(.7)}
-  to{opacity:.6; transform:translateY(0) scale(1)}}
+  to{opacity:1; transform:translateY(0) scale(1)}}
 @keyframes kq-splashfade-out{to{opacity:0}}
-@keyframes kq-splashbob{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
+@keyframes kq-splashbob{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+
+/* ============================================================
+   REVIEW-ONLY (temporary): splash backdrop A/B/C comparison.
+   Three candidates for the splash backdrop, switched via the JS block in
+   kidq-desktop-app.js (search REVIEW-ONLY) reading `?backdrop=` from the
+   URL onto `#screen-splash[data-backdrop]`: `balloons` (default, the
+   ruleset above), `glow` (below - same balloons plus a soft halo), and
+   `lanterns` (below - a different shape entirely, Tangled-style floating
+   paper lanterns). Once the user picks one, delete this whole section plus
+   the two variants' markup (index.html, same REVIEW-ONLY marker) and the
+   JS switch block - the `balloons` ruleset above needs no changes either
+   way, it doesn't reference `data-backdrop` at all.
+
+   Both non-default variants also swap the sky to the app's existing night
+   treatment (`.kq-sky--night`, css:60 - same indigo gradient the no-
+   session/night-light/all-done screens already use) rather than the
+   splash's own predawn - a glow reads better against real dark than
+   predawn's already-light lower band, and it sets up the sky-as-timer
+   arc (night splash -> sunrise screen) the user called out. Swapped by
+   the JS switch, not here - this file only adds the two variants' own
+   decoration, it doesn't touch `.kq-sky--predawn`/`.kq-sky--night`
+   themselves (both pre-existing, unedited). */
+
+/* ---- glow variant: same edge balloons, soft warm halo added ---- */
+/* A second, larger, coloured `drop-shadow` layered behind each hue's
+   existing shape-hugging one (`.kq-balloon-body`'s own rule, css:791,
+   unedited) - blur scaled off that balloon's own `--cnt` so it stays in
+   proportion across the phone/tablet/wide tiers above without needing its
+   own breakpoints. Static, no pulse/flicker animation - brand.md's
+   anti-overstimulation stance (also why the base balloons above bob
+   slowly rather than snapping) applies here too. */
+#screen-splash[data-backdrop="glow"] .kq-splashdrift.hue-teal .kq-balloon-body{
+  filter:drop-shadow(0 3px 5px rgba(46,42,36,.28))
+    drop-shadow(0 0 calc(var(--cnt) * .26) rgba(31,122,109,.55))}
+#screen-splash[data-backdrop="glow"] .kq-splashdrift.hue-rose .kq-balloon-body{
+  filter:drop-shadow(0 3px 5px rgba(46,42,36,.28))
+    drop-shadow(0 0 calc(var(--cnt) * .26) rgba(168,80,110,.55))}
+#screen-splash[data-backdrop="glow"] .kq-splashdrift.hue-coral .kq-balloon-body{
+  filter:drop-shadow(0 3px 5px rgba(46,42,36,.28))
+    drop-shadow(0 0 calc(var(--cnt) * .26) rgba(194,84,63,.55))}
+#screen-splash[data-backdrop="glow"] .kq-splashdrift.hue-dusk .kq-balloon-body{
+  filter:drop-shadow(0 3px 5px rgba(46,42,36,.28))
+    drop-shadow(0 0 calc(var(--cnt) * .26) rgba(111,90,168,.55))}
+
+/* ---- lanterns variant: Tangled-style floating paper lanterns ---- */
+/* Lanterns INSTEAD of balloons (not alongside) - the balloons markup stays
+   in the DOM for the other two variants, so this variant hides it rather
+   than the other two needing to. A different shape from the balloons
+   (soft rounded-rect/teardrop, not a circle-on-a-string) so it gets its
+   own markup (index.html, same REVIEW-ONLY marker) rather than reusing
+   `.kq-digitballoon` - only the overall pattern (absolute + hidden by
+   default, faded in/out with `.go`/`.off`, sized off one custom property
+   per tier) carries over. Hidden with `display:none` (not just opacity)
+   under every OTHER variant so it never becomes an invisible hit-target or
+   a stray a11y node; no text nodes here either, matching the balloons.
+
+   Warm inner light: a radial gradient from a near-white core (the "flame")
+   out to the app's own `--sun`/`--sun-deep` tokens (css:7, unedited) - not
+   a new palette. The halo is the same scaled-`drop-shadow` technique as
+   the glow balloons above, in that same sun colour. Five lanterns at three
+   sizes double as three depths (smaller = further, per the reference) -
+   the glow blur is a ratio of each lantern's own `--lcnt`, so smaller
+   lanterns automatically get a fainter, tighter halo for free, no separate
+   depth property needed. Position is plain percentages (not the balloons'
+   edge-crop) since lanterns drift through open sky rather than framing the
+   edges - checked against the letters' own rendered box at both a 390px
+   and 1440px viewport, same as the balloons above, before picking them. */
+.kq-lantern{display:none; position:absolute; opacity:0; pointer-events:none}
+#screen-splash[data-backdrop="lanterns"] .kq-lantern{display:block}
+#screen-splash[data-backdrop="lanterns"] .kq-splashdrift{display:none}
+.kq-lantern-body{display:block; width:100%; height:100%;
+  border-radius:50% 50% 42% 42% / 62% 62% 38% 38%;
+  background:radial-gradient(circle at 50% 38%, #FFFBEA 0%, var(--sun) 55%, var(--sun-deep) 100%);
+  filter:drop-shadow(0 0 calc(var(--lcnt) * .45) rgba(240,167,46,.5))}
+.kq-lantern{--lcnt:30px; width:var(--lcnt); height:calc(var(--lcnt) * 1.22)}
+.kq-lantern.lt1{left:8%; top:10%; --lcnt:30px}
+.kq-lantern.lt2{left:78%; top:16%; --lcnt:40px}
+.kq-lantern.lt3{left:6%; top:60%; --lcnt:52px}
+.kq-lantern.lt4{left:84%; top:64%; --lcnt:38px}
+.kq-lantern.lt5{left:62%; top:80%; --lcnt:26px}
+#screen-splash[data-backdrop="lanterns"].go .kq-lantern{
+  animation:kq-lanternfade 1s ease-out forwards, kq-lanternrise 9s ease-in-out infinite}
+#screen-splash[data-backdrop="lanterns"].go .lt1{animation-delay:.1s, 1.1s}
+#screen-splash[data-backdrop="lanterns"].go .lt2{animation-delay:.25s, 1.25s; animation-duration:1s, 10.5s}
+#screen-splash[data-backdrop="lanterns"].go .lt3{animation-delay:.4s, 1.4s; animation-duration:1s, 8s}
+#screen-splash[data-backdrop="lanterns"].go .lt4{animation-delay:.55s, 1.55s; animation-duration:1s, 11.5s}
+#screen-splash[data-backdrop="lanterns"].go .lt5{animation-delay:.7s, 1.7s; animation-duration:1s, 9.5s}
+#screen-splash[data-backdrop="lanterns"].off .kq-lantern{animation:kq-lanternfade-out .3s ease-in forwards}
+@keyframes kq-lanternfade{from{opacity:0; transform:translateY(14px) scale(.75)}
+  to{opacity:1; transform:translateY(0) scale(1)}}
+@keyframes kq-lanternfade-out{to{opacity:0}}
+@keyframes kq-lanternrise{0%{transform:translateY(0)}100%{transform:translateY(calc(var(--lcnt) * -.55))}}
+
+@container (min-width:601px){
+  /* lanterns variant (css above) - tablet tier */
+  .kq-lantern.lt1{--lcnt:42px}
+  .kq-lantern.lt2{--lcnt:56px}
+  .kq-lantern.lt3{--lcnt:74px}
+  .kq-lantern.lt4{--lcnt:54px}
+  .kq-lantern.lt5{--lcnt:36px}
+}
+@container (min-width:1100px){
+  /* lanterns variant (css above) - wide tier */
+  .kq-lantern.lt1{--lcnt:54px}
+  .kq-lantern.lt2{--lcnt:72px}
+  .kq-lantern.lt3{--lcnt:96px}
+  .kq-lantern.lt4{--lcnt:70px}
+  .kq-lantern.lt5{--lcnt:46px}
+}
+/* ========================== end REVIEW-ONLY ========================== */
 
 /* ---------- login (who's watching) ---------- */
 .kq-whotitle{font-family:var(--disp); font-weight:800; font-size:34px; line-height:1.1;
@@ -1112,6 +1274,11 @@ button{font-family:inherit; -webkit-tap-highlight-color:transparent}
 
 /* ---------- watching/cast layout: tablet tier ---------- */
 @container (min-width:601px){
+  /* splash backdrop balloons (css:144) - tablet tier */
+  .kq-splashdrift.pos-tl{left:-34px; top:-26px; --cnt:120px}
+  .kq-splashdrift.pos-l{left:-32px; top:64%; --cnt:105px}
+  .kq-splashdrift.pos-r{right:-36px; top:38%; --cnt:115px}
+  .kq-splashdrift.pos-b{bottom:-30px; left:20%; --cnt:100px}
   .kq-head{top:18px; left:26px}
   .kq-castpill{top:18px}
   .kq-arcwrap{top:0; height:130px}
@@ -1169,6 +1336,11 @@ button{font-family:inherit; -webkit-tap-highlight-color:transparent}
 
 /* ---------- wide tier ---------- */
 @container (min-width:1100px){
+  /* splash backdrop balloons (css:144) - wide tier */
+  .kq-splashdrift.pos-tl{left:-40px; top:-30px; --cnt:150px}
+  .kq-splashdrift.pos-l{left:-38px; top:64%; --cnt:130px}
+  .kq-splashdrift.pos-r{right:-42px; top:38%; --cnt:145px}
+  .kq-splashdrift.pos-b{bottom:-36px; left:22%; --cnt:125px}
   .kq-head{top:26px; left:36px}
   .kq-head .av{width:46px; height:46px; font-size:19px}
   .kq-head .name{font-size:19px}
