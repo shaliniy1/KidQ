@@ -322,7 +322,7 @@
     sunrise.classList.remove("risen", "tapped");
     $("#screen-all-done").classList.remove("hifived");
     $("#whatsnext").classList.remove("in", "choose");
-    $("#sunrise-greet").innerHTML = `Good morning,<br>${state.profile.name}!`;
+    $("#sunrise-greet").innerHTML = `Hi,<br>${state.profile.name}!`;
     const s = state.session;
     $("#sunrise-heartline").innerHTML = s.replay
       ? `<b>Yesterday's videos, one more time</b> · ${s.totalMinutes} min`
@@ -910,7 +910,7 @@
       if (reducedMotion) hfAnim.goToAndStop(HF_IDLE, true);
       else hfAnim.playSegments([[0, HF_IDLE]], true);
     }
-    $("#done-gn").innerHTML = `Good night,<br>${state.profile ? state.profile.name : "Aarav"}! 🌙`;
+    $("#done-gn").innerHTML = `Bye bye,<br>${state.profile ? state.profile.name : "Aarav"}! 👋`;
     const wn = $("#whatsnext");
     wn.classList.remove("in", "choose");
     const row = $("#wn-row");
@@ -984,7 +984,7 @@
     if (name === "sunrise") { prepSession("aarav"); startSunrise(); }
     if (name === "no-session") { prepSession("meera"); startNoSession(); }
     if (name === "night-light") {
-      $("#night-greet").innerHTML = `Good night,<br>${state.profile ? state.profile.name : "Aarav"}!`;
+      $("#night-greet").innerHTML = `Bye bye,<br>${state.profile ? state.profile.name : "Aarav"}!`;
       showScreen("screen-night-light");
       markDemo("night-light");
     }
