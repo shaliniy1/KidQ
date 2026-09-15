@@ -1,79 +1,71 @@
 # KidQ
 
-Fresh KidQ foundation — a clean-slate rebuild with separate `web` and `api` apps, no product features yet.
+A calm, curated library of videos for children from birth to six. KidQ finds content through official source APIs, scores it (AI + admin review), publishes **only what an admin approves**, and recommends it to each child from their parent's onboarding answers.
 
 ## Structure
 
 ```
 KidQ/
-├── web/    Next.js + TypeScript frontend
-├── api/    TypeScript backend (Express)
-├── docs/   Project docs
+├── api/      TypeScript API (Express) + job worker: ingestion, KidQ content score, admin gate, recommendations
+├── admin/    Admin Content Studio (Next.js): review, score, tag, publish
+├── web/      Parent & child app (Next.js, PWA)
+├── packages/ kidq-player: shared restricted video player (React, remote-ready)
+├── config/   Source catalog and seed discovery plan
+└── docs/     Specs, API integration guide, deployment
 ```
+
+## Docs
+
+- [Recommendation system](./docs/recommendation/README.md): content score, AI scoring agent, admin gate, ranking
+- [Content curation](./docs/content-curation/README.md): sources, rights, rubric, lifecycle
+- [API integration guide](./docs/api/README.md): for the UI teams. The live contract is at `/openapi.json`, with interactive docs at `/docs`
+- [Deployment](./docs/deployment.md): QA on Render + Supabase free tiers, and what changes for prod
 
 ## Requirements
 
-- Node.js 20+
-- npm 10+
+Node.js 22 (see `.node-version`), npm 10+, PostgreSQL 16 for local development.
 
-## Setup
+## Local setup
 
 ```bash
 npm install
-cp .env.example .env
+cp api/.env.example api/.env          # AUTH_MODE=dev + local Postgres
 cp web/.env.example web/.env.local
-cp api/.env.example api/.env
+cp admin/.env.example admin/.env.local
+createdb kidq && createdb kidq_test
+npm run db:migrate -w api
+npm run seed:sample -w api            # the team's sample library: no API keys needed
+npm run dev                           # web :3000, admin :3001, api :4000 (the job worker runs inside the API)
 ```
 
-## Development
+With `AUTH_MODE=dev`:
 
-Run both apps together:
+- **Admin app**: sign in at http://localhost:3001 with any email (no Supabase needed).
+- **API**: call it with `Authorization: Bearer dev:admin:<uuid>` or `Bearer dev:parent:<uuid>`, and try it at http://localhost:4000/docs.
+
+## Seed content
+
+`npm run seed:sample -w api` (in the setup above) loads the team's sample library from `api/db/seed/sample-content.json.gz`: the pulled videos and picture books with their scores, categories and review history, so the admin looks the same on every laptop. It only loads into an empty database. It contains content only, never families, sessions or keys. To refresh the file from your own database, run `npm run seed:sample:export -w api` and commit the result.
+
+To pull fresh content from the sources instead:
 
 ```bash
-npm run dev
+npm run seed:discover -w api -- --drain
 ```
 
-Or separately:
+This loads ~270 videos from YouTube, NASA and Wikimedia, and ~48 StoryWeaver picture books. YouTube needs `YOUTUBE_DATA_API_KEY`; add `GEMINI_API_KEY` for AI scores.
+
+## Checks
 
 ```bash
-npm run dev:web   # http://localhost:3000
-npm run dev:api   # http://localhost:4000
-```
-
-## Build
-
-```bash
+npm run typecheck
+npm test          # unit + integration tests against local Postgres (kidq_test)
 npm run build
 ```
 
-## Health check
+## How content reaches a child
 
-```bash
-curl http://localhost:4000/health
-```
-
-## Status
-
-## Content discovery
-
-See the complete [KidQ Content Curation System](./docs/content-curation/README.md) for source connectors, transcript and licensing rules, low-cost assessment, PostgreSQL storage, Supabase/Render deployment, and the implementation roadmap.
-
-The API exposes `POST /content/discover`. It creates a provenance-rich KidQ content record and appends it to `KIDQ_DATA_DIR/content.jsonl` (an intentionally simple first storage layer). Opening `GET /content/discover` in a browser returns usage instructions.
-
-YouTube discovery uses the official YouTube Data API only; it does not scrape, download, cache, or copy videos. Set `YOUTUBE_DATA_API_KEY`, then call:
-
-```bash
-curl -X POST http://localhost:4000/content/discover \
-  -H 'content-type: application/json' \
-  -d '{"source":"youtube","query":"calm counting for toddlers","max_results":5,"language":"en","region_code":"US"}'
-```
-
-Open sources can be ingested by URL. The fetcher records visible metadata, a clearly marked transcript when the page exposes one, the first iframe URL, and license metadata when present:
-
-```bash
-curl -X POST http://localhost:4000/content/discover \
-  -H 'content-type: application/json' \
-  -d '{"source":"open_web","query":"story","open_urls":["https://example.org/story"]}'
-```
-
-Every record is `MANUAL_REVIEW_REQUIRED` unless an explicit exclusion signal is found. This is deliberate: metadata and transcripts cannot establish visual pacing, flashing, audio intensity, or age suitability. YouTube captions are only reported as available; transcript download requires the appropriate official API/OAuth capability and is not performed by scraping.
+1. **Import**: discovery queries or pasted URLs, through official APIs only (YouTube Data API, NASA Image and Video Library, Wikimedia Commons). Nothing is scraped, and YouTube videos are never downloaded.
+2. **Score**: rule pre-checks, then the Gemini scoring agent, then the KidQ content score (content & language 40%, pacing 25%, visual comfort 20%, audio comfort 15%). A safety flag withholds the score.
+3. **Approve**: admins review, edit and approve in the Admin Content Studio. Nothing is visible to parents or children before that.
+4. **Recommend**: ranked for each child profile. The parent adds items to the child's library, which plays in the restricted KidQ Player.

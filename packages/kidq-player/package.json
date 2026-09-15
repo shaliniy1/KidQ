@@ -1,0 +1,21 @@
+{
+  "name": "@kidq/player",
+  "version": "0.1.0",
+  "private": true,
+  "description": "KidQ Player: restricted YouTube and HTML5 playback with KidQ's own remote-ready controls",
+  "main": "src/index.tsx",
+  "types": "src/index.tsx",
+  "exports": {
+    ".": "./src/index.tsx"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "react": ">=19"
+  },
+  "devDependencies": {
+    "@types/react": "^19",
+    "typescript": "^5"
+  }
+}

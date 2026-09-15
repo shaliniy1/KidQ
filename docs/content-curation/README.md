@@ -10,11 +10,13 @@ KidQ does not reproduce YouTube, copy third-party media libraries, or automatica
 
 ## Audience and taxonomy
 
-Every item must target children aged 0–6 and use one or more of these age bands:
+Every item must target children aged 0–6. Items store a minimum and maximum age, from which these bands — the same ones parents pick in onboarding ([parent onboarding](../recommendation/parent-onboarding.md)) — are derived:
 
 - 0–2 years
-- 2–4 years
-- 4–6 years
+- 2–3 years
+- 3–4 years
+- 4–5 years
+- 5–6 years
 
 Every item must have exactly one primary content type:
 
@@ -23,21 +25,26 @@ Every item must have exactly one primary content type:
 - `STORYBOOK`: a narrated, illustrated, read-aloud, or digital story
 - `INTERACTIVE_CONTENT`: a simple age-appropriate game, puzzle, matching exercise, or learning interaction
 
-Supported categories include:
+Categories are the parent onboarding categories (architecture doc §9), so parents choose from exactly what admins tag. Each has a one-line definition (`taxonomy_terms.meta.definition`) that the AI and admins use:
 
-- Animated Videos
-- Storybooks / Read-Alouds
-- Creative Crafts
-- Drawing & Painting
-- Science
-- Maths
-- Baby Learning
-- General Knowledge
-- Games / Play-Along
-- Yoga & Movement
-- Animals / Nature / Guppy Videos
-- Trusted Educators
-- Activities
+| Category | Definition |
+|---|---|
+| Animation | Cartoons and animated videos whose main appeal is the animation itself, not a story or a song |
+| Stories | A story told on video: animated, with puppets, or someone reading or telling it aloud |
+| Storybooks | Picture books read in the KidQ story reader. Only for books, never for videos |
+| Crafts | Making things with paper, clay, recycled materials or other simple craft supplies |
+| Painting | Drawing, painting, colouring and other art made with pencils, crayons or paint |
+| Science | Explains how or why things work: space, weather, the human body, life cycles and simple experiments |
+| Maths | Counting, numbers, shapes, sizes, patterns, sorting and measuring |
+| Yoga | Yoga, stretching, breathing and calm movement to follow along with |
+| Activities | Play-along games, movement or dance challenges, and things to do away from the screen |
+| Educational | Early-learning lessons: letters, phonics, first words, colours, body parts, routines and manners |
+| Music / Rhymes | Songs, nursery rhymes, lullabies and gentle music |
+| Knowledge / General Learning | Shows and names the real world: animals, nature, vehicles, places, people and jobs |
+
+An item fits up to three categories, primary first. Every picture book is Storybooks first, with its topic after it, so a counting book is Storybooks + Maths.
+
+Earlier categories were folded in: Animals / Nature → Knowledge / General Learning; Baby Learning and Trusted Educators → Educational; Games / Play-Along → Activities.
 
 ### Discovery topics
 
@@ -118,7 +125,7 @@ The machine-readable source inventory is [`config/content-sources.json`](../../c
 | Wikimedia Commons | MediaWiki Action API | Metadata, creator, license, attribution, media URLs | Item-level license controls reuse | Recommended |
 | Openverse | Official API | Aggregated open-media metadata and source landing URL | Verify the original item license | Conditional |
 | Internet Archive | Official search and metadata APIs | Metadata, file inventory, item license | Require explicit item-level reuse rights | Conditional |
-| StoryWeaver | Confirmed official method to be determined | Metadata and source URL initially | No copied story text or media until rights are confirmed | `PENDING_LICENSE_REVIEW` |
+| StoryWeaver | Public web API (books-search, story reader); undocumented, so confirm with StoryWeaver before prod | Metadata, attribution, story text per page, illustration URLs | Only books whose story and every illustration are CC BY, CC BY-SA or CC0; illustrations stay at the source | Enabled for QA ([details](./storyweaver.md)) |
 | KidQ | Internal authoring | Original activities and owned media | Store as KidQ-owned content | Recommended |
 
 ### Universal connector rules
@@ -287,20 +294,15 @@ Do not infer a transcript by stripping all page text. Extract only content expli
 
 ## StoryWeaver connector
 
-StoryWeaver is a required KidQ source, but its connector remains `PENDING_LICENSE_REVIEW` until the current official access method, rate limits, license fields, attribution obligations, and text/media reuse rights are confirmed.
+StoryWeaver is a required KidQ source for picture books. Its license review is recorded in [`storyweaver.md`](./storyweaver.md) (2026-09-12), and on that basis the connector is **enabled for QA**:
 
-Until that review is complete, KidQ may store only:
+- It stores a book only when the book's attribution page releases the story and every illustration under CC BY, CC BY-SA or CC0, and records that as the rights assertion.
+- It stores each page's text and the book's full attribution. Illustrations stay on StoryWeaver's servers; KidQ downloads no PDFs, ePubs, audio or video.
+- ReadAlong audio and StoryWeaver videos stay out (often CC BY-NC-ND).
 
-- external story ID when available
-- title
-- author and illustrator
-- language
-- reading level
-- source URL
-- displayed license and attribution metadata
-- fetch timestamp and provenance
+Two checklist answers are still open and must be closed before prod: StoryWeaver's confirmation that KidQ may use its undocumented API, and a review of its Terms of Use.
 
-KidQ must not copy story text, illustrations, downloadable files, or generated transcripts merely because a story is publicly readable. Enable richer ingestion only after recording a rights assertion that permits each storage or reuse operation.
+KidQ must not copy story text, illustrations, downloadable files, or generated transcripts merely because a story is publicly readable. Every storage or reuse operation needs a rights assertion that permits it.
 
 ### StoryWeaver license-review checklist
 
@@ -319,7 +321,7 @@ Before enabling automated StoryWeaver ingestion, record answers and evidence for
 - How must withdrawn or relicensed stories be handled?
 - What rate limits and contact details govern the integration?
 
-Until every applicable answer is supported by evidence, keep the connector disabled and all discovered records in `MANUAL_REVIEW_REQUIRED`.
+The answers and evidence are in [`storyweaver.md`](./storyweaver.md). Until its open items are closed, StoryWeaver runs in QA only, and like all content every book starts in `MANUAL_REVIEW_REQUIRED`.
 
 ## Transcript retrieval
 
@@ -595,15 +597,30 @@ Each candidate receives exactly one status:
 - `REJECTED`
 - `MANUAL_REVIEW_REQUIRED`
 
+Every filter-out criterion has a tier (rubric v3, `api/src/domain/rubric.ts`):
+
+| Tier | Criteria | A confirmed FAIL… |
+|---|---|---|
+| Safety | `physical_violence`, `verbal_or_emotional_aggression`, `frightening_imagery`, `mature_themes`, `discrimination_or_stereotypes`, `dangerous_behaviour` | withholds the score, and KidQ rejects the item |
+| Exclude | `rapid_visual_cuts`, `flashing_or_excessive_contrast` (also a harsh, neon or high-contrast palette), `loud_or_jarring_audio`, `direct_advertising`, `unboxing_or_toy_review`, `franchise_led_promotion`, `endless_or_open_loop`, `developmental_mismatch` (also anything made for adults) | makes KidQ reject the item |
+| Flag | `cluttered_visuals`, `product_placement`, `clickbait_title_or_thumbnail`, `repetitive_without_objective`, `passive_viewing_only` | shows the problem to the admin; some cap a score |
+
+- **Confirmed** means the AI, watching the item, or an admin gave the FAIL.
+- A text rule's FAIL is only a suspicion: the item still goes to the AI, and waits in Needs attention until it's cleared.
+- KidQ's rejections are SYSTEM publication decisions that any admin can reverse. Automation never approves.
+
 Apply these rules:
 
 ```text
-Explicit exclusion criterion fails → REJECTED
+Confirmed safety or exclusion FAIL → REJECTED by KidQ checks (an admin can reverse it)
+KidQ score below 60                → REJECTED by KidQ checks (an admin can reverse it)
 Required evidence is missing       → MANUAL_REVIEW_REQUIRED
 Audiovisual safety is unchecked    → MANUAL_REVIEW_REQUIRED
-Model output is uncertain          → MANUAL_REVIEW_REQUIRED
+Model output is uncertain (<60%)   → MANUAL_REVIEW_REQUIRED
 Automated checks pass              → still requires human publication review
 ```
+
+The full publish policy, including the 60–69 "needs a look" band, is in [`docs/recommendation/README.md`](../recommendation/README.md).
 
 Popularity is never an approval or ranking signal.
 
@@ -632,18 +649,32 @@ Official documentation:
 - <https://developers.openai.com/api/docs/models/omni-moderation-latest>
 - <https://developers.openai.com/api/docs/models/gpt-5-nano>
 
+### Video scoring agent
+
+Metadata and transcripts cannot verify pacing, flashing, visual clutter or audio intensity (see *Evidence boundary*). KidQ therefore scores video with a Gemini model that watches the video itself:
+
+- **YouTube**: the model watches the public YouTube URL directly. KidQ still downloads nothing.
+- **NASA and Wikimedia**: for items whose rights assertion permits a copy, the file goes to a temporary Files API upload that is deleted right after scoring.
+- **StoryWeaver picture books**: the model reads each page's text and sees each illustration (a small rendition, sent inline and not kept). A book has no soundtrack, so it's scored on three components.
+
+Its output is a MODEL assessment with `audiovisual_inspected=true`. It can recommend rejection but never approval. Component scores, weights, the free-tier guard and the admin gate are specified in [`docs/recommendation/README.md`](../recommendation/README.md). OpenAI moderation remains an optional second safety opinion.
+
 ### Token controls
 
-1. Run source, duration, embeddability, license, deduplication, and blocked-term checks without an LLM.
+1. Run source, duration, embeddability, license, deduplication, and blocked-term checks without an LLM. The pull-time **pre-screen** (`api/src/domain/analysis/prescreen.ts`) drops a discovered item before it's stored when:
+   - it has an unsuitable term: trailer, horror, exposé, slaughter;
+   - it's agency news, a briefing, a promo or b-roll;
+   - it's an off-topic match, such as "butterfly stroke";
+   - it's a video under 15 seconds or over 15 minutes.
 2. Send only relevant source facts and permitted text, not the complete API response.
 3. Require compact Structured Outputs matching the KidQ schema.
 4. Use stable criterion keys and keep full rubric definitions in application code.
-5. Cache by `content_hash + rubric_version + model_snapshot`.
+5. Cache by `content_hash + rubric_version + prompt_version + model`.
 6. Skip unchanged content.
 7. Chunk long transcripts once and aggregate only criterion evidence.
 8. Limit evidence to one factual sentence per criterion.
 9. Record input and output tokens for every model assessment.
-10. Evaluate model changes against a human-labelled KidQ test set before production use.
+10. Evaluate model changes against a human-labelled KidQ test set before production use (`npm run eval:scoring -w api`).
 
 Prefer false manual-review referrals over false approvals.
 
@@ -790,12 +821,10 @@ OPENAI_MODERATION_MODEL=omni-moderation-latest
 OPENAI_CLASSIFICATION_MODEL=gpt-5-nano
 OPENAI_ESCALATION_MODEL=
 
-KIDQ_RUBRIC_VERSION=1
-KIDQ_PROMPT_VERSION=1
 KIDQ_MAX_TRANSCRIPT_CHARS=24000
 ```
 
-Use server-side environment variables locally and deployment secret managers in hosted environments.
+Use server-side environment variables locally and deployment secret managers in hosted environments. The rubric and prompt versions are code constants (`RUBRIC_VERSION`, `PROMPT_VERSION`), not settings, so a version always matches the code that produced it.
 
 ### Secret ownership
 
@@ -810,41 +839,11 @@ Commit only empty examples. Rotate any credential that appears in source control
 
 ## Current API
 
-The current backend exposes:
+The backend implements the ingestion API below, plus the admin, recommendation and parent endpoints described in [`docs/api/README.md`](../api/README.md). The live contract is `GET /openapi.json`.
 
-```text
-GET  /health
-GET  /content/discover
-POST /content/discover
-```
+The `GET/POST /content/discover` prototype and its JSONL store have been retired. So has the generic open-web fetcher: it will return only with a per-domain allowlist configuration, as the connector rules require.
 
-YouTube discovery example:
-
-```bash
-curl -X POST http://localhost:4000/content/discover \
-  -H 'content-type: application/json' \
-  -d '{
-    "source": "youtube",
-    "query": "calm counting for toddlers",
-    "max_results": 5,
-    "language": "en",
-    "region_code": "IN"
-  }'
-```
-
-Allowlisted open-page example:
-
-```bash
-curl -X POST http://localhost:4000/content/discover \
-  -H 'content-type: application/json' \
-  -d '{
-    "source": "open_web",
-    "query": "story",
-    "open_urls": ["https://example.org/story"]
-  }'
-```
-
-The current implementation writes JSONL as a prototype. The PostgreSQL migration exists, but the API storage adapter has not yet been connected to PostgreSQL. Do not describe content as persisted in Supabase or Render until that integration is implemented and verified.
+Content is persisted in PostgreSQL through the migrations in `api/db/migrations/`. This has been verified against local PostgreSQL 16. Do not describe it as running on Supabase or Render until the QA deployment has been verified.
 
 ### Desired ingestion API
 

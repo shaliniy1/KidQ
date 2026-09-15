@@ -1,44 +1,31 @@
-import express from "express";
-import cors from "cors";
+import { createApp } from "./app";
 import { env } from "./config/env";
-import healthRoutes from "./routes/health.routes";
-import contentRoutes from "./routes/content.routes";
-import parentConfigRoutes from "./routes/parent-config.routes";
-import authRoutes from "./routes/auth.routes";
-import consentRoutes from "./routes/consent.routes";
-import onboardingRoutes from "./routes/onboarding.routes";
-import curationSettingsRoutes from "./routes/curation-settings.routes";
-import curationNluRoutes from "./routes/curation-nlu.routes";
-import sessionRoutes from "./routes/session.routes";
-import recommendationsRoutes from "./routes/recommendations.routes";
-import sessionLogRoutes from "./routes/session-log.routes";
-import inboxRoutes from "./routes/inbox.routes";
-import feedbackRoutes from "./routes/feedback.routes";
-import excludeListRoutes from "./routes/exclude-list.routes";
-import myVideosRoutes from "./routes/my-videos.routes";
-import analyticsRoutes from "./routes/analytics.routes";
+import { runMigrations } from "./db/migrate";
+import { closePool, getPool } from "./db/pool";
+import { startWorker } from "./services/worker";
 
-const app = express();
+async function main() {
+  // Render free has no pre-deploy step, so QA migrates at boot (advisory-locked, idempotent).
+  if (env.runMigrationsOnBoot) await runMigrations(getPool());
 
-app.use(cors());
-app.use(express.json());
-app.use(healthRoutes);
-app.use(contentRoutes);
-app.use(parentConfigRoutes);
-app.use(authRoutes);
-app.use(consentRoutes);
-app.use(onboardingRoutes);
-app.use(curationSettingsRoutes);
-app.use(curationNluRoutes);
-app.use(sessionRoutes);
-app.use(recommendationsRoutes);
-app.use(sessionLogRoutes);
-app.use(inboxRoutes);
-app.use(feedbackRoutes);
-app.use(excludeListRoutes);
-app.use(myVideosRoutes);
-app.use(analyticsRoutes);
+  const server = createApp().listen(env.port, () => {
+    console.log(`kidq-api listening on port ${env.port}`);
+  });
+  // Render free has no background workers: run the job worker inside the API process.
+  const worker = env.runWorkerInProcess ? startWorker() : null;
 
-app.listen(env.port, () => {
-  console.log(`kidq-api listening on port ${env.port}`);
+  const shutdown = () => {
+    worker?.stop();
+    server.close(() => {
+      void closePool().finally(() => process.exit(0));
+    });
+    setTimeout(() => process.exit(0), 10_000).unref();
+  };
+  process.on("SIGTERM", shutdown);
+  process.on("SIGINT", shutdown);
+}
+
+main().catch((error: Error) => {
+  console.error(`kidq-api failed to start: ${error.message}`);
+  process.exit(1);
 });
