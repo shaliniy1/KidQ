@@ -12,21 +12,6 @@ import { Card } from "@/components/Card";
 import { Pill } from "@/components/Pill";
 import { Avatar } from "@/components/Avatar";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
-
-async function downloadCsvExport(user: User) {
-  const idToken = await user.getIdToken();
-  const res = await fetch(`${API_URL}/analytics/export.csv`, { headers: { Authorization: `Bearer ${idToken}` } });
-  if (!res.ok) throw new Error(`Export failed with status ${res.status}`);
-  const blob = await res.blob();
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = "kidq-analytics-export.csv";
-  link.click();
-  URL.revokeObjectURL(url);
-}
-
 const RANGE_LABELS: { range: TimeRange; label: string }[] = [
   { range: "day", label: "Day" },
   { range: "week", label: "Week" },
@@ -175,20 +160,13 @@ export default function AnalyticsPage() {
                 {summary.completionRatePercent}% of sessions ended on their own (wind-down); {summary.earlyExitRatePercent}% ended early.
               </p>
               <p style={{ fontSize: "var(--kq-text-body)", color: "var(--kq-charcoal)" }}>
-                ≈{summary.contentSource.percentKidqReviewed}% of what they watched was KidQ-reviewed.
+                ≈{summary.contentSource.percentFromKidqCuratedSources}% of what they watched came from KidQ&apos;s curated sources.
               </p>
             </Card>
           </>
         )}
 
         {!summary && phase === "ready" && <p style={{ color: "var(--kq-text-secondary)" }}>Loading activity…</p>}
-
-        <button
-          onClick={() => userRef.current && downloadCsvExport(userRef.current)}
-          style={{ alignSelf: "flex-start", fontSize: "var(--kq-text-caption)", color: "var(--kq-text-secondary)", textDecoration: "underline", background: "none", border: "none", cursor: "pointer", padding: 8 }}
-        >
-          Admin: download CSV export
-        </button>
       </div>
     </main>
   );

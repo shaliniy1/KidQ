@@ -9,7 +9,7 @@ export interface ContentSourceBreakdown {
   kidqRecommendedSeconds: number;
   pickedByParentSeconds: number;
   adminApprovedFromSubmissionSeconds: number;
-  percentKidqReviewed: number;
+  percentFromKidqCuratedSources: number;
 }
 
 export interface AnalyticsSummary {

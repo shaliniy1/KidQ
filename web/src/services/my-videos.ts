@@ -19,13 +19,19 @@ export async function getMyVideos(user: User): Promise<LibraryEntry[]> {
   return entries;
 }
 
-export async function addVideo(user: User, video: DetectedVideo, visibility: LibraryVisibility): Promise<LibraryEntry> {
+export async function addVideo(
+  user: User,
+  video: DetectedVideo,
+  category: string,
+  visibility: LibraryVisibility
+): Promise<LibraryEntry> {
   const { entry } = await apiFetch<{ entry: LibraryEntry }>("/library", {
     method: "POST",
     headers: await authHeaders(user),
     body: JSON.stringify({
       contentId: video.contentId,
       title: video.title,
+      category,
       durationSeconds: video.durationSeconds,
       thumbnailUrl: video.thumbnailUrl,
       embedUrl: video.embedUrl,

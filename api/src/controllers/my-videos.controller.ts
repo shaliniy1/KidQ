@@ -2,7 +2,18 @@ import type { Request, Response } from "express";
 import { extractYouTubeVideoId, fetchYouTubeMetadata, YouTubeNotConfiguredError } from "../services/youtube";
 import { addToLibrary, getLibraryEntry, listLibrary, removeFromLibrary, setSubmissionStatus } from "../services/library-store";
 import { addNotification } from "../services/inbox-store";
+import { getParentExperienceConfig } from "../services/parent-config";
 import type { LibraryVisibility } from "../types/library";
+
+/**
+ * "Other" is not part of the config-driven category list — it's the explicit
+ * fallback a parent picks on P9a when none of KidQ's own categories fit
+ * (spec/ticket 11 follow-up, 2026-09-15). Kept distinct from `null` so an
+ * admin can tell "the parent deliberately said this doesn't fit any
+ * category" apart from "never categorized." See INTEGRATION_NOTES.md #10 —
+ * YouTube's own category taxonomy is never auto-mapped to this list.
+ */
+export const OTHER_CATEGORY = "Other";
 
 /**
  * P9a step 1 — detects metadata for a pasted URL. Does NOT save anything
@@ -48,13 +59,24 @@ export async function postAddVideo(req: Request, res: Response) {
   if (typeof contentId !== "string" || !contentId || typeof title !== "string" || !title) {
     return res.status(400).json({ error: "contentId and title are required" });
   }
+
+  // Category is picked by the parent on P9a (2026-09-15 follow-up) — YouTube
+  // detection never auto-fills it (INTEGRATION_NOTES.md #10), so it's
+  // required here just like contentId/title, validated against the same
+  // config category list the Hub uses, plus the explicit "Other" escape hatch.
+  const config = await getParentExperienceConfig();
+  const validCategories = new Set([...config.categories, OTHER_CATEGORY]);
+  if (typeof category !== "string" || !validCategories.has(category)) {
+    return res.status(400).json({ error: "category must be one of the configured categories or 'Other'" });
+  }
+
   const resolvedVisibility: LibraryVisibility = visibility === "public" ? "public" : "private";
 
   const [created] = await addToLibrary(req.identity!.uid, [
     {
       contentId,
       title,
-      category: typeof category === "string" ? category : null,
+      category,
       durationSeconds: typeof durationSeconds === "number" ? durationSeconds : null,
       thumbnailUrl: typeof thumbnailUrl === "string" ? thumbnailUrl : null,
       embedUrl: typeof embedUrl === "string" ? embedUrl : null,

@@ -59,8 +59,9 @@ export async function buildAnalyticsSummary(uid: string, childId: string, range:
     .map(([category, seconds]) => ({ category, seconds }))
     .sort((a, b) => b.seconds - a.seconds);
 
-  const reviewedSeconds = sourceSeconds.kidq_recommended + sourceSeconds.admin_approved_from_submission;
-  const percentKidqReviewed = totalScreenTimeSeconds > 0 ? Math.round((reviewedSeconds / totalScreenTimeSeconds) * 100) : 0;
+  const curatedSourceSeconds = sourceSeconds.kidq_recommended + sourceSeconds.admin_approved_from_submission;
+  const percentFromKidqCuratedSources =
+    totalScreenTimeSeconds > 0 ? Math.round((curatedSourceSeconds / totalScreenTimeSeconds) * 100) : 0;
 
   return {
     childId,
@@ -74,40 +75,7 @@ export async function buildAnalyticsSummary(uid: string, childId: string, range:
       kidqRecommendedSeconds: sourceSeconds.kidq_recommended,
       pickedByParentSeconds: sourceSeconds.picked_by_parent,
       adminApprovedFromSubmissionSeconds: sourceSeconds.admin_approved_from_submission,
-      percentKidqReviewed,
+      percentFromKidqCuratedSources,
     },
   };
-}
-
-/**
- * Admin-facing CSV export — one row per watched video across every child on
- * the account, all-time (not range-filtered; offline analysis wants the
- * raw rows, an analyst can pivot by date/range themselves). Note: this app
- * has no separate Admin authentication model, so this endpoint is gated
- * behind the same requireAuth as everything else (the requesting account's
- * own data) rather than a true cross-family Admin role — a phase-1
- * simplification, not a security gap, since it still never exposes another
- * family's data.
- */
-export async function buildCsvExport(uid: string, childNicknameById: Map<string, string>): Promise<string> {
-  const logs = await listSessionLogs(uid);
-  const catalog = await readAllContent();
-  const categoryByContentId = new Map(catalog.map((record) => [record.content_id, record.category]));
-  const library = await listLibrary(uid);
-  const tagByContentId = new Map(library.map((entry) => [entry.contentId, entry.tag]));
-
-  const header = "date,child,title,category,duration_seconds,source_tag,session_outcome\n";
-  const rows: string[] = [];
-  for (const log of logs) {
-    const childName = childNicknameById.get(log.childId) ?? log.childId;
-    for (const video of log.watched) {
-      const category = categoryByContentId.get(video.contentId) ?? "Uncategorized";
-      const tag = tagByContentId.get(video.contentId) ?? "kidq_recommended";
-      const escapedTitle = `"${video.title.replace(/"/g, '""')}"`;
-      rows.push(
-        [log.loggedAt, childName, escapedTitle, category, video.durationSeconds, tag, log.outcome].join(",")
-      );
-    }
-  }
-  return header + rows.join("\n") + (rows.length > 0 ? "\n" : "");
 }

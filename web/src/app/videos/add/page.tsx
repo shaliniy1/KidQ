@@ -5,9 +5,13 @@ import { useRouter } from "next/navigation";
 import type { User } from "firebase/auth";
 import { onAuthChange } from "@/services/auth";
 import { addVideo, detectVideo } from "@/services/my-videos";
+import { getCategories } from "@/services/parent-config";
 import type { DetectedVideo, LibraryVisibility } from "@/types/library";
 import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
+import { Pill } from "@/components/Pill";
+
+const OTHER_CATEGORY = "Other";
 
 /**
  * P9a Add a Video — updated flow: auto-detect -> score badge -> review ->
@@ -22,6 +26,8 @@ export default function AddVideoPage() {
   const [badgeExpanded, setBadgeExpanded] = useState(false);
   const [isPublic, setIsPublic] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [categories, setCategories] = useState<string[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const userRef = useRef<User | null>(null);
 
   useEffect(() => {
@@ -35,10 +41,17 @@ export default function AddVideoPage() {
     return unsubscribe;
   }, [router]);
 
+  useEffect(() => {
+    getCategories()
+      .then((response) => setCategories(response.categories))
+      .catch(() => setCategories([]));
+  }, []);
+
   async function handleDetect() {
     if (!url.trim() || !userRef.current) return;
     setPhase("detecting");
     setErrorMessage(null);
+    setSelectedCategory(null);
     try {
       const result = await detectVideo(userRef.current, url.trim());
       setDetected(result);
@@ -50,12 +63,12 @@ export default function AddVideoPage() {
   }
 
   async function handleAddContent() {
-    if (!detected || !userRef.current) return;
+    if (!detected || !userRef.current || !selectedCategory) return;
     setPhase("adding");
     setErrorMessage(null);
     try {
       const visibility: LibraryVisibility = isPublic ? "public" : "private";
-      await addVideo(userRef.current, detected, visibility);
+      await addVideo(userRef.current, detected, selectedCategory, visibility);
       router.push("/videos");
     } catch (error) {
       setPhase("detected");
@@ -119,6 +132,20 @@ export default function AddVideoPage() {
               )}
             </div>
 
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <span style={{ fontSize: "var(--kq-text-caption)", color: "var(--kq-text-secondary)" }}>
+                What category is this? KidQ can&apos;t detect this automatically yet — pick the
+                closest fit.
+              </span>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                {[...categories, OTHER_CATEGORY].map((category) => (
+                  <Pill key={category} selected={selectedCategory === category} onClick={() => setSelectedCategory(category)}>
+                    {category}
+                  </Pill>
+                ))}
+              </div>
+            </div>
+
             <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
               <input type="checkbox" checked={isPublic} onChange={(event) => setIsPublic(event.target.checked)} style={{ width: 20, height: 20, accentColor: "var(--kq-teal)" }} />
               <span style={{ fontSize: "var(--kq-text-body)", color: "var(--kq-charcoal)" }}>Also suggest this to other families</span>
@@ -127,7 +154,7 @@ export default function AddVideoPage() {
               Either way, this video is usable by your family right away — no approval needed.
             </p>
 
-            <Button variant="primary" disabled={phase === "adding"} onClick={handleAddContent}>
+            <Button variant="primary" disabled={phase === "adding" || !selectedCategory} onClick={handleAddContent}>
               {phase === "adding" ? "Adding…" : "Add Content"}
             </Button>
           </>

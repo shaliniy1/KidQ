@@ -222,4 +222,21 @@ Format per entry: Ticket | Commit | Reviewer | Verdict | Issues found
 ## Summary
 
 All 15 tickets reviewed. See needs-manual-approval.md for items flagged rather than
-auto-fixed.
+auto-fixed at review time.
+
+## Post-review resolutions (2026-09-15)
+
+The user was walked through all 5 needs-manual-approval.md items one at a time. Decisions
+and resulting changes (full detail in needs-manual-approval.md):
+- **T04:** Ticket AC4 wording corrected to match the spec's copy-only intent. No code change.
+- **T08:** Left as-is — not reachable in the shipped flow today. No code change.
+- **T10:** Left as-is — low severity, out of scope. No code change.
+- **T11:** Added a category picker to the P9a Add-a-Video review step (config category list
+  + explicit "Other") instead of attempting YouTube auto-detection. `category` is now a
+  required, validated field on `POST /library`. New INTEGRATION_NOTES.md #10.
+- **T12:** Removed the CSV export entirely (route, controller, service function, and UI
+  button) — both Admin and parents already have separate real dashboards elsewhere. Renamed
+  `percentKidqReviewed` → `percentFromKidqCuratedSources` end-to-end to stop overclaiming a
+  scoring-engine join that isn't happening. INTEGRATION_NOTES.md #8 and #9 updated.
+
+All changes typecheck clean (`web` and `api`) and lint clean (`web`).

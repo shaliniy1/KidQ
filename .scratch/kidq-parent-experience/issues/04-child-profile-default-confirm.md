@@ -16,9 +16,13 @@ Customize / Browse and pick myself).
       saffron, terracotta, mango, lavender) in add order; changeable with one tap on
       Screen 1. Not tied to gender.
 - [ ] Backend Child profile store persists nickname, age band, mascot color per child.
-- [ ] Screen 2 (P2-confirm) renders "We've set up [Child]'s KidQ using just their age..."
-      with age-derived defaults pulled from the Age-band default config (ticket 01) — not
-      hardcoded.
+- [ ] Screen 2 (P2-confirm) renders the spec-exact copy "We've set up [Child]'s KidQ using
+      just their age. Start right away, or fine-tune it below." — this copy string is the
+      full extent of what's shown; it does not display Development-Goal or content-mix
+      values, since spec Section 1 Block C and Section 11 #14 require Development Goal to
+      stay hidden from the parent everywhere. (Corrected 2026-09-15 — the original wording
+      here implied fetching/rendering actual age-derived default values on this screen,
+      which would have conflicted with that hidden-goal requirement.)
 - [ ] Three coequal actions render: `Start using KidQ` (primary, → P7a), `Customize for
       {child}` (secondary, → Hub, ticket 05), `Browse and pick myself` (tertiary, → P5,
       ticket 08) — none of the three routes through a P3 gatekeeping detour.

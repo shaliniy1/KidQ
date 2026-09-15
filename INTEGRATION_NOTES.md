@@ -212,40 +212,71 @@ the real implementation needs to satisfy**, and **what swapping it in requires**
   Data API v3" → Credentials → API key) and set `YOUTUBE_DATA_API_KEY` in `api/.env`. No
   code changes — `fetchYouTubeMetadata` picks it up automatically.
 
-## 8. Analytics CSV export — no separate Admin auth model exists in this repo
+## 8. Analytics CSV export — REMOVED 2026-09-15
 
 - **Ticket:** T12 (Analytics summary + Admin CSV export, P8b)
-- **File/module:** `api/src/routes/analytics.routes.ts` (`GET /analytics/export.csv`).
-- **What's faked and why:** Spec Table B #13 calls this an Admin-facing endpoint, but this
-  build is Parent-Experience-only — there is no Admin account/identity system anywhere in
-  this repo to gate it behind. The endpoint is instead gated behind the same `requireAuth`
-  as every other parent endpoint, and returns only the *requesting account's own* aggregated
-  data (all of its children, all-time) — not a cross-family Admin export. Disclosed in the
-  T12 commit message as a phase-1 simplification; added here per this doc's own policy of
-  tracking every such stand-in, not just mentioning it in a commit.
-- **Real contract:** Whatever Admin identity/auth model the Admin flow settles on needs its
-  own middleware (parallel to `requireAuth`) that this endpoint (or a genuinely separate
-  Admin-flow-owned endpoint) authenticates against, with a query surface that spans families,
-  not just the caller's own.
-- **To swap in:** Once an Admin auth model exists, add an Admin-scoped route (or middleware)
-  and decide whether `/analytics/export.csv` moves behind it as-is or a new cross-family
-  export endpoint is added alongside it.
+- **Status: resolved by removal, not a swap-in.** `GET /analytics/export.csv` (route,
+  `getAnalyticsCsvExport` controller, `buildCsvExport` service function) and the "Admin:
+  download CSV export" button on the parent-facing `/analytics` page were removed entirely,
+  per an explicit decision during the T01-T15 manual-approval review: both Admin and parents
+  already have their own separate, real analytics dashboards elsewhere, so this in-app
+  export duplicated existing functionality on both sides and — as originally flagged below —
+  never had real Admin access controls to begin with (it ran under ordinary parent
+  `requireAuth`, since no Admin identity system exists anywhere in this repo).
+- **Original gap, for history:** Spec Table B #13 called this an Admin-facing endpoint, but
+  this build is Parent-Experience-only, so it was gated behind the same `requireAuth` as
+  every other parent endpoint and returned only the requesting account's own data — not a
+  true cross-family Admin export.
+- **If a real cross-family Admin export is ever wanted again:** it would need its own
+  Admin-scoped route/middleware once an Admin identity model exists elsewhere — this is a
+  fresh build, not a "restore the removed code" swap-in, since the removed version never had
+  real Admin auth to begin with.
 
-## 9. "% KidQ-reviewed" — computed from library source tags, not a scoring-engine join
+## 9. "% from KidQ's curated sources" (formerly "% KidQ-reviewed") — computed from library source tags, not a scoring-engine join
 
 - **Ticket:** T12 (Analytics summary + Admin CSV export, P8b)
-- **File/module:** `api/src/services/analytics.ts` (`percentKidqReviewed`).
+- **File/module:** `api/src/services/analytics.ts` (`percentFromKidqCuratedSources`).
 - **What's faked and why:** Spec Section 11 #19 and this ticket's AC3 describe this stat as
   a join against the scoring engine's badge/pass-fail result per watched video — that data
   doesn't exist yet (same gap as INTEGRATION_NOTES.md #5). Rather than block the metric on
-  it, `percentKidqReviewed` is computed from each watched video's real library source tag
-  (`kidq_recommended` + `admin_approved_from_submission` vs. `picked_by_parent`; a video not
-  in the library at all — i.e. it came straight from Session Assembly, never explicitly
-  added — defaults to `kidq_recommended`). This is real data, not a fabricated number, but it
-  answers a related-but-different question ("was this from KidQ's curated source?" vs. "did
-  this specific video pass the scoring engine's checks?") than the spec literally describes.
+  it, it's computed from each watched video's real library source tag (`kidq_recommended` +
+  `admin_approved_from_submission` vs. `picked_by_parent`; a video not in the library at all
+  — i.e. it came straight from Session Assembly, never explicitly added — defaults to
+  `kidq_recommended`). This is real data, not a fabricated number, but it answers a
+  related-but-different question ("was this from KidQ's curated source?" vs. "did this
+  specific video pass the scoring engine's checks?") than the spec literally describes.
+- **Renamed 2026-09-15:** the field and displayed copy were originally named
+  `percentKidqReviewed` / "% KidQ-reviewed," which overclaimed a scoring-engine result that
+  isn't actually happening. Renamed to `percentFromKidqCuratedSources` / "% from KidQ's
+  curated sources" end-to-end (`api/src/types/analytics.ts`, `web/src/types/analytics.ts`,
+  `api/src/services/analytics.ts`, `web/src/app/analytics/page.tsx`) to name what it actually
+  measures — no behavior change, just honest naming.
 - **Real contract:** Once the scoring engine exposes a per-video pass/fail result (see
-  INTEGRATION_NOTES.md #5's real contract), `percentKidqReviewed` could either switch to that
-  join, or the two could become two distinct stats if both remain useful.
+  INTEGRATION_NOTES.md #5's real contract), this stat could either switch to that join, or
+  the two could become two distinct stats if both remain useful.
 - **To swap in:** Add the scoring-engine join once callable; decide whether it replaces or
   supplements the current source-tag-based stat.
+
+## 10. My Videos category — resolved as a manual parent pick, not YouTube auto-detection
+
+- **Ticket:** T11 (My Videos + Add-a-Video + approval notifications, P9a)
+- **File/module:** `api/src/controllers/my-videos.controller.ts` (`OTHER_CATEGORY`,
+  `postAddVideo`); `web/src/app/videos/add/page.tsx`.
+- **Original gap (found during the T01-T15 review):** `fetchYouTubeMetadata` never
+  extracted/returned a content category, so every parent-added video stored
+  `category: null`. Ticket AC1 wanted category auto-fetched alongside title/thumbnail/
+  duration/channel, but `config/content-sources.json`'s YouTube `fetch` list doesn't
+  include category at all, and YouTube's own `categoryId` taxonomy (numeric IDs) doesn't
+  correspond to KidQ's category vocabulary without inventing an unspecified mapping.
+- **Resolved 2026-09-15, by explicit decision:** rather than build an unspecified
+  YouTube→KidQ category mapping, P9a now asks the parent to pick a category themselves in
+  the review step, from the same config-sourced category list the Hub uses, plus an
+  explicit "Other" option for anything that doesn't fit. `category` is now a required field
+  on `POST /library`, validated against `config.categories ∪ {"Other"}` — the same
+  validation style already used in `curation-settings.controller.ts`. "Other" is stored as
+  its own explicit string value, never `null`, so an admin can later tell "the parent
+  deliberately said this doesn't fit any category" apart from "never categorized."
+- **To swap in (only if YouTube-based auto-detection is wanted later):** would need an
+  explicit, confirmed YouTube-categoryId → KidQ-category mapping table (a product decision,
+  not something to infer) — at that point the picker could pre-select the mapped category
+  while still letting the parent override it, rather than being replaced outright.
