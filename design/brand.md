@@ -27,8 +27,10 @@ values throughout — copy them into Figma styles/variables verbatim.
   (same delight tier). As a night-light it toggles a warm gold glow.
 - **Heart-as-verb.** The coral beating heart marks the parent's presence:
   "♥ Mumma picked 3 videos · 25 min", "♥ Picked by Mumma · 8 min".
-- **The End is an object.** A queue card ("The End 🌙", indigo with
-  dashed dusk border) visible from the first frame of every session.
+- **The ending lives in the flow, not the queue.** The last video always
+  runs into the sunset and the all-done screen - a queue that simply
+  stops after its last real card is already visibly finite, so nothing
+  inside the queue needs to announce the end itself.
 
 ## 2. Color tokens
 
@@ -41,13 +43,13 @@ a text surface):
 | `cream-deep` | `#F2E9D8` | secondary surfaces |
 | `ink` | `#2E2A24` | primary text on cream/sky, phone frame |
 | `ink-soft` | `#6B6459` | secondary text, captions, moon face strokes |
-| `teal` | `#1F7A6D` | THE UI accent: pause button, avatar, flower stem |
+| `teal` | `#1F7A6D` | THE UI accent: pause button, avatar, flower stem, what's-next pick badge |
 | `teal-deep` | `#16594F` | teal text on light, focus rings, pressed |
 | `teal-on-dark` | `#7FD8C8` | teal on indigo (focus rings on night) |
 | `sun` | `#FFC64D` | sun disc, gold glow, knob, twinkles, Playtime pill |
 | `sun-deep` | `#F0A72E` | sun rays, flower center, filled breath dots, flame |
 | `dusk` | `#C9B8E8` | lavender: sky transitions, text on night, dashed borders |
-| `night` | `#2B2955` | indigo: night sky, The End card |
+| `night` | `#2B2955` | indigo: night sky |
 | `night-deep` | `#211F45` | deeper night |
 | `heart` | `#E2705E` | coral: hearts, flower petals |
 | `card` | `#FFFFFF` | clouds, white surfaces |
@@ -98,8 +100,8 @@ Ticklist accent/accent-hover pattern).
 ## 3. Typography
 
 - **Display: Baloo 2** — weights 700/800. Greetings, headlines, titles,
-  The End card, wordmark. Ek Type (Indian foundry), full Devanagari
-  support — the regional-language future is in the typeface.
+  wordmark. Ek Type (Indian foundry), full Devanagari support — the
+  regional-language future is in the typeface.
 - **Body: Mukta** — weights 400/500/600/700. Labels, captions, time
   text, instructions. Also Ek Type, Devanagari-ready.
 - Both on Google Fonts (self-hostable later). No Inter.
@@ -117,8 +119,8 @@ Scale in use (size / weight / face):
 | Tap instruction ("Tap the sun to start your day") | 19 / 600 / Mukta, ink |
 | Night hint / sub-lines | 17 / 500 / Mukta, dusk on night |
 | Heart line / break sub-line | 16.5 / 500 / Mukta |
-| Queue "The End 🌙" | 15 / 800 / Baloo, cream |
 | Pills ("12 min left", "Playtime!") | 13 / 600–700 / Mukta |
+| What's-next pick badge ("Mumma & Papa's pick") | 11 / 700 / Mukta, white on teal, letter-spacing 0.02em |
 | "UP NEXT" label | 13 / 600 / Mukta, uppercase, letter-spacing 0.06em |
 | "WHAT'S NEXT" label | 12 / 700 / Mukta, uppercase, letter-spacing 0.14em, dusk |
 
@@ -140,6 +142,20 @@ Scale in use (size / weight / face):
 - **Pause pauses time.** Pausing a video freezes the entire world —
   clouds, sun, heart, progress — not just playback.
 - Night-light glow fade: 1.2 s. Sheet/overlay fades: 700 ms.
+- What's-next reveal (all-done screen): cards float in staggered at
+  700 ms, the pick lights up at 2700 ms. On the pick: badge pops in
+  (scale 0→1, `cubic-bezier(.34,1.56,.64,1)`, 450 ms, 150 ms delay);
+  card straightens out of its resting tilt and grows (scale 1.12,
+  rotate 0), squash-popping there over 500 ms; three small hearts drift
+  up from it in a staggered loop (3.6 s each, rise + fade, started at
+  0.3/1.5/2.5 s) — pure decoration, hidden outright under reduced
+  motion rather than left to freeze mid-air.
+- **Playful placement is a static value, not a motion** — the small
+  per-card tilt on every "parent's picks" grid (what's-next, the
+  watching-screen strip, the choice-screen row) is baked into each
+  card's resting `transform`, so it persists under reduced motion
+  exactly as drawn; only the transitions/animations that move a card
+  into or out of that resting state are shortened.
 - Respect `prefers-reduced-motion`: ambient animations off, transitions
   shortened, static mid-states shown.
 
@@ -229,8 +245,37 @@ Scale in use (size / weight / face):
   unplayed portion veiled `rgba(250,244,232,.78)`; knob 20 px sun-gold,
   3 px white border.
 - **Queue cards:** 124×70, radius 14; thumbnail card has 2 px
-  `rgba(46,42,36,.1)` border; **The End card**: night bg, 2 px dashed
-  dusk border, cream Baloo 15/800 "The End 🌙".
+  `rgba(46,42,36,.1)` border. A queue simply ends after its last real
+  card — there is no end-of-queue card or marker. The session's own end
+  is carried by the flow itself (last video → sunset → all-done), not
+  by anything inside the queue; a short row that visibly stops is
+  already a visibly finite one. (An earlier "The End 🌙" card existed
+  only as dead CSS, never wired to any queue render — removed outright
+  rather than given a replacement treatment.)
+- **Playful placement** (what's-next cards, the watching-screen picks
+  strip, the choice-screen "or pick one of Mumma & Papa's videos" row):
+  every card in these three "parent's picks" grids rests at a small
+  tilt, one shared repeating cycle — card 1 -2.5°, card 2 1.8°, card 3
+  -2°, repeating from card 4 on. **Straight means "this one" — tilted
+  means "available."** The what's-next pick straightens (and grows,
+  scale 1.12) when the child's day ends on it; the watching strip's
+  now-playing card stays straight the whole time it's current; every
+  other card - including watched ones, which only ever lose opacity,
+  never their tilt - stays tilted. The choice screen's cards have no
+  such "current" card, so all of them stay tilted.
+- **What's-next pick badge:** pill, radius 99, teal bg, white 11/700
+  Mukta text + a small white heart (12 px, same beating icon used
+  elsewhere), padding 4×11, soft shadow `0 3px 10px rgba(0,0,0,.35)`,
+  centered on the card's top edge (top -13px). Reads "‹household
+  label›'s pick" - "Mumma & Papa's pick" today, sourced from the same
+  session data as the picked-by credit everywhere else, never
+  hardcoded. White-on-teal here measures 5.17:1, clearing the 4.5:1
+  small-text bar with room to spare.
+- **Drifting hearts** (what's-next pick, choose stage only): three
+  small coral hearts (18/14/15 px), positioned around the card's
+  edges, each rising and fading on its own 3.6 s loop, staggered
+  0.3/1.5/2.5 s. `aria-hidden`, pure decoration - hidden outright under
+  reduced motion.
 - **Big pause (cast):** 76 px teal circle, white icon, shadow
   `0 14px 26px -14px rgba(22,89,79,.55)`.
 - **High five:** 96 px cream disc, 🖐 at 42 px, breathing pulse 2.6 s,
@@ -276,7 +321,9 @@ factual labels. Never nagging, never gamified.
 
 - **WCAG 2.1 AA** on every text-bearing pair (project-wide standard).
 - Sun yellow is never a text surface; teal-deep is the text-safe teal on
-  light; dusk and cream carry text on night skies.
+  light; dusk and cream carry text on night skies; white on the raw
+  `teal` token (the what's-next pick badge) measures 5.17:1, clearing
+  the 4.5:1 small-text bar directly - no darker substitute needed here.
 - All interactive elements are real buttons with aria-labels that
   describe the outcome ("Start today's watching session", "Night light —
   tap to turn on or off" with `aria-pressed`).

@@ -1308,11 +1308,17 @@
     KidQData.whatsNext.forEach((item) => {
       const card = document.createElement("div");
       card.className = "wn-card" + (item.picked ? " wn-pick" : "");
-      // the pick's caption reuses the heart-line vocabulary (beating coral heart
-      // + "who picked" text) from the pitch's badge, re-skinned calm: no pill,
-      // no floating hearts - same rule as every port from the proposal file
+      // The pick's badge, tilt and drifting hearts are the pitch's own treatment
+      // (proposal-src/kidq-design-preview.html), restored here per explicit user
+      // request after an earlier pass had re-skinned them calm (cream caption, no
+      // tilt, no hearts). The one thing that stays retired either way: the pitch's
+      // separate circular .pickheart badge - never asked for, would crowd the pill.
       card.innerHTML = `<div class="scene">${SCENES[item.scene] || ""}</div><span>${item.label}</span>` +
-        (item.picked ? `<span class="wn-pick-tag"><svg class="kq-mheart" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 17 C4 12 2 8.5 4.2 6.2 A3.4 3.4 0 0 1 10 7.4 A3.4 3.4 0 0 1 15.8 6.2 C18 8.5 16 12 10 17 Z" fill="#E2705E"/></svg>${item.pickedBy || "Mumma & Papa"}'s pick</span>` : "");
+        (item.picked ? `<span class="wn-pick-tag"><svg class="kq-mheart" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 17 C4 12 2 8.5 4.2 6.2 A3.4 3.4 0 0 1 10 7.4 A3.4 3.4 0 0 1 15.8 6.2 C18 8.5 16 12 10 17 Z" fill="currentColor"/></svg>${item.pickedBy || "Mumma & Papa"}'s pick</span>` +
+          `<span class="wnheart h1" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M10 17 C4 12 2 8.5 4.2 6.2 A3.4 3.4 0 0 1 10 7.4 A3.4 3.4 0 0 1 15.8 6.2 C18 8.5 16 12 10 17 Z" fill="#E2705E"/></svg></span>` +
+          `<span class="wnheart h2" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M10 17 C4 12 2 8.5 4.2 6.2 A3.4 3.4 0 0 1 10 7.4 A3.4 3.4 0 0 1 15.8 6.2 C18 8.5 16 12 10 17 Z" fill="#E2705E"/></svg></span>` +
+          `<span class="wnheart h3" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M10 17 C4 12 2 8.5 4.2 6.2 A3.4 3.4 0 0 1 10 7.4 A3.4 3.4 0 0 1 15.8 6.2 C18 8.5 16 12 10 17 Z" fill="#E2705E"/></svg></span>`
+        : "");
       row.appendChild(card);
     });
     showScreen("screen-all-done");
