@@ -1664,3 +1664,80 @@ needs to perceive. Visually confirmed (forced render, screenshot) that the
 WIP splash-backdrop balloons from item 48 read as calm background accents
 behind the hero letters, not competing with them — achieves their stated
 design goal.
+
+## Sun and day-bar findability pass (2026-09-16)
+
+### [x] 55. The small arc-riding sun and the day-progress-bar melted into the cream day sky
+**Screens: Watching, Cast, after-break choice.** User-flagged, off the live
+prototype rather than the mock: the small `.kq-sun` riding the arc
+(`#watch-sun`, `#cast-sun`, `#choice-sun`) and `.kq-daybar` both sit close
+enough to the day sky's own cream/gold stops that their edges stopped
+reading against it — "findability," not colour, was the actual complaint.
+No colour change was in scope; only shadow/hairline definition.
+
+**Options explored and rejected:**
+- **A flat contrast ring** around the sun/bar (a solid-colour outline)
+  — rejected by the user as too hard-edged for this brand's "calm,
+  anti-overstimulation" voice (`brand.md` intro); it would have fixed
+  findability by fighting the melt outright rather than keeping it.
+- **A blue / blue-topped sky variant** for the arc backdrop — rejected by
+  the user after a live mock on the real screen; separately, it also
+  failed a palette-coherence check against the rest of the day-sky system
+  (introduces a hue with no other home in the token set, unlike the
+  ink/ink-soft pairing used everywhere else for this kind of edge
+  definition — see the moon's existing glow/shadow vocabulary).
+- **Drop-shadow (sun) + inset hairline (day-bar)** — approved. Keeps the
+  melt (no fill/gradient touched anywhere), adds just enough soft
+  ink-soft edge definition to read as a distinct shape against the sky.
+
+**Fixed (2026-09-16).** `#screen-watching .kq-sun svg`, `#screen-cast .kq-sun
+svg` and `#screen-choice .kq-sun svg` (`css:299-310`) get
+`filter:drop-shadow(0 1.5px 3.5px rgba(107,100,89,.65))`. `#screen-choice`
+was a same-session scope extension, not part of the original ask: `#choice-
+sun` is the identical `.kq-sun` component riding the same arc one screen
+after watching, and leaving it out would have made the sun's look flicker
+between consecutive screens.
+
+`.kq-daybar` (`css:381-383`) gets `box-shadow:inset 0 0 0 1px
+rgba(107,100,89,.5)` at class level (not per responsive tier, so it
+survives the base/tablet/wide position-and-size overrides at `css:1191,
+1218, 1282` without duplication — confirmed via a live stylesheet-rule
+walk that none of those three re-declare `box-shadow`). `.kq-daybar .knob`'s
+box-shadow gained a matching ink-soft ring: `0 2px 6px rgba(46,42,36,.45), 0
+0 0 1px rgba(107,100,89,.4)` (its existing white ring is unchanged).
+
+Alpha was tuned upward from the originally-mocked .28 (measured ~1.46:1
+against the page background) toward the .45–.55 range the user asked for,
+by eye on the live screen at .28/.5/.72: .5 reads as a clear, deliberate
+step up in definition while still sitting quietly against the bar; .72
+starts reading as a visible dark border, which would undo the "melt kept"
+decision above. Landed on **.5**. A small Python contrast script
+(WCAG relative-luminance formula, ink-soft `rgba(107,100,89,.5)` alpha-
+composited over each background) measured:
+- vs. the page background `#FAF4E8`: blended ≈ `#B2ACA0`, **2.06:1**
+- vs. the track's lightest stop `#F7EBD2`: blended ≈ `#B1A896`, **2.00:1**
+
+Both fall short of the 3:1 non-text-UI floor — ink-soft's own ceiling
+against these backgrounds only clears 3:1 past ≈alpha .72, which the by-eye
+check above already ruled out as too heavy a border for this treatment. So
+this is a considered, incomplete-by-the-numbers compromise, not a miss:
+findability here is deliberately carried by shadow/hairline definition
+*and* by the formal accessible indicators that never depended on colour or
+edge contrast at all — the "N min left" text pill and the "video x of y"
+line (see `brand.md`'s new note, cross-referenced from item 35 below).
+
+**Relation to item 35:** item 35 flags that `brand.md`'s contrast reasoning
+only covers ink-on-fill and asks for a note on the outlined-gold-hero's
+amber-rim mechanism. This pass documents a second, related case of the same
+underlying point — colour is never the sole findability carrier in this
+system — for the sun/day-bar rather than the SETTLE hero, so it advances
+but does not close item 35; the outlined-gold-hero note item 35 itself asks
+for is still open.
+
+Verified live (port 9417, this session's own server): sunrise's large hero
+sun (`#start-sun`) and the breathing/break suns (`.bsunwrap .bsun`) are
+untouched — confirmed via `.kq-sun` never being the class they use, so the
+new selectors cannot reach them; the all-done and night-light screens'
+moon (`.kq-nlmoon`) is untouched — no moon rule was touched by this pass.
+Console clean throughout, including with reduced-motion forced on (the
+change is a static shadow either way).
