@@ -236,6 +236,102 @@ Scale in use (size / weight / face):
   directly on the sky, no badge. The whole count row is `aria-hidden`; the
   break's own headline stays the sole accessible carrier, so a five-times-a-
   break digit swap never spams a screen reader's `aria-live` region.
+- **Break-count digit BALLOON** (user request 2026-09-15, "make them like
+  coming on balloon" — superseding the flat-teal digit above, which both
+  break screens rode on until this session): the big current digit now
+  arrives riding a glossy brand-hue balloon instead of sitting bare on the
+  sky. Balloon over ball — the app already has an established balloon
+  vocabulary: the splash's own KidQ letters (§8.7's mark aside; the splash
+  screen itself, `kidq-desktop-app.css:89–141`) are glossy inflating
+  balloons, four brand hues, squash-stretch inflate. This reuses that
+  vocabulary rather than inventing a new shape — same 5-stop radial-gradient
+  **recipe** (identical hex values), same four hues in the same order the
+  splash cycles through its own letters: **teal → gold → coral → dusk →
+  repeat**, one hue step per digit change (`hue-<name>` class, swapped by a
+  shared `setBalloonHue()` helper both break screens call). Only the
+  gradient's **size** departs from the splash's own default
+  (farthest-corner-from-32%/24%) sizing: an explicit `circle calc(var(--cnt)
+  * .729)` radius instead. Reason: the splash's balloons ARE the letters,
+  filling their own glyph edge-to-edge, so their centre sits deep in the
+  gradient; a small round digit badge's own centre only reaches t≈0.3 of the
+  *default* sizing — still inside the near-white highlight band — which
+  measured as cream failing on teal and coral too, not just gold. The
+  smaller explicit radius moves the badge centre to **t≈0.55**, the
+  recipe's own literal mid-point between the 36/40% "true hue" stop and the
+  62/66% deep one, without touching a single colour value.
+  **Digit ink per hue, measured** (at t=0.55, `scratchpad/balloon-*.js` this
+  session — see `kidq-desktop-app.css`'s own copy of this table for the
+  worked geometry):
+
+  | hue   | sampled body colour | cream (`--cream`) | ink (`--ink`) | used |
+  |-------|---------------------|--------------------|-----------------|------|
+  | teal  | `#258776`           | 4.00:1             | 3.25:1          | cream |
+  | gold  | `#F6B43B`           | 1.66:1             | 7.83:1          | **ink** |
+  | coral | `#D0604C`           | 3.52:1             | 3.70:1          | cream |
+  | dusk  | `#7C67B6`           | 4.28:1             | 3.04:1          | cream |
+
+  All eight combinations clear the 3:1 AA large-text floor; gold is the one
+  hue where cream fails outright (as flat sun/sun-deep text already did
+  against this sky, two paragraphs up) — ink is used there instead, on the
+  same `hue-gold` class the body's own gradient swaps on, so the two effects
+  can never drift apart. Cream is used on teal/coral/dusk per the design
+  brief, even though coral's own ink number edges it out narrowly (3.70 vs
+  3.52) — both clear the floor with margin, and one consistent rule (ink
+  only for gold) is easier to hold correct than a per-hue coin-flip.
+  **Balloon body vs sky** (non-text, 3:1 floor — the balloon is
+  `aria-hidden` pure decoration around the digit, so this is a self-imposed
+  bar past what WCAG 1.4.11 itself requires of decorative graphics, not a
+  strict floor): measured the same t=0.55 body tone against both skies.
+  Bright sky (tree): teal 3.42:1, coral 3.01:1, dusk 3.67:1 all clear;
+  **gold 1.43:1 does not** — a structural property of the hue (this app's
+  cream sky and any sun-gold value never clear 3:1, the same finding already
+  on record two paragraphs up, not a new gap the balloon introduces).
+  Dimmed sky (count, `.kq-duskveil` @ .25 — see the count-to-ten scene
+  below): teal 3.15:1 and dusk 3.39:1 still clear; **coral drops to 2.78:1**
+  (a real but narrow miss) and **gold to 1.32:1** (fails harder). The
+  balloon's own tiny specular highlight (the same near-white `0%`/`9%`
+  recipe stops the splash's letters carry too) reads lighter still at its
+  very edge — expected for a glossy round object and not evaluated
+  separately, the same way the splash's own highlight was never held to a
+  sky-contrast floor. Left as a known, honestly-logged gap rather than
+  re-tuning the recipe's actual colour values, which the brief asked not to
+  invent past: the digit **text** — the one piece doing real work, since the
+  balloon itself is decoration — clears 3:1 on all four hues either way.
+  **Knot:** a small solid triangle in the same hue's own 100% (deepest)
+  recipe stop — the shape's own shadow colour, not a new one. **String:** a
+  short, slightly-tilted `1.5px` thread in `var(--ink-soft)`, neutral across
+  all four hues (real balloon string doesn't recolour with the balloon) and
+  deliberately short — a long one is more rigging than read at this badge
+  scale. **Entrance diverges by screen, both reusing existing vocabulary
+  rather than inventing a third:** tree's balloon bounces in with the same
+  `pop()` squash-stretch the bare digit used before (now targeting the
+  whole balloon wrapper, so body/knot/string/digit bounce as one unit) —
+  energetic, like the splash's own inflate, same hold-chain trigger, same
+  re-entrancy discipline. Count's balloon instead floats gently up into
+  place (`kq-balloonfloat`: `translateY(14px)→0`, `.4→1` opacity, no scale,
+  no squash-stretch) — replacing the flat digit's old quiet scale-pulse
+  (`kq-countpulse`, retired) with a motion that still reads as "the settle
+  game," now carried by the balloon instead of the bare glyph. Both
+  keyframes' `100%` state matches the wrapper's own unanimated rest state
+  exactly (`transform:none`, `opacity:1`), the same discipline `pop()`
+  itself already held, so reduced motion's blanket crush to `.001ms`
+  (`kidq-desktop-app.css` reduced-motion block) never leaves a balloon stuck
+  mid-bounce or mid-float — confirmed live, both screens, both motion modes.
+  **Sharing judgment call:** one shared CSS component (`.kq-digitballoon`
+  + `.kq-balloon-body/-knot/-string`, hue classes, the `setBalloonHue()` JS
+  helper) covers the balloon shape and hue-cycling identically for both
+  screens — that part clearly wanted one implementation, not two
+  copy-pasted balloons. The *entrance* animation stays two separate,
+  screen-scoped rules (`#screen-tree .kq-digitballoon.tapped` vs
+  `#screen-count .kq-digitballoon.pulse`) rather than one shared "balloon
+  entrance" abstraction: tree and count already used two different
+  triggering helpers before this session (`pop()`'s two-hardcoded-class
+  design vs count's own small remove/reflow/add re-trigger, brand.md's own
+  earlier note on this) for reasons specific to each screen's timing
+  structure, and forcing them into one shared entrance function would have
+  meant either widening `pop()` past its established two-class shape or
+  losing the "bounce vs float" distinction the design brief asked for by
+  name — judged not worth it for two three-line CSS rules.
 - **Count-to-ten scene:** eyes-closed sun as hero, sized like breathing's own
   (`min(40cqw,190px)` → `214px` → `240px`) — the closest sibling in
   complexity: one bounded hero, no side decor, no dots, no new assets of any
@@ -259,13 +355,18 @@ Scale in use (size / weight / face):
   this age), a watching parent, and the sibling-break visual-count pattern
   all still want it, so the sub-line stays visible and `aria-hidden` (never
   `aria-live`) exactly like every other break's count row — the headline
-  alone carries the accessible experience. **Digit entrance diverges from
-  tree's own `pop()`:** count is the settle game, so each digit's entrance
-  is a quiet ~300ms scale-up pulse (`kq-countpulse`: `.82→1` scale, `.55→1`
-  opacity), not tree's springy squash-stretch bounce — its own small
-  remove/reflow/add re-trigger helper, not a widened `pop()`, since that
-  helper's two hardcoded class names (`tapped`/`moontap`) aren't reusable
-  for a third animation only this screen needs. **Trail direction is the
+  alone carries the accessible experience. **Digit entrance diverged from
+  tree's own `pop()` from the start:** count is the settle game, so each
+  digit's entrance was a quiet ~300ms scale-up pulse (`kq-countpulse`:
+  `.82→1` scale, `.55→1` opacity), not tree's springy squash-stretch bounce
+  — its own small remove/reflow/add re-trigger helper, not a widened
+  `pop()`, since that helper's two hardcoded class names (`tapped`/
+  `moontap`) weren't reusable for a third animation only this screen
+  needed. **Superseded 2026-09-15** by the balloon-float entrance in the
+  break-count digit BALLOON bullet above (`kq-balloonfloat`, on the same
+  re-trigger helper, now targeting the balloon wrapper) — the "quieter than
+  tree, no bounce" *intent* survives unchanged, just carried by the balloon
+  instead of the bare glyph now. **Trail direction is the
   opposite of tree's:** tree counts down and its trail previews what's
   still coming; count-to-ten counts up and its trail shows the
   WALKED-THROUGH numbers behind the current one — at nine numbers wide (one
@@ -274,14 +375,21 @@ Scale in use (size / weight / face):
   `" · "` punctuation turned out to already carry real margin (180px
   against 330px usable at the narrowest tier) with no override needed,
   `font-variant-numeric:tabular-nums` added only to keep that measurement
-  stable as the digits themselves change width. Digit colour is the SAME
+  stable as the digits themselves change width. Digit colour was the SAME
   shared teal (`var(--teal)`) as tree's own — re-measured, not inherited
   blindly, against THIS screen's dimmed sky specifically: `.kq-duskveil`
   composited at 0.25 opacity over the day sky's own three gradient stops
-  shifts the contrast to **3.72–4.05:1** across the composited gradient —
-  still clears the 3:1 AA large-text floor with real margin, closer to it
+  shifted the contrast to **3.72–4.05:1** across the composited gradient —
+  still clearing the 3:1 AA large-text floor with real margin, closer to it
   than tree's own 4.04–4.88:1 against the undimmed sky, but not close
-  enough to need a different colour.
+  enough to need a different colour. **Superseded 2026-09-15:** the digit
+  now sits on a balloon, not the bare dimmed sky — its colour is decided by
+  which hue balloon it's currently riding (cream, or ink on gold; table in
+  the break-count digit BALLOON bullet above), not by a single fixed teal
+  any more. The dimmed-sky number above stays true as history (it's why
+  teal was the safe default before the balloon), and the *balloon's own*
+  contrast against this same dimmed sky was re-measured fresh for the
+  balloon build (see above) rather than assumed to inherit a pass.
 - **Player card:** 16:9, radius 24, soft shadow `0 12px 28px -16px
   rgba(46,42,36,.4)`, at (20, 310) width 350. Corner pause: 44 px cream
   circle, teal-deep icon, top-right 14,14. Playing bars: 3 teal bars

@@ -229,6 +229,18 @@
     later(() => el.classList.remove(cls), 950);
   }
 
+  // Break-count digit balloon (shared, brand.md §5; user request 2026-09-15):
+  // cycles the same four splash hues, in the splash's own order, once per
+  // digit change - teal -> gold -> coral -> dusk -> repeat. Shared by tree
+  // (5-wide, wraps once per hold) and count (10-wide, wraps twice). One
+  // helper, called from both screens' own setXCount functions, so the cycle
+  // itself can never drift between them.
+  const BALLOON_HUES = ["teal", "gold", "coral", "dusk"];
+  function setBalloonHue(el, i) {
+    el.classList.remove(...BALLOON_HUES.map((h) => `hue-${h}`));
+    el.classList.add(`hue-${BALLOON_HUES[i % BALLOON_HUES.length]}`);
+  }
+
   /* ---------- session state (derived from KidQData only) ---------- */
   // progress: per-video furthest-watched fraction (0..1) — keeps the sun's
   // place when the child switches videos mid-way; watched = fully finished
@@ -1040,6 +1052,7 @@
      spec's own rule since this break is all timers (spec §4). */
   const treeScreen = $("#screen-tree");
   const treeHeadline = $("#tree-headline");
+  const treeCountBalloon = $("#tree-count-balloon");
   const treeCountBig = $("#tree-count-big");
   const treeCountTrail = $("#tree-count-trail");
   const treeDots = $$("#tree-dots i");
@@ -1080,10 +1093,15 @@
   // reduced motion only delays removing the class, not the animation itself,
   // which the global .reduce-motion rule already crushes to instant - so
   // reduced motion needs no special-casing here (steer, 2026-09-15).
+  // Balloon (user request 2026-09-15): pop() now targets the BALLOON
+  // wrapper, not the bare glyph, so the whole balloon bounces in together;
+  // setBalloonHue cycles the splash's own four hues, teal->gold->coral->
+  // dusk, one step per digit.
   function setTreeCount(i) {
     treeCountBig.textContent = COUNT_BIG[i];
     treeCountTrail.textContent = COUNT_TRAIL[i];
-    pop(treeCountBig);
+    setBalloonHue(treeCountBalloon, i);
+    pop(treeCountBalloon);
   }
 
   function treeCount(onDone) {
@@ -1156,7 +1174,8 @@
     treeLottieEl.classList.remove("mirrored");
     treeDots.forEach((d) => d.classList.remove("on"));
     treeHeadline.textContent = "Stand like a tree with me!";
-    treeCountBig.classList.remove("tapped");
+    treeCountBalloon.classList.remove("tapped");
+    setBalloonHue(treeCountBalloon, 0); // every fresh run starts back at teal
     treeCountBig.textContent = COUNT_BIG[0];
     treeCountTrail.textContent = COUNT_TRAIL[0];
     if (treeAnim) {
@@ -1178,6 +1197,7 @@
      "Open your eyes!" would render no eyes at all. */
   const countScreen = $("#screen-count");
   const countHeadline = $("#count-headline");
+  const countBalloon = $("#count-balloon");
   const countBig = $("#count-big");
   const countTrail = $("#count-trail");
 
@@ -1220,15 +1240,19 @@
   function setTenDigit(i) {
     countBig.textContent = TEN_BIG[i];
     countTrail.textContent = TEN_TRAIL[i];
+    setBalloonHue(countBalloon, i); // splash's own four hues, one step per tick
     // Quieter than tree's pop() (spec §1: "the entrance is a slow pulse,
-    // not a bounce" - count is the settle game). Its own remove/reflow/add
-    // dance (find's own re-entrancy pattern, css:781-785) rather than
-    // widening pop()'s two hardcoded class names for a third animation only
-    // this screen uses.
-    countBig.classList.remove("pulse");
-    void countBig.offsetWidth;
-    countBig.classList.add("pulse");
-    later(() => countBig.classList.remove("pulse"), 350);
+    // not a bounce" - count is the settle game) - and, since the balloon
+    // build (2026-09-15), a float rather than a scale-pulse: "drifting
+    // gently up into place... slow float, no bounce", per the design brief.
+    // Targets the BALLOON wrapper now, not the bare glyph, so the whole
+    // balloon floats in together. Own remove/reflow/add dance (find's own
+    // re-entrancy pattern, css:781-785) rather than widening pop()'s two
+    // hardcoded class names for a third animation only this screen uses.
+    countBalloon.classList.remove("pulse");
+    void countBalloon.offsetWidth;
+    countBalloon.classList.add("pulse");
+    later(() => countBalloon.classList.remove("pulse"), 550); // kq-balloonfloat is 450ms; 100ms cleanup buffer, same proportion the old kq-countpulse kept (300ms anim / 350ms cleanup)
   }
 
   function countTick(i) {
@@ -1265,7 +1289,8 @@
     countScreen.classList.remove("celebrate");
     countScreen.classList.add("dim"); // sky dims + sun's eyes close, one state class (spec §2)
     countHeadline.textContent = "Close your eyes — count with me!";
-    countBig.classList.remove("pulse");
+    countBalloon.classList.remove("pulse");
+    setBalloonHue(countBalloon, 0); // every fresh run starts back at teal
     countBig.textContent = TEN_BIG[0];
     countTrail.textContent = "";
     hold(() => sayLine($("#voice-count-intro"), "Close your eyes… and count with me!"), 600);
