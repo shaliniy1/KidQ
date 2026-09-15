@@ -250,6 +250,7 @@ to settle design questions, not architecture.
 ## Credits
 
 Demo footage: *Big Buck Bunny* © Blender Foundation, CC-BY 3.0. Breathing
-animation: *"Sunrise – Breathe in Breathe out"* by Palak Jain and high five:
-*"Hand clap 2"* by Nicolas Binaghi, both LottieFiles, recoloured to brand.
-Typefaces: Baloo 2 and Mukta by Ek Type.
+animation: *"Sunrise – Breathe in Breathe out"* by Palak Jain, high five:
+*"Hand clap 2"* by Nicolas Binaghi, and stand-like-a-tree: *"Young woman
+meditating in yoga tree pose"* by Farfique, all three LottieFiles,
+recoloured to brand. Typefaces: Baloo 2 and Mukta by Ek Type.

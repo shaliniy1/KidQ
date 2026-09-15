@@ -246,10 +246,9 @@
      breaks draw from MOVE (child is still fresh), later ones from SETTLE (the
      day is winding down) — the same arc the sun itself travels.            */
   const BREAK_GAMES = {
-    move:   ["find"],
+    move:   ["find", "tree"],
     settle: ["breathe", "follow"]
-    // next round: "tree" (stand like a tree) joins move;
-    //             "count" joins settle
+    // next round: "count" joins settle
   };
 
   // Returns the planned break points as fractions of the session's total
@@ -671,7 +670,7 @@
   /* ---------- playtime seam + activity breaks ---------- */
   // A ternary only ever reaches two games. Every new break must land here or it
   // silently runs breathing.
-  const BREAK_START = { find: startFind, breathe: startBreathing, follow: startFollow };
+  const BREAK_START = { find: startFind, breathe: startBreathing, follow: startFollow, tree: startTree };
 
   function startPlaytimeSeam(forceGame) {
     video.pause();
@@ -1033,6 +1032,140 @@
       // and cut the celebration off mid-word.
       hold(startChoice, 1900);
     });
+  }
+
+  /* --- MOVE: stand like a tree with the demonstrator (sourced Lottie character) ---
+     No screen input at all, by physical design: her arms are overhead and she's
+     balancing on one leg, so a tap mid-game would contradict the activity.
+     Everything here is timed - every phase below uses hold(), never later(),
+     spec's own rule since this break is all timers (spec §4). */
+  const treeScreen = $("#screen-tree");
+  const treeHeadline = $("#tree-headline");
+  const treeCountBig = $("#tree-count-big");
+  const treeCountTrail = $("#tree-count-trail");
+  const treeDots = $$("#tree-dots i");
+  const treeStage = $("#tree-stage");
+  const treeLottieEl = $("#tree-lottie");
+
+  let treeAnim = null;
+  function initTree() {
+    if (treeAnim || !window.lottie || !window.KIDQ_TREE_ANIM) return;
+    treeScreen.classList.add("lottie-on");
+    treeAnim = lottie.loadAnimation({ container: treeLottieEl, renderer: "svg",
+      loop: true, autoplay: false, animationData: window.KIDQ_TREE_ANIM });
+  }
+
+  // The visible count is driven by the SAME hold chain as the spoken count, so
+  // they cannot drift apart (spec §4) - never animation-delay staggering.
+  // COUNT_STEP_MS are word-start offsets (ms, from the count clip's own
+  // start) read from edge-tts's --write-subtitles output for
+  // voice-tree-count.mp3 (en-IN-NeerjaNeural, --rate=-10%, matching follow's
+  // pipeline); COUNT_MS (7800) is that clip's own measured length (mutagen).
+  // The chain is tuned to this REAL clip, not the other way round - spec §5
+  // is explicit that the hold chain follows the measured audio, and at this
+  // unhurried a pace the real per-number gap runs ~1.4-1.7s, longer than the
+  // spec's own ~1.1s/number estimate (logged honestly, not forced to fit).
+  // BIG is the current number (the break-count digit pattern, brand.md);
+  // TRAIL is what's still coming, shown small and dimmed beside it.
+  const COUNT_BIG = ["5", "4", "3", "2", "1"];
+  const COUNT_TRAIL = ["4 · 3 · 2 · 1", "3 · 2 · 1", "2 · 1", "1", ""];
+  const COUNT_STEP_MS = [0, 1758, 3327, 4827, 6244];
+  const COUNT_MS = 7800;
+  // voice-tree-switch.mp3 measures 1.872s; hold past that so hold2's own
+  // sayLine call never fires while this phase's clip might still be playing.
+  const SWITCH_MS = 2100;
+  const SWITCH_FLIP_MS = 450; // "flip at the apex" of the ~900ms up/down bounce
+
+  // pop() (js, above) already does the remove/reflow/add + later() cleanup a
+  // retriggerable squash-stretch needs; later()'s 200ms cleanup clamp under
+  // reduced motion only delays removing the class, not the animation itself,
+  // which the global .reduce-motion rule already crushes to instant - so
+  // reduced motion needs no special-casing here (steer, 2026-09-15).
+  function setTreeCount(i) {
+    treeCountBig.textContent = COUNT_BIG[i];
+    treeCountTrail.textContent = COUNT_TRAIL[i];
+    pop(treeCountBig);
+  }
+
+  function treeCount(onDone) {
+    for (let i = 1; i < COUNT_BIG.length; i++) {
+      hold(() => setTreeCount(i), COUNT_STEP_MS[i]);
+    }
+    hold(onDone, COUNT_MS);
+  }
+
+  function treeSwitchLeg() {
+    sayLine($("#voice-tree-switch"), "Other leg!");
+    if (reducedMotion) {
+      // Crossfade, no bounce (spec §6): fade out, flip the mirror + still
+      // frame while invisible, fade back in - the same "never an untracked
+      // glide" shape follow's placeHidden uses, just for a pose swap instead
+      // of a position swap.
+      treeStage.classList.add("crossfade");
+      hold(() => {
+        treeLottieEl.classList.add("mirrored");
+        if (treeAnim) treeAnim.goToAndStop(0, true);
+      }, 300);
+      hold(() => treeStage.classList.remove("crossfade"), 600);
+    } else {
+      treeStage.classList.add("flipping");
+      hold(() => treeLottieEl.classList.add("mirrored"), SWITCH_FLIP_MS);
+      hold(() => treeStage.classList.remove("flipping"), 900);
+    }
+    hold(runHold2, SWITCH_MS);
+  }
+
+  function runHold1() {
+    setTreeCount(0);
+    sayLine($("#voice-tree-count"), "5… 4… 3… 2… 1!");
+    treeCount(() => {
+      treeDots[0]?.classList.add("on");
+      treeStage.classList.add("settle"); // she steadies to upright between holds
+      treeSwitchLeg();
+    });
+  }
+
+  function runHold2() {
+    treeStage.classList.remove("settle");
+    setTreeCount(0);
+    sayLine($("#voice-tree-count"), "5… 4… 3… 2… 1!");
+    treeCount(() => {
+      treeDots[1]?.classList.add("on");
+      treeStage.classList.add("settle");
+      celebrateTree();
+    });
+  }
+
+  function celebrateTree() {
+    treeScreen.classList.add("celebrate");
+    treeHeadline.textContent = "You did it! ✨";
+    treeCountBig.textContent = "";
+    treeCountTrail.textContent = "";
+    sayLine($("#voice-follow-done"), "You did it!");
+    safePlay(chime);
+    // hold(), not later(): matches every other break's celebration exit.
+    hold(startChoice, 1900);
+  }
+
+  const TREE_INTRO_MS = 6360; // measured voice-tree-intro.mp3 length (mutagen)
+
+  function startTree() {
+    showScreen("screen-tree");
+    initTree();
+    treeScreen.classList.remove("celebrate");
+    treeStage.classList.remove("flipping", "crossfade", "settle");
+    treeLottieEl.classList.remove("mirrored");
+    treeDots.forEach((d) => d.classList.remove("on"));
+    treeHeadline.textContent = "Stand like a tree with me!";
+    treeCountBig.classList.remove("tapped");
+    treeCountBig.textContent = COUNT_BIG[0];
+    treeCountTrail.textContent = COUNT_TRAIL[0];
+    if (treeAnim) {
+      if (reducedMotion) treeAnim.goToAndStop(0, true);
+      else treeAnim.play();
+    }
+    hold(() => sayLine($("#voice-tree-intro"), "Stand like a tree with me! Arms up, one foot on your leg."), 600);
+    hold(runHold1, 600 + TREE_INTRO_MS);
   }
 
   /* ---------- after-break choice (within the parent's picks) ---------- */

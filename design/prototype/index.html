@@ -301,6 +301,50 @@
     </div>
   </section>
 
+  <!-- MOVE: stand like a tree with the demonstrator -->
+  <section class="screen" id="screen-tree" aria-label="Stand like a tree break">
+    <div class="kq-sky">
+      <span class="kq-ptpill slot">Playtime!</span>
+      <svg class="kq-sidetree kq-sidetree--l" style="animation-delay:-1.4s" aria-hidden="true" viewBox="0 0 70 130">
+        <rect x="30" y="78" width="9" height="48" rx="4" fill="#6B6459"/>
+        <circle cx="34" cy="60" r="24" fill="#1F7A6D"/>
+        <circle cx="18" cy="74" r="16" fill="#1F7A6D"/>
+        <circle cx="50" cy="72" r="17" fill="#1F7A6D"/>
+      </svg>
+      <svg class="kq-sidetree kq-sidetree--r" style="animation-delay:-3.1s" aria-hidden="true" viewBox="0 0 70 130">
+        <rect x="31" y="86" width="8" height="40" rx="4" fill="#6B6459"/>
+        <circle cx="35" cy="70" r="20" fill="#1F7A6D"/>
+        <circle cx="21" cy="82" r="13" fill="#1F7A6D"/>
+        <circle cx="49" cy="80" r="14" fill="#1F7A6D"/>
+      </svg>
+      <div class="kq-centercol" style="gap:14px">
+        <h1 class="kq-treehead" id="tree-headline" aria-live="polite">Stand like a tree with me!</h1>
+        <div class="kq-treescene">
+          <div class="kq-treestage" id="tree-stage">
+            <div class="kq-treelottie" id="tree-lottie" aria-hidden="true"></div>
+            <div class="kq-bsunwrap kq-treesun" id="tree-sun" aria-hidden="true">
+              <span class="halo"></span>
+              <svg class="bsun" style="transform:none" viewBox="0 0 60 60" aria-hidden="true">
+                <g class="rays"><line x1="30" y1="1.5" x2="30" y2="9.5"/><line x1="50" y1="30" x2="58.5" y2="30"/><line x1="44" y1="16" x2="50" y2="10"/><line x1="44" y1="44" x2="50" y2="50"/><line x1="30" y1="50.5" x2="30" y2="58.5"/><line x1="10" y1="50" x2="16" y2="44"/><line x1="1.5" y1="30" x2="10" y2="30"/><line x1="10" y1="10" x2="16" y2="16"/></g>
+                <circle cx="30" cy="30" r="16.5" fill="#FFC64D"/>
+                <circle class="eye" cx="24.5" cy="28" r="1.9" fill="#2E2A24"/><circle class="eye" cx="35.5" cy="28" r="1.9" fill="#2E2A24"/>
+                <path d="M24.5 34.5 Q30 39 35.5 34.5" fill="none" stroke="#2E2A24" stroke-width="2.2" stroke-linecap="round"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+        <!-- break-count digit pattern (brand.md): the live count is out of
+             aria-live spam - the headline above is the sole accessible
+             carrier, this whole cluster is aria-hidden. -->
+        <div class="kq-breakcount" id="tree-count" aria-hidden="true">
+          <span class="kq-breakcount-big" id="tree-count-big">5</span>
+          <span class="kq-breakcount-trail" id="tree-count-trail">4 · 3 · 2 · 1</span>
+        </div>
+        <div class="kq-bdots" id="tree-dots" aria-hidden="true"><i></i><i></i></div>
+      </div>
+    </div>
+  </section>
+
   <!-- after-break choice -->
   <section class="screen" id="screen-choice" aria-label="Choose your next video">
     <div class="kq-sky">
@@ -599,6 +643,7 @@
   <button data-break="breathe">Break: breathe</button>
   <button data-break="find">Break: find 3</button>
   <button data-break="follow">Break: follow sun</button>
+  <button data-break="tree">Break: tree</button>
   <button data-sky="0.08">Sun: rise</button>
   <button data-sky="0.5">Sun: midday</button>
   <button data-sky="0.95" data-dusk="1">Sun: sunset</button>
@@ -613,10 +658,14 @@
 <audio id="chime" src="proposal-src/sunset-chime.mp3" preload="auto"></audio>
 <audio id="voice-follow-intro" src="proposal-src/voice-follow-intro.mp3" preload="auto"></audio>
 <audio id="voice-follow-done" src="proposal-src/voice-follow-done.mp3" preload="auto"></audio>
+<audio id="voice-tree-intro" src="proposal-src/voice-tree-intro.mp3" preload="auto"></audio>
+<audio id="voice-tree-count" src="proposal-src/voice-tree-count.mp3" preload="auto"></audio>
+<audio id="voice-tree-switch" src="proposal-src/voice-tree-switch.mp3" preload="auto"></audio>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/bodymovin/5.12.2/lottie.min.js"></script>
 <script src="kidq-hifive-anim.js"></script>
 <script src="kidq-breathe-anim.js"></script>
+<script src="kidq-tree-anim.js"></script>
 <script src="kidq-desktop-app.js"></script>
 
 </body>
