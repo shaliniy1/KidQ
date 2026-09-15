@@ -1,25 +1,56 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import styles from "./ParentFlow.module.css";
 import { getMockRecommendations, type ParentRecommendation } from "./recommendationService";
+import { devSignIn, hasSession, signInWithGoogle, usingDevLogin } from "@/lib/session";
+import { fetchSessionRouting } from "@/services/auth";
+import { getMe, submitOnboarding, type ChildProfile, type OnboardingChild } from "@/services/child-profile";
+import { getRecommendations as fetchRecommendations, addToLibrary, type Recommendation } from "@/services/recommendations";
 
 type Screen = "login" | "home" | "profile" | "confirmation" | "preferences" | "interests" | "content" | "regulation" | "screentime" | "voice" | "guided" | "recommendation" | "playlist" | "addContent" | "planReady" | "preview" | "session" | "complete" | "details" | "insights" | "library" | "add" | "settings";
-type Child = { name: string; age: string; color: string; duration: number };
+type Child = { id: string; name: string; age: string; color: string; duration: number };
 
-const initialChildren: Child[] = [
-  { name: "Aarav", age: "3–4", color: "#1F7A6D", duration: 30 },
-  { name: "Isha", age: "2–3", color: "#D9534F", duration: 45 },
-];
+const AGE_BAND_LABELS: Record<string, string> = { "0_2": "0–2", "2_3": "2–3", "3_4": "3–4", "4_5": "4–5", "5_6": "5–6" };
+const AGE_BAND_KEYS: Record<string, OnboardingChild["age_band"]> = { "0–2": "0_2", "2–3": "2_3", "3–4": "3_4", "4–5": "4_5", "5–6": "5_6" };
+const MASCOT_COLORS = ["#1F7A6D", "#D9534F", "#008080", "#FF8C00", "#7C6BC4", "#F0A72E"];
+
+function toChild(profile: ChildProfile, index: number): Child {
+  return {
+    id: profile.id,
+    name: profile.nickname,
+    age: AGE_BAND_LABELS[profile.age_band] ?? profile.age_band,
+    color: MASCOT_COLORS[index % MASCOT_COLORS.length],
+    duration: profile.session_minutes ?? 30,
+  };
+}
+
+function toParentRecommendation(rec: Recommendation): ParentRecommendation {
+  return {
+    id: rec.card.id,
+    title: rec.card.title,
+    duration: rec.card.duration_seconds ? Math.round(rec.card.duration_seconds / 60) : 0,
+    category: rec.card.category ?? "General",
+    ageRange: rec.card.age.groups.join(", ") || "—",
+    reason: rec.why[0] ?? "Recommended for your child",
+    guardrails: rec.card.kidq_check.dimensions.map((d) => d.label).length
+      ? rec.card.kidq_check.dimensions.map((d) => d.label)
+      : ["KidQ reviewed"],
+  };
+}
+
 const videos = ["The Bunny Wakes Up", "Counting With Friends", "Why Do Birds Fly?"];
 
 export default function ParentFlow() {
   const [screen, setScreen] = useState<Screen>("login");
-  const [children, setChildren] = useState(initialChildren);
+  const [children, setChildren] = useState<Child[]>([]);
   const [active, setActive] = useState(0);
   const [duration, setDuration] = useState(30);
-  const [parentName, setParentName] = useState("Priya");
+  const [parentName, setParentName] = useState("");
+  const [draftNickname, setDraftNickname] = useState("");
+  const [draftAgeBand, setDraftAgeBand] = useState("3–4");
+  const [busy, setBusy] = useState(false);
   const [newVideo, setNewVideo] = useState("");
   const [newVideoPublic, setNewVideoPublic] = useState(false);
   const [library, setLibrary] = useState(videos);
@@ -30,56 +61,164 @@ export default function ParentFlow() {
   const [playlist, setPlaylist] = useState<ParentRecommendation[]>([]);
   const child = children[active];
 
+  // Real-session bootstrap: a returning, already-onboarded parent skips
+  // straight past login/profile — a signed-in-but-not-yet-onboarded parent
+  // (e.g. mid-setup, or right after a real Google OAuth redirect back to
+  // this page) lands on Profile instead of the login screen.
+  useEffect(() => {
+    hasSession().then(async (signedIn) => {
+      if (!signedIn) return;
+      try {
+        const routing = await fetchSessionRouting();
+        if (routing.onboardingComplete) {
+          const me = await getMe();
+          setParentName(me.parent.name);
+          if (me.children.length > 0) {
+            setChildren(me.children.map(toChild));
+            setActive(0);
+            setDuration(me.children[0].session_minutes ?? 30);
+            setScreen("home");
+            return;
+          }
+        }
+        setScreen("profile");
+      } catch {
+        // Couldn't reach the API — stay on the login screen rather than guess.
+      }
+    });
+  }, []);
+
+  async function handleGoogleSignIn() {
+    setBusy(true);
+    try {
+      if (usingDevLogin) {
+        devSignIn();
+        const routing = await fetchSessionRouting();
+        if (routing.onboardingComplete) {
+          const me = await getMe();
+          setParentName(me.parent.name);
+          setChildren(me.children.map(toChild));
+          setActive(0);
+          setScreen("home");
+        } else {
+          setScreen("profile");
+        }
+        return;
+      }
+      await signInWithGoogle();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleFirstTimeSignIn() {
+    setBusy(true);
+    try {
+      if (usingDevLogin) {
+        devSignIn();
+        setScreen("profile");
+        return;
+      }
+      await signInWithGoogle();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleOnboardingSubmit() {
+    if (!parentName.trim() || !draftNickname.trim() || busy) return;
+    setBusy(true);
+    try {
+      const me = await submitOnboarding(parentName.trim(), [
+        { nickname: draftNickname.trim(), age_band: AGE_BAND_KEYS[draftAgeBand] },
+      ]);
+      setChildren(me.children.map(toChild));
+      setActive(0);
+      setScreen("confirmation");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   const chooseChild = (index: number) => { setActive(index); setDuration(children[index].duration); };
   const saveDuration = () => setChildren((current) => current.map((item, index) => index === active ? { ...item, duration } : item));
-  const getRecommendations = () => { const next = getMockRecommendations(child, duration); setRecommendations(next); setSelectedRecommendations(next.map((item) => item.id)); setScreen("recommendation"); };
-  const beginSession = () => { saveDuration(); setScreen("session"); };
-  const confirmRecommendations = () => { const chosen = recommendations.filter((item) => selectedRecommendations.includes(item.id)); setPlaylist(chosen); setScreen("planReady"); };
+
+  async function loadRecommendations() {
+    if (!child || busy) return;
+    setBusy(true);
+    try {
+      const real = await fetchRecommendations(child.id);
+      const mapped = real.length > 0 ? real.map(toParentRecommendation) : getMockRecommendations(child, duration);
+      setRecommendations(mapped);
+      setSelectedRecommendations(mapped.map((item) => item.id));
+      setScreen("recommendation");
+    } catch {
+      const fallback = getMockRecommendations(child, duration);
+      setRecommendations(fallback);
+      setSelectedRecommendations(fallback.map((item) => item.id));
+      setScreen("recommendation");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function confirmRecommendations() {
+    if (!child || busy) return;
+    const chosen = recommendations.filter((item) => selectedRecommendations.includes(item.id));
+    setBusy(true);
+    try {
+      await Promise.all(chosen.map((item) => addToLibrary(child.id, item.id).catch(() => undefined)));
+    } finally {
+      setPlaylist(chosen);
+      setScreen("planReady");
+      setBusy(false);
+    }
+  }
 
   return <main className={styles.app}>
     {screen !== "login" && <header className={styles.topbar}>
       <Link className={styles.brand} href="/kid">KidQ<span>✦</span></Link>
       <nav aria-label="Parent navigation">
         <button className={screen === "home" || screen === "session" ? styles.activeNav : ""} onClick={() => setScreen("home")}>Today</button>
-        <button className={screen === "recommendation" || screen === "playlist" ? styles.activeNav : ""} onClick={getRecommendations}>Recommendations</button>
+        <button className={screen === "recommendation" || screen === "playlist" ? styles.activeNav : ""} onClick={loadRecommendations}>Recommendations</button>
         <button className={screen === "details" ? styles.activeNav : ""} onClick={() => setScreen("details")}>Insight log</button>
         <button className={screen === "insights" ? styles.activeNav : ""} onClick={() => setScreen("insights")}>Insights</button>
         <button className={screen === "library" || screen === "add" ? styles.activeNav : ""} onClick={() => setScreen("library")}>My Videos</button>
         <button className={screen === "settings" ? styles.activeNav : ""} onClick={() => setScreen("settings")}>Settings</button>
       </nav>
       <Link className={styles.kidLink} href="/kid">View kid mode</Link>
-      <button className={styles.profile} aria-label="Parent profile">P</button>
+      <button className={styles.profile} aria-label="Parent profile">{(parentName[0] || "P").toUpperCase()}</button>
     </header>}
 
     <div className={styles.shellFrame}>
-    {screen !== "login" && <aside className={styles.desktopSidebar} aria-label="Parent workspace navigation"><div className={styles.sidebarTitle}>KidQ</div><div className={styles.sidebarLabel}>Workspace</div><button onClick={() => setScreen("home")}>▶ <span>Start a session</span></button><button onClick={() => setScreen("profile")}>＋ <span>First-time setup</span></button><button onClick={() => setScreen("recommendation")}>✦ <span>Recommendations</span></button><button onClick={() => setScreen("insights")}>◔ <span>Analytics</span></button><button onClick={() => setScreen("library")}>▣ <span>My videos</span></button><button onClick={() => setScreen("settings")}>☼ <span>Preferences</span></button></aside>}
+    {screen !== "login" && <aside className={styles.desktopSidebar} aria-label="Parent workspace navigation"><div className={styles.sidebarTitle}>KidQ</div><div className={styles.sidebarLabel}>Workspace</div><button onClick={() => setScreen("home")}>▶ <span>Start a session</span></button><button onClick={() => setScreen("profile")}>＋ <span>First-time setup</span></button><button onClick={loadRecommendations}>✦ <span>Recommendations</span></button><button onClick={() => setScreen("insights")}>◔ <span>Analytics</span></button><button onClick={() => setScreen("library")}>▣ <span>My videos</span></button><button onClick={() => setScreen("settings")}>☼ <span>Preferences</span></button></aside>}
     <div className={styles.shell}>
-      {screen === "login" && <Login google={() => setScreen("home")} firstTime={() => setScreen("profile")} />}
-      {screen === "home" && <Home child={child} active={active} children={children} duration={duration} timeMode={timeMode} setTimeMode={setTimeMode} chooseChild={chooseChild} setDuration={setDuration} getRecommendations={getRecommendations} setScreen={setScreen} />}
-      {screen === "profile" && <Profile name={parentName} setName={setParentName} child={child} next={() => setScreen("confirmation")} back={() => setScreen("home")} />}
-      {screen === "confirmation" && <Confirmation child={child} start={() => setScreen("home")} customize={() => setScreen("preferences")} browse={() => setScreen("recommendation")} back={() => setScreen("profile")} />}
-      {screen === "preferences" && <Preferences child={child} next={() => setScreen("recommendation")} back={() => setScreen("profile")} setScreen={setScreen} />}
-      {screen === "interests" && <PreferenceStep title="Interests" sub={`What does ${child.name} enjoy?`} options={["Animals", "Vehicles", "Music & rhymes", "Art & craft", "Space & science", "Stories", "Nature"]} next={() => setScreen("preferences")} back={() => setScreen("preferences")} />}
+      {screen === "login" && <Login google={handleGoogleSignIn} firstTime={handleFirstTimeSignIn} />}
+      {screen === "home" && child && <Home child={child} active={active} children={children} duration={duration} timeMode={timeMode} setTimeMode={setTimeMode} chooseChild={chooseChild} setDuration={setDuration} getRecommendations={loadRecommendations} setScreen={setScreen} parentName={parentName} />}
+      {screen === "profile" && <Profile name={parentName} setName={setParentName} nickname={draftNickname} setNickname={setDraftNickname} ageBand={draftAgeBand} setAgeBand={setDraftAgeBand} next={handleOnboardingSubmit} disabled={busy || !parentName.trim() || !draftNickname.trim()} back={() => setScreen("home")} />}
+      {screen === "confirmation" && child && <Confirmation child={child} start={() => setScreen("home")} customize={() => setScreen("preferences")} browse={loadRecommendations} back={() => setScreen("profile")} />}
+      {screen === "preferences" && child && <Preferences child={child} next={loadRecommendations} back={() => setScreen("profile")} setScreen={setScreen} />}
+      {screen === "interests" && <PreferenceStep title="Interests" sub={`What does ${child?.name ?? "your child"} enjoy?`} options={["Animals", "Vehicles", "Music & rhymes", "Art & craft", "Space & science", "Stories", "Nature"]} next={() => setScreen("preferences")} back={() => setScreen("preferences")} />}
       {screen === "content" && <PreferenceStep title="Content mix" sub="Choose how KidQ should balance the session." options={["Surprise me", "Choose categories", "Stories", "Educational", "Music / rhymes", "Movement"]} next={() => setScreen("preferences")} back={() => setScreen("preferences")} />}
       {screen === "regulation" && <PreferenceStep title="Regulation goal" sub="What would help most right now?" options={["Help them calm down", "Manage big feelings", "Build focus", "Burn off energy", "Wind down before bed"]} next={() => setScreen("preferences")} back={() => setScreen("preferences")} />}
       {screen === "screentime" && <PreferenceStep title="Screen time & breaks" sub="Set a gentle default for this child." options={["15 min · wind-down only", "30 min · 1 break", "45 min · 2 breaks", "60 min · 3 breaks", "90 min · 5 breaks"]} next={() => setScreen("preferences")} back={() => setScreen("preferences")} />}
       {screen === "voice" && <PreferenceStep title="Talk to KidQ" sub="Describe what you are looking for, by voice or text." options={["🎙 Tap to speak", "Type: calming animal stories before bed"]} next={() => setScreen("preferences")} back={() => setScreen("preferences")} />}
       {screen === "guided" && <PreferenceStep title="A couple of quick questions" sub="Tap an answer for each — takes about 10 seconds." options={["Stories & imagination", "Active, physical play", "Calming down", "Building focus", "Burning energy"]} next={() => setScreen("preferences")} back={() => setScreen("preferences")} />}
-      {screen === "recommendation" && <Recommendation child={child} duration={duration} items={recommendations} selected={selectedRecommendations} toggle={(id) => setSelectedRecommendations((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id])} next={confirmRecommendations} addContent={() => setScreen("addContent")} edit={() => setScreen("playlist")} back={() => setScreen("home")} />}
+      {screen === "recommendation" && child && <Recommendation child={child} duration={duration} items={recommendations} selected={selectedRecommendations} toggle={(id) => setSelectedRecommendations((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id])} next={confirmRecommendations} addContent={() => setScreen("addContent")} edit={() => setScreen("playlist")} back={() => setScreen("home")} />}
       {screen === "playlist" && <Playlist duration={duration} items={recommendations.filter((item) => selectedRecommendations.includes(item.id))} remove={(id) => setSelectedRecommendations((current) => current.filter((item) => item !== id))} move={(id, direction) => setRecommendations((current) => { const index = current.findIndex((item) => item.id === id); const nextIndex = index + direction; if (index < 0 || nextIndex < 0 || nextIndex >= current.length) return current; const copy = [...current]; [copy[index], copy[nextIndex]] = [copy[nextIndex], copy[index]]; return copy; })} addContent={() => setScreen("addContent")} confirm={confirmRecommendations} back={() => setScreen("recommendation")} />}
       {screen === "addContent" && <AddContent add={(item) => { if (!recommendations.some((existing) => existing.id === item.id)) { setRecommendations((current) => [...current, item]); setSelectedRecommendations((current) => [...current, item.id]); } setScreen("playlist"); }} back={() => setScreen("recommendation")} />}
-      {screen === "planReady" && <PlanReady child={child} duration={duration} items={playlist} viewKid={() => setScreen("preview")} done={() => setScreen("home")} />}
-      {screen === "preview" && <Preview child={child} next={() => setScreen("home")} back={() => setScreen("recommendation")} />}
-      {screen === "session" && <Session child={child} duration={duration} done={() => setScreen("complete")} back={() => setScreen("home")} />}
-      {screen === "complete" && <Complete child={child} done={() => setScreen("home")} details={() => setScreen("details")} />}
-      {screen === "details" && <Details child={child} library={library} back={() => setScreen("complete")} />}
-      {screen === "insights" && <Insights child={child} active={active} children={children} range={range} setRange={setRange} chooseChild={chooseChild} />}
-      {screen === "library" && <Library child={child} children={children} library={library} remove={(title) => setLibrary((items) => items.filter((item) => item !== title))} add={() => setScreen("add")} />}
+      {screen === "planReady" && child && <PlanReady child={child} duration={duration} items={playlist} viewKid={() => setScreen("preview")} done={() => setScreen("home")} />}
+      {screen === "preview" && child && <Preview child={child} next={() => setScreen("home")} back={() => setScreen("recommendation")} />}
+      {screen === "session" && child && <Session child={child} duration={duration} done={() => setScreen("complete")} back={() => setScreen("home")} />}
+      {screen === "complete" && child && <Complete child={child} done={() => setScreen("home")} details={() => setScreen("details")} />}
+      {screen === "details" && child && <Details child={child} library={library} back={() => setScreen("complete")} />}
+      {screen === "insights" && child && <Insights child={child} active={active} children={children} range={range} setRange={setRange} chooseChild={chooseChild} />}
+      {screen === "library" && child && <Library child={child} children={children} library={library} remove={(title) => setLibrary((items) => items.filter((item) => item !== title))} add={() => setScreen("add")} />}
       {screen === "add" && <AddVideo value={newVideo} setValue={setNewVideo} isPublic={newVideoPublic} setIsPublic={setNewVideoPublic} back={() => setScreen("library")} save={() => { setLibrary((items) => [...items, newVideo || "A new family video"]); setNewVideo(""); setNewVideoPublic(false); setScreen("library"); }} />}
-      {screen === "settings" && <Settings child={child} openPreferences={() => setScreen("preferences")} />}
+      {screen === "settings" && child && <Settings child={child} openPreferences={() => setScreen("preferences")} />}
     </div>
     </div>
-    <nav className={styles.mobileTabs} aria-label="Mobile parent navigation"><button onClick={() => setScreen("home")}>▶<small>Start</small></button><button onClick={() => setScreen("recommendation")}>✦<small>Recs</small></button><button onClick={() => setScreen("insights")}>◔<small>Insights</small></button><button onClick={() => setScreen("library")}>▣<small>Videos</small></button><button onClick={() => setScreen("settings")}>⚙<small>Settings</small></button></nav>
+    <nav className={styles.mobileTabs} aria-label="Mobile parent navigation"><button onClick={() => setScreen("home")}>▶<small>Start</small></button><button onClick={loadRecommendations}>✦<small>Recs</small></button><button onClick={() => setScreen("insights")}>◔<small>Insights</small></button><button onClick={() => setScreen("library")}>▣<small>Videos</small></button><button onClick={() => setScreen("settings")}>⚙<small>Settings</small></button></nav>
   </main>;
 }
 
@@ -109,13 +248,13 @@ function Login({ google, firstTime }: { google: () => void; firstTime: () => voi
   </div>;
 }
 
-function Home({ child, active, children, duration, timeMode, setTimeMode, chooseChild, setDuration, getRecommendations, setScreen }: { child: Child; active: number; children: Child[]; duration: number; timeMode: string; setTimeMode: (v: string) => void; chooseChild: (i: number) => void; setDuration: (v: number) => void; getRecommendations: () => void; setScreen: (s: Screen) => void }) { const [showTiming, setShowTiming] = useState(false); return <>
-  <div className={styles.eyebrow}>Good afternoon, Priya</div><div className={styles.titleRow}><div><h1>Ready for a good session?</h1><p>Everything is set for a calm, finite watch.</p></div><span className={styles.status}>● Library ready</span></div>
+function Home({ child, active, children, duration, timeMode, setTimeMode, chooseChild, setDuration, getRecommendations, setScreen, parentName }: { child: Child; active: number; children: Child[]; duration: number; timeMode: string; setTimeMode: (v: string) => void; chooseChild: (i: number) => void; setDuration: (v: number) => void; getRecommendations: () => void; setScreen: (s: Screen) => void; parentName: string }) { const [showTiming, setShowTiming] = useState(false); return <>
+  <div className={styles.eyebrow}>Good afternoon, {parentName || "there"}</div><div className={styles.titleRow}><div><h1>Ready for a good session?</h1><p>Everything is set for a calm, finite watch.</p></div><span className={styles.status}>● Library ready</span></div>
   <section className={styles.childCard}><div><small>Session for</small><h2>{child.name}</h2><p>{child.age} years · {child.duration} min saved</p></div><div className={styles.children}>{children.map((item, index) => <button key={item.name} className={index === active ? styles.selected : ""} onClick={() => chooseChild(index)}><i style={{ background: item.color }}>{item.name[0]}</i>{item.name}</button>)}</div></section>
   <section className={styles.sessionCard}><div className={styles.sessionArt}><span>☀</span></div><div className={styles.sessionBody}><div className={styles.eyebrow}>Start a session</div><h2>Pick a length for {child.name}</h2><p>KidQ will prepare a parent-reviewed queue that fits this duration. You can edit it before anything is shown to your child.</p><div className={styles.duration}>{[15, 20, 30, 45, 60].map((value) => <button key={value} className={duration === value ? styles.durationSelected : ""} aria-pressed={duration === value} onClick={() => setDuration(value)}>{value}<small>min</small></button>)}</div><div className={styles.modeRow}><span>Time of day</span>{["Auto", "Morning", "Daytime", "Bedtime"].map((mode) => <button key={mode} className={timeMode === mode ? styles.pillSelected : ""} onClick={() => setTimeMode(mode)}>{mode}</button>)}</div><p className={styles.breaks}>◷ {Math.max(0, Math.round(duration / 15) - 1)} mid-session break{Math.round(duration / 15) - 1 === 1 ? "" : "s"} + wind-down · {timeMode === "Auto" ? "KidQ chooses a gentle fit for now" : `${timeMode} content`}</p><div className={styles.preferenceWrap}><button className={styles.preferenceButton} onClick={() => setShowTiming(!showTiming)} aria-expanded={showTiming}><span aria-hidden="true">☷</span> Change content preferences <small>{timeMode}</small></button>{showTiming && <div className={styles.timingPopover}><b>Content timing</b><p>Choose when this queue should feel most at home.</p><div>{["Auto", "Morning", "Daytime", "Bedtime"].map((mode) => <button key={mode} className={timeMode === mode ? styles.pillSelected : ""} onClick={() => { setTimeMode(mode); setShowTiming(false); }}>{mode}</button>)}</div><button className={styles.textLink} onClick={() => setScreen("preferences")}>Edit all preferences →</button></div>}</div><Button onClick={getRecommendations}>Get recommendations →</Button></div></section>
 </>; }
 
-function Profile({ name, setName, child, next, back }: { name: string; setName: (v: string) => void; child: Child; next: () => void; back: () => void }) { return <div className={styles.flow}><Header title="Let&apos;s set up your family" sub="Just two things per child — everything else is optional." back={back} /><label>Your name<input value={name} onChange={(event) => setName(event.target.value)} /></label><label>Child nickname<input defaultValue={child.name} /></label><div><b>Age band</b><div className={styles.pills}>{["0–2", "2–3", "3–4", "4–5", "5–6"].map((age) => <button key={age} className={age === child.age ? styles.pillSelected : ""}>{age}</button>)}</div></div><Button onClick={next}>Continue</Button><p className={styles.fine}>Your family&apos;s viewing data stays inside KidQ&apos;s own analytics system. It is not sold or shared outside KidQ.</p></div>; }
+function Profile({ name, setName, nickname, setNickname, ageBand, setAgeBand, next, disabled, back }: { name: string; setName: (v: string) => void; nickname: string; setNickname: (v: string) => void; ageBand: string; setAgeBand: (v: string) => void; next: () => void; disabled: boolean; back: () => void }) { return <div className={styles.flow}><Header title="Let&apos;s set up your family" sub="Just two things per child — everything else is optional." back={back} /><label>Your name<input value={name} onChange={(event) => setName(event.target.value)} placeholder="Parent's name" /></label><label>Child nickname<input value={nickname} onChange={(event) => setNickname(event.target.value)} placeholder="Child's nickname" /></label><div><b>Age band</b><div className={styles.pills}>{["0–2", "2–3", "3–4", "4–5", "5–6"].map((age) => <button key={age} className={age === ageBand ? styles.pillSelected : ""} onClick={() => setAgeBand(age)}>{age}</button>)}</div></div><Button disabled={disabled} onClick={next}>Continue</Button><p className={styles.fine}>Your family&apos;s viewing data stays inside KidQ&apos;s own analytics system. It is not sold or shared outside KidQ.</p></div>; }
 function Confirmation({ child, start, customize, browse, back }: { child: Child; start: () => void; customize: () => void; browse: () => void; back: () => void }) { return <div className={styles.flow}><Header title={`Made for ${child.name}`} sub="Your family is ready. Choose how you want to begin." back={back} /><div className={styles.choiceGrid}><button onClick={start}><b>Start using KidQ</b><span>Use sensible defaults and start a session.</span></button><button onClick={customize}><b>Customize first</b><span>Set interests, goals, duration, and breaks.</span></button><button onClick={browse}><b>Browse and pick myself</b><span>Choose from reviewed recommendations.</span></button></div></div>; }
 function Preferences({ child, next, back, setScreen }: { child: Child; next: () => void; back: () => void; setScreen: (screen: Screen) => void }) { const items: [string, Screen][] = [["Interests", "interests"], ["Content mix", "content"], ["Regulation goal", "regulation"], ["Screen time & breaks", "screentime"], ["Talk or type", "voice"], ["Guided questions", "guided"]]; return <div className={styles.flow}><Header title={`Customize for ${child.name}`} sub="Choose what feels right for your family." back={back} /><div className={styles.preferenceGrid}>{items.map(([item, target]) => <button key={item} onClick={() => setScreen(target)}><b>{item}</b><span>Tap to choose preferences →</span></button>)}</div><Button onClick={next}>Save preferences</Button></div>; }
 function PreferenceStep({ title, sub, options, next, back }: { title: string; sub: string; options: string[]; next: () => void; back: () => void }) { const [selected, setSelected] = useState(options[0]); return <div className={styles.flow}><Header title={title} sub={sub} back={back} /><div className={styles.optionList}>{options.map((option) => <button key={option} className={selected === option ? styles.optionSelected : ""} onClick={() => setSelected(option)}><span>{selected === option ? "✓" : "○"}</span>{option}</button>)}</div><Button onClick={next}>Save & back</Button></div>; }
