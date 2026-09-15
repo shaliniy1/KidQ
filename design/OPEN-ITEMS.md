@@ -505,3 +505,67 @@ re-verified live for this item — both follow directly from unchanged code
 (`fiveUp()`'s pre-existing guard; `hold()`'s unconditional, unclamped
 `setTimeout`), the same guarantees item 25 already established for the
 identical mechanism.
+
+### [x] 39. A backgrounded tab could leave the watching screen frozen with the UI still claiming "playing"
+Chrome silently pauses a video-only background tab to save power — no error
+fires, just a real `pause` event, roughly 5s after the tab is hidden. The app
+only ever listened for `timeupdate` and `ended` on the video, so that pause
+went unnoticed: the pause button kept saying "Pause", `.paused` never got
+added, and the child was left looking at a frozen frame with no visible way
+back in. The policy itself is the browser's, not a bug reachable from here —
+Chrome doesn't expose an opt-out for a hidden video-only stream — so the fix
+is to listen honestly and recover on return, not to fight the pause.
+
+**Built:** `video` now carries real `pause`/`play` listeners that sync
+`#screen-watching`'s `.paused` class and `#watch-pause`'s aria-label to
+whatever actually happened, whoever caused it — the browser, a demo-bar
+screen jump's own `video.pause()`, or the click handler. Both listeners only
+act while the watching screen is the active one (the same guard `ended()`
+already used, since screen jumps and the swapping auto-advance dip pause/
+play the video for their own reasons); the pause listener also skips a
+video that has already `ended`, since a native `pause` fires right before
+`ended` and would otherwise flash the paused UI on every video that finishes
+normally.
+
+A new `userPaused` flag, set in the existing `watchPause` click handler and
+reset whenever `startWatching()` starts a new video, is the one rule that
+matters here: **a deliberate pause by the child is never silently
+overridden.** A `visibilitychange` listener calls the existing `attemptPlay`
+when the tab returns to visible and the video is paused — but only when
+`!userPaused` and the video isn't already `ended` (the swapping dip between
+videos holds a paused-and-ended video on an active watching screen for
+~700ms, and `attemptPlay` on an ended video would seek to 0 and replay it
+briefly), so the recovery only ever undoes the browser's own mid-video
+pause, never the child's or the tail end of a finished video.
+
+Verified live in Chrome (`python -m http.server`, port 8471, the demo bar's
+"Sun: midday" jump straight to watching) at the state level, since
+`document.hidden` is always `true` in this automation environment and every
+`setTimeout` is throttled — which meant Chrome's real background pause was
+genuinely available to trigger and observe, not something to fake:
+- Programmatic `video.pause()` / `video.play()` each correctly toggled
+  `.paused` and the aria-label both ways.
+- Clicking the real pause button, then overriding `document.visibilityState`
+  to `"visible"` and dispatching `visibilitychange`, left the video paused
+  and `HTMLMediaElement.prototype.play` uninvoked (instrumented with a
+  counter) — `userPaused` held.
+- The same override after a *programmatic* (non-user) pause invoked
+  `attemptPlay`: the play-count counter increased and the UI flipped back to
+  "playing" immediately, matching `attemptPlay`'s synchronous `play()` call
+  even though the actual retry (visible in the counter) was blocked by the
+  hidden tab, exactly as `attemptPlay`'s own `.catch` retry is built to
+  handle.
+
+One thing was environment-blocked rather than observed directly: natural
+end-of-video. The dev server (Python's `http.server`) doesn't support HTTP
+Range requests, and combined with `document.hidden`, the demo clips never
+progressed past `readyState 0` — no real `ended` event was reachable. Rather
+than skip the check, the same technique used above for `visibilityState` was
+applied to the video itself: shadowed the read-only `ended` getter to `true`
+on the element instance, dispatched a synthetic `pause` (confirming no
+paused-UI flash), then a synthetic `ended` — which correctly ran the real
+break-seam flow (`screen-watching` lost `active`, `screen-playtime` gained
+it), since video 1 of the demo session lands exactly on the first break
+boundary. Both the anti-flash guard and the ended-flow continuation are
+therefore verified at the code-execution level, just not via an actual
+decoded video frame reaching its last one.
