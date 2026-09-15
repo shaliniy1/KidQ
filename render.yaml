@@ -1,10 +1,11 @@
 # Render Blueprint — KidQ QA (free plan) and prod. One repo, five services.
-# QA (main, autoDeploy) and prod (kidq-*-prod, branch `release`, promoted from `main`, autoDeploy
-# false) both run on Render's free plan for now: services sleep after 15 min idle (~1 min cold
-# start on the next request) and free plans support neither a separate background-worker service
-# nor a pre-deploy step, so kidq-api-prod migrates at boot and runs the job worker in-process, same
-# as QA. Upgrade kidq-*-prod to `starter` and split kidq-worker-prod back out once real traffic
-# justifies always-on service — no other changes needed. See docs/deployment.md "Prod — what changes".
+# QA (main) and prod (kidq-*-prod, branch `release`, promoted from `main`) both auto-deploy and
+# both run on Render's free plan for now: services sleep after 15 min idle (~1 min cold start on
+# the next request) and free plans support neither a separate background-worker service nor a
+# pre-deploy step, so kidq-api-prod migrates at boot and runs the job worker in-process, same as
+# QA. Pushing to `release` goes live immediately — there is no manual approval step before prod.
+# Upgrade kidq-*-prod to `starter` and split kidq-worker-prod back out once real traffic justifies
+# always-on service — no other changes needed. See docs/deployment.md "Prod — what changes".
 # Values marked `sync: false` are entered in the Render dashboard — never commit them.
 #
 # Not covered here: prod's daily discovery pull (docs/deployment.md lists it as "Render cron job,
@@ -109,7 +110,7 @@ services:
     buildCommand: npm ci --include=dev && npm run build -w api
     startCommand: npm run start -w api
     healthCheckPath: /ready
-    autoDeploy: false
+    autoDeploy: true
     buildFilter:
       paths: ["api/**", "config/**", "package.json", "package-lock.json"]
     envVars:
@@ -160,7 +161,7 @@ services:
     branch: release
     buildCommand: npm ci --include=dev && npm run build -w admin
     startCommand: npm run start -w admin
-    autoDeploy: false
+    autoDeploy: true
     buildFilter:
       paths: ["admin/**", "packages/**", "package.json", "package-lock.json"]
     envVars:
@@ -181,7 +182,7 @@ services:
     branch: release
     buildCommand: npm ci --include=dev && npm run build -w web
     startCommand: npm run start -w web
-    autoDeploy: false
+    autoDeploy: true
     buildFilter:
       paths: ["web/**", "packages/**", "package.json", "package-lock.json"]
     envVars:
