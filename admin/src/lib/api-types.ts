@@ -2063,6 +2063,82 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/analytics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** What families are watching, platform-wide (or one child, with child_id): the same sections as the parent Analytics page */
+        get: {
+            parameters: {
+                query?: {
+                    period?: "today" | "7d" | "30d";
+                    /** @description Look at one child's viewing instead of the whole platform */
+                    child_id?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Success */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AdminAnalytics"];
+                    };
+                };
+                /** @description Validation failed */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not signed in */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Wrong role */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/content-pool": {
         parameters: {
             query?: never;
@@ -4697,6 +4773,84 @@ export interface components {
             /** @enum {string} */
             period: "today" | "7d" | "30d";
             timezone: string;
+            /** @description Local days, inclusive */
+            range: {
+                start: string;
+                end: string;
+            };
+            has_data: boolean;
+            overview: {
+                /** @description Videos actually playing on screen */
+                screen_minutes: number;
+                videos_watched: number;
+                activities_completed: number;
+                /** @description Only when both periods have screen time */
+                vs_previous: {
+                    /** @description Negative is less */
+                    minutes_diff: number;
+                    compared_with: string;
+                } | null;
+            };
+            daily: {
+                date: string;
+                minutes: number;
+            }[];
+            /** @description Videos and activities; past the top five is "other" */
+            categories: {
+                key: string;
+                label: string;
+                minutes: number;
+                percent: number;
+            }[];
+            /** @description Up to three, from watch time, completion, repeats and variety; a category needs two plays */
+            engaged: {
+                key: string;
+                label: string;
+                minutes: number;
+                videos: number;
+                activities: number;
+                average_completion: number;
+            }[];
+            top_content: {
+                card: components["schemas"]["ContentCard"];
+                minutes: number;
+                completion: number;
+                times_watched: number;
+            }[];
+            completion: {
+                started: number;
+                /** @description 90% or more */
+                completed: number;
+                /** @description 25–90% */
+                partly_watched: number;
+                /** @description Under 25% */
+                stopped_early: number;
+            };
+            pattern: {
+                /** @enum {string} */
+                part: "MORNING" | "AFTERNOON" | "EVENING" | "OTHER";
+                label: string;
+                hours: string;
+                minutes: number;
+            }[];
+            split: {
+                video_minutes: number;
+                activity_minutes: number;
+                video_percent: number;
+                activity_percent: number;
+            };
+            /** @description At most two factual sentences, only once there's enough to go on */
+            insights: string[];
+        };
+        AdminAnalytics: {
+            /** @enum {string} */
+            period: "today" | "7d" | "30d";
+            timezone: string;
+            child_id: string | null;
+            /** @description Children with any viewing in this period */
+            children_active: number;
+            /** @description Every child profile on KidQ */
+            children_total: number;
             /** @description Local days, inclusive */
             range: {
                 start: string;

@@ -8,6 +8,8 @@ import { actorName } from "../http/auth";
 import { notFound } from "../http/errors";
 import { defineRoute } from "../http/route";
 import {
+  adminAnalyticsQuery,
+  adminAnalyticsSchema,
   adminContentSchema,
   bulkClassificationBody,
   bulkDecisionBody,
@@ -37,6 +39,7 @@ import { getActiveRankingConfig, getActiveScoringConfig, saveRankingConfig, save
 import { getAdminDetail, getStory, listAdminContent, listReviewQueue } from "../repositories/content";
 import { upsertTaxonomyTerm } from "../repositories/taxonomy";
 import * as admin from "../services/admin";
+import { getPlatformAnalytics } from "../services/analytics";
 import { createIngestionRun, getIngestionRun } from "../services/ingestion";
 import { previewRecommendations } from "../services/parents";
 
@@ -247,6 +250,20 @@ defineRoute(
         actorName(user),
       ),
     ),
+);
+
+defineRoute(
+  adminRouter,
+  {
+    method: "get",
+    path: "/analytics",
+    summary: "What families are watching, platform-wide (or one child, with child_id): the same sections as the parent Analytics page",
+    tag: "Analytics",
+    roles,
+    query: adminAnalyticsQuery,
+    response: adminAnalyticsSchema,
+  },
+  async ({ query }) => getPlatformAnalytics(query.period, { childId: query.child_id }),
 );
 
 defineRoute(

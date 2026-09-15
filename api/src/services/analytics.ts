@@ -192,6 +192,58 @@ export async function getAnalytics(user: AuthUser, childId: string, period: Peri
   };
 }
 
+/**
+ * Admin Analytics: the same sections as the parent page, across every child (or one, for a support
+ * look-up), for the Admin Content Studio's Analytics tab. Each play's `day` was fixed at write time in
+ * its own family's time zone (`timezoneOf`), so aggregating across families lines up local days only
+ * approximately — acceptable for a platform overview. `KidQ`'s own zone (IST) anchors "today".
+ */
+const PLATFORM_TIME_ZONE = "Asia/Kolkata";
+
+export async function getPlatformAnalytics(period: Period, options: { childId?: string } = {}) {
+  const db = getPool();
+  const today = localParts(new Date(), PLATFORM_TIME_ZONE).day;
+  const range = periodRange(period, today);
+  const childFilter = options.childId ? " AND child_profile_id = $3" : "";
+  const [rows, taxonomy, active, total] = await Promise.all([
+    db.query(
+      `SELECT *, to_char(day, 'YYYY-MM-DD') AS local_day FROM child_plays WHERE day BETWEEN $1 AND $2${childFilter}`,
+      options.childId ? [range.previousStart, range.end, options.childId] : [range.previousStart, range.end],
+    ),
+    listTaxonomy(db),
+    db.query(
+      `SELECT count(DISTINCT child_profile_id)::int AS n FROM child_plays WHERE day BETWEEN $1 AND $2${childFilter}`,
+      options.childId ? [range.start, range.end, options.childId] : [range.start, range.end],
+    ),
+    db.query("SELECT count(*)::int AS n FROM child_profiles"),
+  ]);
+  const groups = parentCategoriesFrom(taxonomy.parent_category);
+  const plays: Play[] = rows.rows.map((row) => ({
+    itemId: row.item_id,
+    kind: row.kind,
+    category: groupOf(groups, row.category) ?? row.category,
+    day: row.local_day,
+    activeSeconds: row.active_seconds,
+    parts: { MORNING: row.morning_seconds, AFTERNOON: row.afternoon_seconds, EVENING: row.evening_seconds, OTHER: row.other_seconds },
+    maxProgress: row.max_progress,
+    completed: row.completed,
+  }));
+  const { top, ...summary } = summarize(plays, { period, today, labels: Object.fromEntries([...taxonomy.category, ...taxonomy.parent_category].map((term) => [term.key, term.label])) });
+  const cards = await getCardRows(db, top.map((entry) => entry.item_id), { approvedOnly: false });
+  return {
+    period,
+    timezone: PLATFORM_TIME_ZONE,
+    child_id: options.childId ?? null,
+    children_active: active.rows[0].n as number,
+    children_total: total.rows[0].n as number,
+    ...summary,
+    top_content: top.flatMap(({ item_id: itemId, ...stats }) => {
+      const row = cards.get(itemId);
+      return row ? [{ card: { ...toCard(row), player: null }, ...stats }] : [];
+    }),
+  };
+}
+
 /** Raw events are kept 13 months; the per-play rollup the page reads stays. Run by the daily job drain. */
 export async function pruneAnalyticsEvents(db: Db): Promise<number> {
   return (await db.query(`DELETE FROM analytics_events WHERE occurred_at < now() - interval '${RETENTION}'`)).rowCount ?? 0;

@@ -598,6 +598,41 @@ export const parentAnalyticsSchema = registry.register(
   }),
 );
 
+// ── Admin Analytics (Admin Content Studio's Analytics tab) ────────────────────
+// The same sections as ParentAnalytics, across every child by default (or one, for a support look-up).
+export const adminAnalyticsQuery = z.object({
+  period: z.enum(PERIODS).default("7d"),
+  child_id: z.uuid().optional().describe("Look at one child's viewing instead of the whole platform"),
+});
+export const adminAnalyticsSchema = registry.register(
+  "AdminAnalytics",
+  z.object({
+    period: z.enum(PERIODS),
+    timezone: z.string(),
+    child_id: z.union([z.uuid(), z.null()]),
+    children_active: count.describe("Children with any viewing in this period"),
+    children_total: count.describe("Every child profile on KidQ"),
+    range: z.object({ start: z.string(), end: z.string() }).describe("Local days, inclusive"),
+    has_data: z.boolean(),
+    overview: z.object({
+      screen_minutes: count.describe("Videos actually playing on screen"),
+      videos_watched: count,
+      activities_completed: count,
+      vs_previous: z.object({ minutes_diff: count.describe("Negative is less"), compared_with: z.string() }).nullable().describe("Only when both periods have screen time"),
+    }),
+    daily: z.array(z.object({ date: z.string(), minutes: count })),
+    categories: z.array(z.object({ key: z.string(), label: z.string(), minutes: count, percent: count })).describe("Videos and activities; past the top five is \"other\""),
+    engaged: z
+      .array(z.object({ key: z.string(), label: z.string(), minutes: count, videos: count, activities: count, average_completion: count }))
+      .describe("Up to three, from watch time, completion, repeats and variety; a category needs two plays"),
+    top_content: z.array(z.object({ card: contentCardSchema, minutes: count, completion: count, times_watched: count })),
+    completion: z.object({ started: count, completed: count.describe("90% or more"), partly_watched: count.describe("25–90%"), stopped_early: count.describe("Under 25%") }),
+    pattern: z.array(z.object({ part: z.enum(PARTS.map((part) => part.key) as [string, ...string[]]), label: z.string(), hours: z.string(), minutes: count })),
+    split: z.object({ video_minutes: count, activity_minutes: count, video_percent: count, activity_percent: count }),
+    insights: z.array(z.string()).describe("At most two factual sentences, only once there's enough to go on"),
+  }),
+);
+
 // Admin preview: the same fields as a child profile, applied to an imaginary child.
 export const previewBody = childPreferences.partial().extend({
   age_band: ageBand,
