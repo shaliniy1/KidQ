@@ -1295,18 +1295,20 @@
   });
 
   // Previews the KidQ Parent app's break-interval setting (every 10/15/20
-  // min). Unlike breakType above, this CANNOT apply mid-session — breaks are
-  // planned once, at prepSession() — so this control restarts the session,
-  // always into the demo aarav session (the one with breaks to show). It
-  // runs the same [data-demo] prologue every jump above uses (clearTimers();
-  // video.pause();) before restarting, or a pending autoAdvance later() /
-  // autoplay-off nudge hold() chain would fire into the new session with
-  // stale state. The override carries the CURRENT live breakType forward
-  // (not the aarav session's own default) so cycling the interval doesn't
-  // silently revert a type the demo bar was already showing — a plain login
-  // or "↻ Restart full flow" still reseeds breakType from the session's own
-  // config, which is correct: the parent's config is the source of truth,
-  // and setBreakType() now keeps this button's label honest either way.
+  // min). Unlike breakType (and sensoryFriendly, item 42) above, this
+  // CANNOT apply mid-session — breaks are planned once, at prepSession() —
+  // so this control restarts the session, always into the demo aarav
+  // session (the one with breaks to show). It runs the same [data-demo]
+  // prologue every jump above uses (clearTimers(); video.pause();) before
+  // restarting, or a pending autoAdvance later() / autoplay-off nudge
+  // hold() chain would fire into the new session with stale state. The
+  // override carries the CURRENT live breakType AND sensoryFriendly forward
+  // (not the aarav session's own defaults) so cycling the interval doesn't
+  // silently revert either setting the demo bar was already showing — a
+  // plain login or "↻ Restart full flow" still reseeds both from the
+  // session's own config, which is correct: the parent's config is the
+  // source of truth, and setBreakType()/setSensoryFriendly() now keep this
+  // button's siblings' labels honest either way.
   const BREAK_EVERY_OPTIONS = [10, 15, 20];
   let demoBreakEvery = 15;
   $("#breakevery-toggle").addEventListener("click", (e) => {
@@ -1315,7 +1317,7 @@
     const i = BREAK_EVERY_OPTIONS.indexOf(demoBreakEvery);
     demoBreakEvery = BREAK_EVERY_OPTIONS[(i + 1) % BREAK_EVERY_OPTIONS.length];
     e.currentTarget.textContent = `Breaks: every ${demoBreakEvery}m`;
-    prepSession("aarav", { ...KidQData.sessions.aarav, breakEveryMinutes: demoBreakEvery, breakType });
+    prepSession("aarav", { ...KidQData.sessions.aarav, breakEveryMinutes: demoBreakEvery, breakType, sensoryFriendly });
     startSunrise();
   });
 
