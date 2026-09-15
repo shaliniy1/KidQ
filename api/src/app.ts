@@ -11,6 +11,17 @@ import { adminRouter } from "./routes/admin";
 import healthRoutes from "./routes/health.routes";
 import { parentRouter } from "./routes/parent";
 import { publicRouter } from "./routes/public";
+import consentRouter from "./routes/consent.routes";
+import curationNluRouter from "./routes/curation-nlu.routes";
+import curationSettingsRouter from "./routes/curation-settings.routes";
+import excludeListRouter from "./routes/exclude-list.routes";
+import feedbackRouter from "./routes/feedback.routes";
+import inboxRouter from "./routes/inbox.routes";
+import myVideosRouter from "./routes/my-videos.routes";
+import onboardingRouter from "./routes/onboarding.routes";
+import parentConfigRouter from "./routes/parent-config.routes";
+import sessionLogRouter from "./routes/session-log.routes";
+import sessionRouter from "./routes/session.routes";
 
 export function createApp() {
   const app = express();
@@ -44,6 +55,21 @@ export function createApp() {
   app.use(publicRouter);
   app.use(adminRouter);
   app.use(parentRouter);
+
+  // Parent-screens features (vishnupriya/parent-screens) that don't overlap main's real routes.
+  // Auth now runs through the shared Supabase-backed `authenticate`/`requireRole` above, not the
+  // old Firebase middleware these were originally written against.
+  app.use(consentRouter);
+  app.use(curationNluRouter);
+  app.use(curationSettingsRouter);
+  app.use(excludeListRouter);
+  app.use(feedbackRouter);
+  app.use(inboxRouter);
+  app.use(myVideosRouter);
+  app.use(onboardingRouter); // only POST /onboarding/profile — its GET /children route was dropped above.
+  app.use(parentConfigRouter);
+  app.use(sessionLogRouter);
+  app.use(sessionRouter);
 
   const document = buildOpenApiDocument();
   app.get("/openapi.json", (_req, res) => {

@@ -1,0 +1,162 @@
+/*
+  KidQ Design Tokens
+  Combines: kidQ Design.md (color/type/component rules) + the KidQ Reference
+  Sheet (Ploy, Givingli, Clay, Fauna Robotics, ClockwiseTV, and Mobbin app
+  patterns: Forest, Duolingo, Finch, timespent) + the two WhatsApp reference
+  videos (balloon-letter logo, in-app pill/card/moon patterns).
+
+  Hand this file to Figma, Claude Design, or any other tool as the style
+  input so colors/type/radii/shadows don't have to be re-derived each time.
+*/
+
+:root {
+  /* ---- Brand palette (kidQ Design.md §4.1) ---- */
+  --kq-saffron: #FF8C00;       /* Primary brand — main CTAs, playful framing */
+  --kq-teal: #008080;          /* Secondary brand — cards, active states, avatars */
+  --kq-cream: #FFF8F0;         /* Background — reduces eye strain, non-glare */
+  --kq-mango: #FFC107;         /* Accent positive — achievement, celebratory */
+  --kq-terracotta: #D9534F;    /* Accent gentle — soft exits, NEVER harsh error red */
+  --kq-charcoal: #2B2B2B;      /* Primary text — high contrast on cream */
+
+  /* ---- Secondary text (AA-contrast checked against cream/white; see note) ---- */
+  --kq-text-secondary: #6B6355; /* ~5.6:1 on cream, ~5.9:1 on white — use in place
+                                    of the design doc's lighter #8A8578, which
+                                    fails WCAG AA at body/caption sizes */
+  --kq-text-tertiary: #736A5A;  /* ~5.1:1 on cream — for the smallest labels only */
+
+  /* ---- Neutral surfaces / borders ---- */
+  --kq-border: #E4DDD0;
+  --kq-border-dashed: #D8CFBC;
+  --kq-white: #FFFFFF;
+
+  /* ---- Night / wind-down palette (from the reference videos + Duolingo's
+     "Sleepytime" and Finch's dusk-lavender takeaways) ---- */
+  --kq-night-bg: #2E2A5C;       /* wind-down screen background */
+  --kq-night-bg-deep: #262247;
+  --kq-dusk-lavender: #8B85C9;  /* Finch takeaway — sky transition step */
+  --kq-moon-face: #FFF8F0;
+
+  /* ---- Category card pastels (from the in-app shelf pattern) ---- */
+  --kq-card-mint: #E9F5F5;
+  --kq-card-sky: #DCEEF7;
+  --kq-card-peach: #FDEBD8;
+  --kq-card-lavender: #F1EAFB;
+  --kq-card-butter: #FFF3D6;
+
+  /* ---- Typography (kidQ Design.md §4.2) ---- */
+  --kq-font-display: 'Baloo 2', 'Fredoka', 'Nunito', system-ui, sans-serif; /* headers, CTAs */
+  --kq-font-body: 'Nunito', system-ui, sans-serif;                          /* body/helper text */
+
+  --kq-text-hero: 28px;      /* 28-32pt range */
+  --kq-text-interactive: 22px; /* 20-24pt, bold */
+  --kq-text-body: 17px;      /* 16-18pt */
+  --kq-text-caption: 13px;
+
+  /* ---- Shape & elevation (kidQ Design.md §4.4) ---- */
+  --kq-radius-card: 24px;
+  --kq-radius-control: 16px;
+  --kq-radius-pill: 999px;
+  --kq-shadow-card: 0 8px 16px rgba(0, 0, 0, 0.08);
+  --kq-shadow-cta: 0 8px 16px rgba(255, 140, 0, 0.28); /* saffron-tinted, for primary CTAs */
+
+  /* ---- Touch targets ---- */
+  --kq-tap-min: 48px;   /* absolute floor */
+  --kq-tap-comfortable: 64px; /* preferred for primary child-facing controls */
+}
+
+/* ============ Reusable component patterns used across the mockups ============ */
+
+.kq-primary-button {
+  font-family: var(--kq-font-display);
+  background: var(--kq-saffron);
+  color: var(--kq-white);
+  border-radius: var(--kq-radius-control);
+  box-shadow: var(--kq-shadow-cta);
+  font-weight: 700;
+  font-size: 17px;
+  height: 54px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+}
+
+.kq-secondary-button {
+  font-family: var(--kq-font-display);
+  background: var(--kq-white);
+  color: var(--kq-teal);
+  border: 2px solid var(--kq-teal);
+  border-radius: var(--kq-radius-control);
+  font-weight: 700;
+  font-size: 16px;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.kq-pill {
+  border-radius: var(--kq-radius-pill);
+  padding: 10px 16px;
+  font-weight: 800;
+  font-size: 14px;
+  font-family: var(--kq-font-body);
+  border: 2px solid var(--kq-border);
+  background: var(--kq-white);
+  color: var(--kq-charcoal);
+  cursor: pointer;
+}
+
+.kq-pill[data-selected="true"] {
+  background: var(--kq-teal);
+  color: var(--kq-white);
+  border-color: var(--kq-teal);
+}
+
+.kq-card {
+  background: var(--kq-white);
+  border-radius: var(--kq-radius-card);
+  box-shadow: var(--kq-shadow-card);
+  padding: 18px;
+}
+
+.kq-avatar-circle {
+  border-radius: var(--kq-radius-pill);
+  background: var(--kq-teal);
+  color: var(--kq-white);
+  font-family: var(--kq-font-display);
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 16px rgba(0, 128, 128, 0.25);
+}
+
+/*
+  ---- Illustration / motion direction (not CSS-expressible, kept as notes) ----
+
+  Splash / logo:   Ploy.ai-style glossy "balloon" 3D inflatable letters
+                    (KidQ's own balloon-letter animation asset) — squash-and-
+                    stretch on entry, merges into a beach-ball logo with
+                    sparkles. Reuse the same material for the ABCD game view.
+
+  Illustration:     Clay.com claymation toy-world direction — handmade,
+                    tactile, dimensional (not flat-vector) for future
+                    illustrated content (games row, mascot moments).
+
+  Session-time:     Sun arc / moon close already matches ClockwiseTV's
+                    day-to-sunset sky gradient and Finch's drifting-cloud,
+                    dusk-lavender sky transitions. Forest's "growing tree in
+                    a progress ring" is a validated alternate metaphor for
+                    the same concept if an org wants a second visual language
+                    for progress instead of the sun arc.
+
+  Session ending:   Duolingo's "Sleepytime" pattern — one calm card, one
+                    moon, one short message, single CTA — is the model for
+                    KidQ's own wind-down close screen.
+
+  Post-session:     timespent's dedicated "what's next" screen between
+                    focus intervals validates giving KidQ's own post-session
+                    routing (play outside / homework / sleep) its own
+                    designed screen rather than a plain dismiss.
+*/
