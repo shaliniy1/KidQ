@@ -473,3 +473,35 @@ whether the wide tier should use its own formula or the tablet one, name
 it once, and stop relying on an accidental specificity collision to get
 there — right now two different `--playerw` formulas exist for this tier
 and only one of them is reachable, silently.
+
+## Surfaced while reconciling item 25, not yet tracked elsewhere
+
+### [x] 38. The high-five had the same "stuck waiting for a tap" risk as item 25
+Item 25 (above) settled the general rule for this app: a screen that waits
+indefinitely for a young child's tap, with no nudge and no timeout, risks
+stranding a child who cannot land it. The all-done screen's high-five button
+had exactly that shape — `startAllDone()` shows two open palms and waits, with
+nothing to end that wait but a tap on a small moving target.
+
+**Decided and built (2026-09-15), user-directed, same resolution as item
+25's direction 1+3:** the tap still wins immediately when it lands; if it
+doesn't land within `HIFIVE_AUTO_MS` (~4s, same starting point as item 25's
+`CHOICE_AUTO_MS`, tunable against a real child), the celebration (clap
+animation, chime, moon pop) fires on its own. The tap handler was extracted
+into `fiveUp()`, reused by both the click listener and the new `hold(fiveUp,
+HIFIVE_AUTO_MS)` scheduled after `showScreen("screen-all-done")` in
+`startAllDone()`. Unlike item 25, the reward sound is NOT silenced on the
+auto path — item 25's jingle was muted specifically because it marks a
+child's *own* choice, but the high-five chime already plays on other
+non-tap moments elsewhere in the app (e.g. `startSunset`), so it stays on
+here too. No separate cancellation wiring was needed: `fiveUp()`'s existing
+`hifived`-class guard (unchanged from the original tap handler) already
+makes a late auto-fire a no-op if the child already tapped.
+
+Verified live in Chrome by playing a full demo session through to the
+all-done screen without tapping: the celebration fired on its own, on
+schedule. Tap-wins and reduced-motion-isn't-clamped were not independently
+re-verified live for this item — both follow directly from unchanged code
+(`fiveUp()`'s pre-existing guard; `hold()`'s unconditional, unclamped
+`setTimeout`), the same guarantees item 25 already established for the
+identical mechanism.
