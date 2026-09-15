@@ -118,6 +118,7 @@ async function toSessions(db: Db, sessions: Row[]) {
                   outcome: item.outcome ?? null,
                   watched_seconds: item.watched_seconds ?? null,
                   position_seconds: item.position_seconds ?? null,
+                  activity_breakpoints: item.activity_breakpoints ?? [],
                   card: playable ? card : { ...card, player: null },
                 },
               ];
@@ -161,6 +162,11 @@ async function saveSession(
   const breaks = assignBreaks(assembled.slots, activities, { recentKeys: recent, windDown: context.windDown, seed: sessionCount });
 
   const session = await withTransaction(async (client: PoolClient) => {
+    const breakpointRows = (await client.query(
+      "SELECT content_item_id, activity_breakpoints FROM library_items WHERE child_profile_id = $1 AND state = 'ADDED' AND content_item_id = ANY($2)",
+      [childId, library.map((item) => item.id)],
+    )).rows;
+    const breakpointsByContent = new Map(breakpointRows.map((item) => [item.content_item_id as string, item.activity_breakpoints ?? []]));
     const row = (
       await client.query(
         `INSERT INTO sessions (child_profile_id, minutes, breaks, planned_seconds, short_by_minutes, mode, time_band, wind_down, lean_toward)
@@ -182,7 +188,7 @@ async function saveSession(
     for (const slot of assembled.slots) {
       for (const contentItemId of slot.itemIds) {
         position += 1;
-        await client.query("INSERT INTO session_items (session_id, content_item_id, slot, position) VALUES ($1, $2, $3, $4)", [row.id, contentItemId, slot.slot, position]);
+        await client.query("INSERT INTO session_items (session_id, content_item_id, slot, position, activity_breakpoints) VALUES ($1, $2, $3, $4, $5::jsonb)", [row.id, contentItemId, slot.slot, position, JSON.stringify(breakpointsByContent.get(contentItemId) ?? [])]);
       }
     }
     for (const assigned of breaks) {

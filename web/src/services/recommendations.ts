@@ -10,11 +10,11 @@ export async function getRecommendations(childId: string, limit = 20, offset = 0
   return result.items;
 }
 
-export async function addToLibrary(childId: string, contentItemId: string): Promise<void> {
+export async function addToLibrary(childId: string, contentItemId: string, position?: number): Promise<void> {
   await unwrap(
     await api.POST("/children/{id}/library", {
       params: { path: { id: childId } },
-      body: { content_item_id: contentItemId, state: "ADDED" },
+      body: { content_item_id: contentItemId, state: "ADDED", position },
     }),
   );
 }

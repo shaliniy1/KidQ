@@ -4,6 +4,8 @@ export type ParentRecommendation = {
   duration: number;
   category: string;
   ageRange: string;
+  thumbnailUrl?: string;
+  previewUrl?: string;
   reason: string;
   guardrails: string[];
   visibility?: "private" | "public_candidate";

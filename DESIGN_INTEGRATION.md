@@ -542,3 +542,116 @@ surface. Selecting First-time parent setup opens a sign-up panel with Google
 sign-up, followed by the same inline consent step. The sign-in subtitle is
 highlighted in KidQ teal, and the one-account-per-family guidance is included
 inside the privacy copy.
+
+## 21. Recommendation Review and Your Q Integration
+
+The Parent session controls now persist the selected child, duration, and
+time-of-day mode into the Recommendation Review flow. Selecting
+`Get recommendations` stays inside the Parent experience and does not open
+Kid mode.
+
+Recommendation Review now provides a `Your Q` summary with selected duration,
+current queue duration, over-duration warning, remove/re-add behavior, and
+reorder controls. Confirmation ends with `Your Screen Time Plan is Ready`.
+Kid mode is available only through the explicit `View kid mode` action. No
+payment step is included, and existing CSS, colors, spacing tokens, and button
+visuals were left unchanged.
+
+## 22. Add Content URL and PDF Scoring
+
+Add Content now supports URL and PDF entry modes without introducing a new
+visual system. URL review shows metadata, score/reason state, and a visibility
+choice. A poor score defaults to the private path; a good score remains a
+`PUBLIC_CANDIDATE` until moderation. PDF text is scanned for supported URLs,
+each URL is scored independently, failed items remain isolated, and the parent
+can select only the items they want to add to Your Q.
+
+The API stores submission visibility as `PRIVATE` or `PUBLIC_CANDIDATE` in
+`content_submissions`. Recommendations continue to use the published content
+pool, while parent libraries remain scoped to the owning child and parent, so
+private submissions cannot enter global recommendations or another user’s
+library. Migration `015_submission_visibility.sql` adds the persisted field
+and index.
+## 23. Parent/Child navigation boundary
+
+- Parent navigation remains inside `/parent`; Parent screen transitions now keep an internal history stack and preserve the existing in-memory child, preferences, screen-time, recommendations, added content, PDF selections, and Your Q state.
+- Browser Back from Parent screens is handled by the Parent journey instead of falling through to `/kid`.
+- The Kid experience remains a separate `/kid` route and is reached only by an explicit `View kid mode` action after the Parent plan is ready, or by opening the dedicated Kid route directly.
+- Parent Back/cancel/edit/remove actions return to Parent screens: Content Preferences, Recommendation Review, Add Content, PDF flow, Your Q, Playlist, and Plan Ready do not navigate to the Kid route.
+- No CSS, colors, spacing, typography, or button styling was changed for this navigation work.
+- Local routes: Parent `http://localhost:3000/parent`; Kid `http://localhost:3000/kid`.
+
+## 24. Recommendation review and child switching
+
+- Recommendation cards show the selected child’s age bucket only (for example, `age 3–4`), even when the content item is tagged for multiple adjacent age groups.
+- Recommendation cards use the content item thumbnail returned by the API and retain parent-added Q items when recommendations are refreshed.
+- Parent preview is available from each recommendation card and opens the content player when an embeddable preview URL exists.
+- `Add another child` is available on the Parent home child switcher and Settings. New nicknames and parent-entered names are normalized to title case before display/submission.
+- Kid mode exposes `Choose another child`, which returns to the child profile chooser without opening a parent login.
+- Existing CSS and design tokens remain unchanged.
+- The Parent `View child queue` preview now renders the confirmed `Your Q` items, including the parent’s removals/reordering and returned thumbnails, instead of a hard-coded demo list.
+- Recommendation thumbnails use contain-fit rendering with a palette-matched backdrop, so the source artwork stays fully visible without cropping. Content-mix labels include Video, Storybooks, Creativity, Songs & Music, and Movement.
+- Thumbnail frames use a horizontal 16:9 aspect ratio with contain-fit artwork; preview-row thumbnails use the same horizontal treatment so images are not vertically shortened.
+
+## 25. Kid parent-picked content entry
+
+- When a child has parent-added library content but no active session, Kid mode now shows a child-friendly picker with the parent-picked videos instead of the empty “sun is still asleep” state.
+- Children can select one or more displayed picks and start the selected-video session; the existing sunrise/player flow then continues unchanged.
+- The empty no-session state remains available when the parent has not picked any content.
+- This uses the existing Kid visual classes and palette; no CSS files were changed.
+
+## 26. Kid navigation controls
+
+- `Choose another child` and `Parent view` now use consistent rounded controls with the existing KidQ teal/cream palette.
+- Header actions have a dedicated gap and responsive wrapping so the controls do not collide or appear cramped on narrow screens.
+
+## 27. Activities catalogue and final regression
+
+- Kid activities are defined in one catalogue in `KidQDesktop.tsx`, rather than
+  relying on scattered activity-name checks.
+- The currently interactive activities remain `find`, `follow`, and `breathe`.
+  Their existing Kid flows are unchanged.
+- `tree`, `butterfly_wings`, `puddle_jump`, `cloud_reach`, `sleepy_stretch`,
+  and `firefly_count` are recorded as planned concepts only. They are not
+  routed to an unfinished interaction or shown as live.
+- Final regression coverage includes the complete Parent journey through
+  preferences, screen time, recommendations, edit/Your Q, URL/PDF add and
+  scoring, confirmation, and the explicit Child entry.
+- Responsive checks cover 375, 390, 430, 768, 1024, 1280, and 1440 CSS
+  pixels for the Parent and Kid routes. Existing CSS, colors, spacing, and
+  typography remain the source of truth.
+
+## 28. Parent video preview and private submissions
+
+- My Videos now provides a parent-only Preview action. It opens the playable
+  embed when available and otherwise shows the complete thumbnail without
+  cropping.
+- Parent submissions are private by default. The parent UI no longer exposes
+  an “suggest to other families” checkbox or a public-candidate selector;
+  publication and review decisions belong to Admin.
+- Add Content shows the returned KidQ score, reason, and thumbnail before the
+  parent submits. Low-scoring content explicitly asks whether the parent still
+  wants to add it privately, with an `Add anyway, privately` action.
+- Confirmation copy only tells the parent that the item was saved privately
+  for their family; it does not expose Admin review workflow details.
+
+## 29. Existing-parent child entry
+
+- Existing parents now see `Add a child` in the authenticated Parent workspace
+  navigation instead of `First-time setup`.
+- The action opens the existing child-profile form and keeps first-time account
+  setup limited to the login/onboarding path.
+
+## 30. PDF upload action
+
+- The PDF import panel now has an explicit visible `Upload PDF` button.
+- The button opens the existing PDF file picker and continues into the same
+  extraction and scoring flow; no new styling system was introduced.
+
+## 31. Shared styling on Start a Session
+
+- Restored the shared KidQ design tokens and component classes in
+  `web/src/app/globals.css`.
+- `/session` now receives the same palette, typography, cards, buttons, pills,
+  and avatar styling used by the rest of the application instead of falling
+  back to browser-default presentation.

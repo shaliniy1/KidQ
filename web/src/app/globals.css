@@ -3,6 +3,26 @@
 :root {
   --background: #f7f4ec;
   --foreground: #24352f;
+  --kq-saffron: #ff8c00;
+  --kq-saffron-ink: #c96f00;
+  --kq-teal: #008080;
+  --kq-teal-deep: #00666a;
+  --kq-cream: #fff8f0;
+  --kq-mango: #ffc107;
+  --kq-terracotta: #d9534f;
+  --kq-charcoal: #2b2b2b;
+  --kq-text-secondary: #6b6355;
+  --kq-text-tertiary: #736a5a;
+  --kq-border: #e4ddd0;
+  --kq-white: #ffffff;
+  --kq-dusk-lavender: #6f68b2;
+  --kq-radius-card: 24px;
+  --kq-radius-control: 16px;
+  --kq-radius-pill: 999px;
+  --kq-shadow-card: 0 8px 16px rgb(0 0 0 / 8%);
+  --kq-shadow-cta: 0 8px 16px rgb(255 140 0 / 28%);
+  --kq-font-display: 'Baloo 2', 'Fredoka', Nunito, system-ui, sans-serif;
+  --kq-font-body: Nunito, system-ui, sans-serif;
 }
 
 html {
@@ -35,4 +55,78 @@ body {
 a {
   color: inherit;
   text-decoration: none;
+}
+
+.kq-heading {
+  font-family: var(--kq-font-display);
+  font-weight: 700;
+}
+
+.kq-card {
+  background: var(--kq-white);
+  border-radius: var(--kq-radius-card);
+  padding: 16px;
+  box-shadow: var(--kq-shadow-card);
+}
+
+.kq-primary-button,
+.kq-secondary-button {
+  min-height: 52px;
+  border-radius: var(--kq-radius-control);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 20px;
+  font-family: var(--kq-font-display);
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.kq-primary-button {
+  border: 0;
+  background: var(--kq-saffron);
+  color: var(--kq-white);
+  box-shadow: var(--kq-shadow-cta);
+}
+
+.kq-primary-button:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.kq-secondary-button {
+  border: 2px solid var(--kq-teal);
+  background: var(--kq-white);
+  color: var(--kq-teal);
+}
+
+.kq-pill {
+  min-height: 40px;
+  border: 2px solid var(--kq-border);
+  border-radius: var(--kq-radius-pill);
+  padding: 9px 15px;
+  background: var(--kq-white);
+  color: var(--kq-charcoal);
+  font-family: var(--kq-font-body);
+  font-size: 13.5px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.kq-pill[data-selected="true"] {
+  border-color: var(--kq-teal);
+  background: var(--kq-teal);
+  color: var(--kq-white);
+}
+
+.kq-avatar-circle {
+  display: inline-grid;
+  flex-shrink: 0;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--kq-white);
+  font-family: var(--kq-font-display);
+  font-weight: 700;
 }

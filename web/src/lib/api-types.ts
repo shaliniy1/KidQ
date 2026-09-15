@@ -2371,6 +2371,81 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/activities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Live activities available for parent-authored video breaks */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Success */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            moving: components["schemas"]["ParentActivity"][];
+                            calmer: components["schemas"]["ParentActivity"][];
+                        };
+                    };
+                };
+                /** @description Validation failed */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not signed in */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Wrong role */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/onboarding": {
         parameters: {
             query?: never;
@@ -3086,7 +3161,13 @@ export interface paths {
                                 state: "ADDED" | "REQUESTED" | "DISMISSED";
                                 awaiting_review: boolean;
                                 updated_at: string;
+                                position: number | null;
                                 card: components["schemas"]["ContentCard"];
+                                activity_breakpoints: {
+                                    timestamp_seconds: number;
+                                    /** Format: uuid */
+                                    activity_id: string;
+                                }[];
                             }[];
                         };
                     };
@@ -3150,6 +3231,7 @@ export interface paths {
                          * @enum {string}
                          */
                         state?: "ADDED" | "DISMISSED";
+                        position?: number;
                     };
                 };
             };
@@ -3206,6 +3288,99 @@ export interface paths {
                 };
             };
         };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/children/{id}/library/{contentItemId}/breakpoints": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Replace the optional activity breaks for one library content item */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                    contentItemId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        breakpoints: {
+                            timestamp_seconds: number;
+                            /** Format: uuid */
+                            activity_id: string;
+                        }[];
+                    };
+                };
+            };
+            responses: {
+                /** @description Success */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** Format: uuid */
+                            content_item_id: string;
+                            activity_breakpoints: {
+                                timestamp_seconds: number;
+                                /** Format: uuid */
+                                activity_id: string;
+                            }[];
+                        };
+                    };
+                };
+                /** @description Validation failed */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not signed in */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Wrong role */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -3327,6 +3502,8 @@ export interface paths {
                                 created_at: string;
                                 /** @enum {string|null} */
                                 assessment: "PENDING" | "SCORED" | "APPROVED" | "REJECTED" | "NEEDS_REVIEW" | null;
+                                /** @enum {string} */
+                                visibility: "PRIVATE" | "PUBLIC_CANDIDATE";
                                 card: components["schemas"]["ContentCard"] | null;
                             }[];
                         };
@@ -3385,6 +3562,11 @@ export interface paths {
                 content: {
                     "application/json": {
                         url: string;
+                        /**
+                         * @default PUBLIC_CANDIDATE
+                         * @enum {string}
+                         */
+                        visibility?: "PRIVATE" | "PUBLIC_CANDIDATE";
                     };
                 };
             };
@@ -3405,6 +3587,8 @@ export interface paths {
                             created_at: string;
                             /** @enum {string|null} */
                             assessment: "PENDING" | "SCORED" | "APPROVED" | "REJECTED" | "NEEDS_REVIEW" | null;
+                            /** @enum {string} */
+                            visibility: "PRIVATE" | "PUBLIC_CANDIDATE";
                             card: components["schemas"]["ContentCard"] | null;
                         };
                     };
@@ -4228,6 +4412,8 @@ export interface paths {
                             /** @description The admin category KidQ would suggest */
                             category: string | null;
                             parent_category: string | null;
+                            score: number | null;
+                            reason: string | null;
                             kidq_check: {
                                 /** @enum {string} */
                                 status: "REVIEWED" | "CHECKING" | "NOT_CHECKED";
@@ -4696,6 +4882,16 @@ export interface components {
             why: string[];
             card: components["schemas"]["ContentCard"];
         };
+        ParentActivity: {
+            /** Format: uuid */
+            id: string;
+            key: string;
+            title: string;
+            /** @enum {string} */
+            category: "MOVING" | "CALMER";
+            instruction: string;
+            duration_seconds: number;
+        };
         Session: {
             /** Format: uuid */
             id: string;
@@ -4763,6 +4959,11 @@ export interface components {
                     watched_seconds: number | null;
                     /** @description Where the video last stopped */
                     position_seconds: number | null;
+                    activity_breakpoints: {
+                        timestamp_seconds: number;
+                        /** Format: uuid */
+                        activity_id: string;
+                    }[];
                     card: components["schemas"]["ContentCard"];
                 }[];
             }[];

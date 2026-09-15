@@ -947,6 +947,43 @@
           "card"
         ]
       },
+      "ParentActivity": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "key": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "MOVING",
+              "CALMER"
+            ]
+          },
+          "instruction": {
+            "type": "string"
+          },
+          "duration_seconds": {
+            "type": "integer",
+            "exclusiveMinimum": 0
+          }
+        },
+        "required": [
+          "id",
+          "key",
+          "title",
+          "category",
+          "instruction",
+          "duration_seconds"
+        ]
+      },
       "Session": {
         "type": "object",
         "properties": {
@@ -1152,6 +1189,26 @@
                         ],
                         "description": "Where the video last stopped"
                       },
+                      "activity_breakpoints": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "timestamp_seconds": {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            "activity_id": {
+                              "type": "string",
+                              "format": "uuid"
+                            }
+                          },
+                          "required": [
+                            "timestamp_seconds",
+                            "activity_id"
+                          ]
+                        }
+                      },
                       "card": {
                         "$ref": "#/components/schemas/ContentCard"
                       }
@@ -1162,6 +1219,7 @@
                       "outcome",
                       "watched_seconds",
                       "position_seconds",
+                      "activity_breakpoints",
                       "card"
                     ]
                   }
@@ -5888,6 +5946,89 @@
         }
       }
     },
+    "/activities": {
+      "get": {
+        "summary": "Live activities available for parent-authored video breaks",
+        "tags": [
+          "Library"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "moving": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ParentActivity"
+                      }
+                    },
+                    "calmer": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ParentActivity"
+                      }
+                    }
+                  },
+                  "required": [
+                    "moving",
+                    "calmer"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/onboarding": {
       "post": {
         "summary": "Screen 1 in one call: the parent's name and language, and each child's nickname and age band (1–6); the rest starts from age-based defaults",
@@ -7072,15 +7213,43 @@
                           "updated_at": {
                             "type": "string"
                           },
+                          "position": {
+                            "type": [
+                              "number",
+                              "null"
+                            ]
+                          },
                           "card": {
                             "$ref": "#/components/schemas/ContentCard"
+                          },
+                          "activity_breakpoints": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "timestamp_seconds": {
+                                  "type": "integer",
+                                  "minimum": 0
+                                },
+                                "activity_id": {
+                                  "type": "string",
+                                  "format": "uuid"
+                                }
+                              },
+                              "required": [
+                                "timestamp_seconds",
+                                "activity_id"
+                              ]
+                            }
                           }
                         },
                         "required": [
                           "state",
                           "awaiting_review",
                           "updated_at",
-                          "card"
+                          "position",
+                          "card",
+                          "activity_breakpoints"
                         ]
                       }
                     }
@@ -7172,6 +7341,10 @@
                       "DISMISSED"
                     ],
                     "default": "ADDED"
+                  },
+                  "position": {
+                    "type": "integer",
+                    "minimum": 0
                   }
                 },
                 "required": [
@@ -7204,6 +7377,156 @@
                     "content_item_id",
                     "state",
                     "awaiting_review"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/children/{id}/library/{contentItemId}/breakpoints": {
+      "put": {
+        "summary": "Replace the optional activity breaks for one library content item",
+        "tags": [
+          "Library"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "contentItemId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "breakpoints": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "timestamp_seconds": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "activity_id": {
+                          "type": "string",
+                          "format": "uuid"
+                        }
+                      },
+                      "required": [
+                        "timestamp_seconds",
+                        "activity_id"
+                      ]
+                    },
+                    "maxItems": 30
+                  }
+                },
+                "required": [
+                  "breakpoints"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "content_item_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "activity_breakpoints": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "timestamp_seconds": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "activity_id": {
+                            "type": "string",
+                            "format": "uuid"
+                          }
+                        },
+                        "required": [
+                          "timestamp_seconds",
+                          "activity_id"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "content_item_id",
+                    "activity_breakpoints"
                   ]
                 }
               }
@@ -7382,6 +7705,14 @@
                     "type": "string",
                     "minLength": 5,
                     "maxLength": 500
+                  },
+                  "visibility": {
+                    "type": "string",
+                    "enum": [
+                      "PRIVATE",
+                      "PUBLIC_CANDIDATE"
+                    ],
+                    "default": "PUBLIC_CANDIDATE"
                   }
                 },
                 "required": [
@@ -7436,6 +7767,13 @@
                         null
                       ]
                     },
+                    "visibility": {
+                      "type": "string",
+                      "enum": [
+                        "PRIVATE",
+                        "PUBLIC_CANDIDATE"
+                      ]
+                    },
                     "card": {
                       "anyOf": [
                         {
@@ -7454,6 +7792,7 @@
                     "error",
                     "created_at",
                     "assessment",
+                    "visibility",
                     "card"
                   ]
                 }
@@ -7573,6 +7912,13 @@
                               null
                             ]
                           },
+                          "visibility": {
+                            "type": "string",
+                            "enum": [
+                              "PRIVATE",
+                              "PUBLIC_CANDIDATE"
+                            ]
+                          },
                           "card": {
                             "anyOf": [
                               {
@@ -7591,6 +7937,7 @@
                           "error",
                           "created_at",
                           "assessment",
+                          "visibility",
                           "card"
                         ]
                       }
@@ -8999,6 +9346,18 @@
                         "null"
                       ]
                     },
+                    "score": {
+                      "type": [
+                        "number",
+                        "null"
+                      ]
+                    },
+                    "reason": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
                     "kidq_check": {
                       "type": "object",
                       "properties": {
@@ -9061,6 +9420,8 @@
                     "channel",
                     "category",
                     "parent_category",
+                    "score",
+                    "reason",
                     "kidq_check"
                   ]
                 }

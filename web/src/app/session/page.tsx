@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "@/hooks/useSession";
 import { getChildren, type ChildProfile } from "@/services/child-profile";
-import { startSession, type SessionMode } from "@/services/session";
+import type { SessionMode } from "@/services/session";
 import { mascotColorForIndex } from "@/lib/mascot-colors";
 import { parseDurationPhrase } from "@/lib/duration-parser";
 import { Button } from "@/components/Button";
@@ -104,21 +104,16 @@ export default function StartSessionPage() {
     recognition.start();
   }
 
-  async function handleStart() {
+  function handleStart() {
     if (!selectedChildId) return;
-    setPhase("starting");
-    setErrorMessage(null);
     try {
-      const session = await startSession(selectedChildId, duration, mode);
-      try {
-        sessionStorage.setItem(`kidq:last-session:${selectedChildId}`, JSON.stringify(session));
-      } catch {
-        // best-effort only — the player stub just has less to show if this fails
-      }
-      router.push(`/play/${selectedChildId}`);
-    } catch (error) {
-      setPhase("ready");
-      setErrorMessage(error instanceof Error ? error.message : "Couldn't start the session");
+      sessionStorage.setItem(
+        `kidq:recommendation-context:${selectedChildId}`,
+        JSON.stringify({ duration, mode, selectedChildId }),
+      );
+      router.push(`/recommendations/${selectedChildId}`);
+    } catch {
+      setErrorMessage("Couldn't save your session preferences");
     }
   }
 
@@ -246,7 +241,7 @@ export default function StartSessionPage() {
         {errorMessage && <p style={{ color: "var(--kq-terracotta)", fontSize: "var(--kq-text-caption)" }}>{errorMessage}</p>}
 
         <Button variant="primary" disabled={phase === "starting"} onClick={handleStart}>
-          {phase === "starting" ? "Starting…" : "Start session"}
+          Get recommendations
         </Button>
 
         <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap" }}>

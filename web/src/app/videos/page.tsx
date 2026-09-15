@@ -7,6 +7,7 @@ import { getChildren } from "@/services/child-profile";
 import { getLibrary, removeFromLibrary, type LibraryEntry } from "@/services/my-videos";
 import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
+import { ActivityBreakpoints } from "@/components/ActivityBreakpoints";
 
 /**
  * P9 My Videos — the parent's own library for a child (spec Section 7).
@@ -20,6 +21,7 @@ export default function MyVideosPage() {
   const [childId, setChildId] = useState<string | null>(null);
   const [entries, setEntries] = useState<LibraryEntry[]>([]);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [previewEntry, setPreviewEntry] = useState<LibraryEntry | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -67,7 +69,7 @@ export default function MyVideosPage() {
 
   return (
     <main style={{ minHeight: "100vh", display: "flex", justifyContent: "center", padding: "24px" }}>
-      <div style={{ maxWidth: 480, width: "100%", display: "flex", flexDirection: "column", gap: 14 }}>
+      <div style={{ maxWidth: 980, width: "100%", display: "flex", flexDirection: "column", gap: 14 }}>
         <button
           onClick={() => router.push("/session")}
           style={{ alignSelf: "flex-start", background: "none", border: "none", color: "var(--kq-text-secondary)", cursor: "pointer", padding: 4 }}
@@ -98,6 +100,12 @@ export default function MyVideosPage() {
                 </p>
               </div>
               <button
+                onClick={() => setPreviewEntry(entry)}
+                style={{ background: "none", border: "none", color: "var(--kq-teal)", cursor: "pointer", padding: 4, fontWeight: 700, fontSize: "var(--kq-text-caption)" }}
+              >
+                Preview
+              </button>
+              <button
                 onClick={() => setOpenMenuId(openMenuId === entry.card.id ? null : entry.card.id)}
                 aria-label="More options"
                 style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: "var(--kq-text-secondary)", padding: 4 }}
@@ -107,16 +115,28 @@ export default function MyVideosPage() {
             </div>
 
             {openMenuId === entry.card.id && (
-              <button
-                onClick={() => handleRemove(entry.card.id)}
-                style={{ alignSelf: "flex-start", color: "var(--kq-terracotta)", background: "none", border: "none", cursor: "pointer", padding: "4px 0", fontSize: "var(--kq-text-caption)", fontWeight: 700 }}
-              >
-                Remove
-              </button>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <ActivityBreakpoints childId={childId!} contentItemId={entry.card.id} durationSeconds={entry.card.duration_seconds} initial={entry.activity_breakpoints} />
+                <button onClick={() => handleRemove(entry.card.id)} style={{ alignSelf: "flex-start", color: "var(--kq-terracotta)", background: "none", border: "none", cursor: "pointer", padding: "4px 0", fontSize: "var(--kq-text-caption)", fontWeight: 700 }}>Remove</button>
+              </div>
             )}
           </Card>
         ))}
       </div>
+      {previewEntry && (
+        <div role="dialog" aria-modal="true" aria-label={`${previewEntry.card.title} preview`} style={{ position: "fixed", inset: 0, zIndex: 20, display: "grid", placeItems: "center", padding: 24, background: "rgba(46,36,24,.55)" }}>
+          <Card style={{ maxWidth: 720, width: "100%", display: "flex", flexDirection: "column", gap: 12 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+              <h2 className="kq-heading" style={{ color: "var(--kq-charcoal)", margin: 0 }}>{previewEntry.card.title}</h2>
+              <button onClick={() => setPreviewEntry(null)} aria-label="Close preview" style={{ border: "none", background: "none", cursor: "pointer", fontSize: 22 }}>×</button>
+            </div>
+            <div style={{ aspectRatio: "16 / 9", background: "var(--kq-charcoal)", borderRadius: "var(--kq-radius-card)", overflow: "hidden" }}>
+              {previewEntry.card.player?.provider === "youtube" ? <iframe title={`${previewEntry.card.title} preview`} src={previewEntry.card.player.embed_url} style={{ width: "100%", height: "100%", border: 0 }} allow="autoplay; encrypted-media; picture-in-picture" /> : previewEntry.card.thumbnail_url ? <img src={previewEntry.card.thumbnail_url} alt="" style={{ width: "100%", height: "100%", objectFit: "contain" }} /> : <div style={{ height: "100%", display: "grid", placeItems: "center", color: "white" }}>Preview is not available for this video yet.</div>}
+            </div>
+            <p style={{ color: "var(--kq-text-secondary)", margin: 0 }}>This preview is for the parent. The child only sees content after it is added to the family queue.</p>
+          </Card>
+        </div>
+      )}
     </main>
   );
 }
