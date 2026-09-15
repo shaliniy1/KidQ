@@ -109,7 +109,7 @@ Scale in use (size / weight / face):
 | Element | Spec |
 |---|---|
 | Greeting ("Hi, Aarav!") | 40 / 800 / Baloo, line-height 1.08 |
-| Night greeting / All done | 36–38 / 800 / Baloo, cream |
+| Closing greeting / All done | 36–38 / 800 / Baloo, cream |
 | Break headline ("Smell the flower…") | 29 / 800 / Baloo, ink |
 | Now-playing title (cast) | 23 / 700 / Baloo |
 | Now-playing title (phone) | 21 / 700 / Baloo |
@@ -209,11 +209,13 @@ Scale in use (size / weight / face):
 Warm, short, spoken to the child in second person. Parents get quiet
 factual labels. Never nagging, never gamified.
 
-- The session-start greeting is time-neutral, not time-aware — a session
-  can start any time of day, so "Good morning, Aarav!" is wrong the
-  moment it's tapped in the afternoon or evening. Use "Hi, Aarav!"
-  instead. The ending greeting stays time-bound ("Good night, Aarav!"),
-  since it only ever appears once the day's session is actually over.
+- Greetings are time-neutral, not time-aware — a session can start (and
+  end) any time of day, so "Good morning, Aarav!" / "Good night, Aarav!"
+  are wrong the moment they land outside their literal window. Use
+  "Hi, Aarav!" to open a session and "Bye bye, Aarav!" to close one
+  (all-done high-five, and the night-light reopen screen), regardless of
+  the visual night sky those closing moments sit on — that sky is the
+  app's own day-is-over motif, not a claim about the real clock.
 - Instructions are one line, verb-first: "Tap the sun to start your day",
   "Keep your head still — follow me with your eyes!"
 - The parent's presence is always credited: "Mumma picked 3 videos".
