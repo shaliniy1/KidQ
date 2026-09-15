@@ -2,8 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import type { User } from "firebase/auth";
-import { onAuthChange } from "@/services/auth";
+import { useSession } from "@/hooks/useSession";
 import { extractCurationTags } from "@/services/curation-nlu";
 import { writeHubDraftPatch } from "@/lib/hub-draft-bridge";
 import { Button } from "@/components/Button";
@@ -42,6 +41,7 @@ function getSpeechRecognition(): (new () => SpeechRecognitionLike) | null {
  */
 export default function VoiceCapturePage() {
   const router = useRouter();
+  const status = useSession();
   const params = useParams<{ childId: string }>();
   const childId = params.childId;
 
@@ -49,19 +49,11 @@ export default function VoiceCapturePage() {
   const [transcript, setTranscript] = useState("");
   const [phase, setPhase] = useState<"ready" | "submitting" | "error">("ready");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const userRef = useRef<User | null>(null);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
 
   useEffect(() => {
-    const unsubscribe = onAuthChange((user) => {
-      if (!user) {
-        router.replace("/login");
-        return;
-      }
-      userRef.current = user;
-    });
-    return unsubscribe;
-  }, [router]);
+    if (status === "anon") router.replace("/login");
+  }, [status, router]);
 
   function handleMicTap() {
     const SpeechRecognitionCtor = getSpeechRecognition();
@@ -86,11 +78,11 @@ export default function VoiceCapturePage() {
   }
 
   async function handleUseThis() {
-    if (!transcript.trim() || !userRef.current) return;
+    if (!transcript.trim()) return;
     setPhase("submitting");
     setErrorMessage(null);
     try {
-      const result = await extractCurationTags(userRef.current, transcript.trim());
+      const result = await extractCurationTags();
       writeHubDraftPatch(childId, result);
       router.push(`/hub/${childId}`);
     } catch (error) {

@@ -4,7 +4,7 @@ import type { paths } from "@/lib/api-types";
 // The "Customize Hub" fields aren't a separate curation resource on the real API —
 // they're part of the Child resource itself (GET/PATCH /children/:id).
 export type CurationSettings = Pick<
-  paths["/children/{id}"]["patch"]["requestBody"]["content"]["application/json"],
+  NonNullable<paths["/children/{id}"]["patch"]["requestBody"]>["content"]["application/json"],
   | "interests"
   | "content_mix"
   | "preferred_categories"

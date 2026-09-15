@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { onAuthChange } from "@/services/auth";
+import { useSession } from "@/hooks/useSession";
 import { writeHubDraftPatch, type HubDraftPatch } from "@/lib/hub-draft-bridge";
 import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
@@ -24,6 +24,7 @@ function toPatch(enjoys: EnjoysAnswer, priority: PriorityAnswer): HubDraftPatch 
 /** "Answer a few guided questions" — the tap-based alternative to voice (spec Section 11 #16.2). */
 export default function GuidedQuestionsPage() {
   const router = useRouter();
+  const status = useSession();
   const params = useParams<{ childId: string }>();
   const childId = params.childId;
 
@@ -31,11 +32,8 @@ export default function GuidedQuestionsPage() {
   const [priority, setPriority] = useState<PriorityAnswer | null>(null);
 
   useEffect(() => {
-    const unsubscribe = onAuthChange((user) => {
-      if (!user) router.replace("/login");
-    });
-    return unsubscribe;
-  }, [router]);
+    if (status === "anon") router.replace("/login");
+  }, [status, router]);
 
   function handleContinue() {
     if (!enjoys || !priority) return;

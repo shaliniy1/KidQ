@@ -2,8 +2,8 @@ import { api, unwrap } from "@/lib/api";
 import type { paths } from "@/lib/api-types";
 
 export type ChildProfile = paths["/children"]["get"]["responses"][200]["content"]["application/json"]["items"][number];
-export type OnboardingChild = paths["/onboarding"]["post"]["requestBody"]["content"]["application/json"]["children"][number];
-export type ChildPatch = paths["/children/{id}"]["patch"]["requestBody"]["content"]["application/json"];
+export type OnboardingChild = NonNullable<paths["/onboarding"]["post"]["requestBody"]>["content"]["application/json"]["children"][number];
+export type ChildPatch = NonNullable<paths["/children/{id}"]["patch"]["requestBody"]>["content"]["application/json"];
 export type Me = paths["/me"]["get"]["responses"][200]["content"]["application/json"];
 
 export async function submitOnboarding(

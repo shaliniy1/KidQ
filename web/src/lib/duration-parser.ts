@@ -1,4 +1,6 @@
-import { DURATION_OPTIONS } from "@/types/curation-settings";
+// The real API only accepts these session lengths (api/src/http/schemas.ts
+// sessionStartBody.minutes).
+const DURATION_OPTIONS = [15, 30, 45, 60, 90] as const;
 
 /**
  * A small client-side number/unit parser for P7a's mic input ("thirty

@@ -1,51 +1,27 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import type { User } from "firebase/auth";
-import { onAuthChange } from "@/services/auth";
-import { getCategories } from "@/services/parent-config";
-import { getCurationSettings, saveCurationSettings } from "@/services/curation-settings";
+import { useSession } from "@/hooks/useSession";
+import { getTaxonomy } from "@/services/parent-config";
+import { getCurationSettings, saveCurationSettings, type CurationSettings } from "@/services/curation-settings";
 import { readAndClearHubDraftPatch } from "@/lib/hub-draft-bridge";
-import {
-  BREAK_INTERVAL_OPTIONS,
-  BREAK_TYPES,
-  DURATION_OPTIONS,
-  REGULATION_GOALS,
-  computeBreakCount,
-  type BreakType,
-  type ContentMixMode,
-  type CurationSettings,
-} from "@/types/curation-settings";
 import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
 import { Pill } from "@/components/Pill";
 
-type Draft = Omit<CurationSettings, "childId" | "updatedAt">;
+const DURATION_OPTIONS = [15, 30, 45, 60, 90] as const;
+const BREAK_INTERVAL_OPTIONS = [10, 15, 20] as const;
+const BREAK_TYPES: { label: string; value: NonNullable<CurationSettings["break_type"]> }[] = [
+  { label: "Movement", value: "MOVEMENT" },
+  { label: "Quiet-calm", value: "QUIET" },
+  { label: "Let KidQ alternate", value: "ALTERNATE" },
+];
 
-function summarizeInterests(interests: string[]): string {
-  if (interests.length === 0) return "None selected";
-  if (interests.length <= 2) return interests.join(", ");
-  return `${interests.slice(0, 2).join(", ")} +${interests.length - 2}`;
-}
-
-function summarizeContentMix(draft: Draft): string {
-  if (draft.contentMixMode === "surprise_us") return "Surprise us — a good age-appropriate mix";
-  return draft.contentMixCategories.length === 0
-    ? "Let me choose categories — none chosen yet"
-    : `Categories: ${summarizeInterests(draft.contentMixCategories)}`;
-}
-
-function summarizeRegulation(goals: string[]): string {
-  if (goals.length === 0) return "No restriction — any goal can be included";
-  const labels = REGULATION_GOALS.filter((g) => goals.includes(g.tag)).map((g) => g.label);
-  return summarizeInterests(labels);
-}
-
-function summarizeScreenTime(draft: Draft): string {
-  const breaks = computeBreakCount(draft.durationDefault, draft.breakInterval);
-  const breakTypeLabel = BREAK_TYPES.find((t) => t.value === draft.breakType)?.label ?? draft.breakType;
-  return `${draft.durationDefault} min · every ${draft.breakInterval} min (${breaks} break${breaks === 1 ? "" : "s"}) · ${breakTypeLabel}`;
+function summarizeList(items: string[]): string {
+  if (items.length === 0) return "None selected";
+  if (items.length <= 2) return items.join(", ");
+  return `${items.slice(0, 2).join(", ")} +${items.length - 2}`;
 }
 
 function HubRow({
@@ -92,79 +68,78 @@ function HubRow({
 
 export default function HubPage() {
   const router = useRouter();
+  const status = useSession();
   const params = useParams<{ childId: string }>();
   const searchParams = useSearchParams();
   const fromOnboarding = searchParams.get("from") === "onboarding";
   const childId = params.childId;
 
   const [phase, setPhase] = useState<"loading" | "ready" | "saving" | "error">("loading");
-  const [categories, setCategories] = useState<string[]>([]);
-  const [draft, setDraft] = useState<Draft | null>(null);
+  const [interestOptions, setInterestOptions] = useState<string[]>([]);
+  const [categoryOptions, setCategoryOptions] = useState<string[]>([]);
+  const [regulationOptions, setRegulationOptions] = useState<{ key: string; label: string }[]>([]);
+  const [draft, setDraft] = useState<CurationSettings | null>(null);
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const userRef = useRef<User | null>(null);
 
   useEffect(() => {
-    const unsubscribe = onAuthChange(async (user) => {
-      if (!user) {
-        router.replace("/login");
-        return;
-      }
-      userRef.current = user;
-      try {
-        const [{ categories: cats }, settings] = await Promise.all([
-          getCategories(),
-          getCurationSettings(user, childId),
-        ]);
-        setCategories(cats);
+    if (status === "anon") router.replace("/login");
+  }, [status, router]);
+
+  useEffect(() => {
+    if (status !== "authed") return;
+    Promise.all([getTaxonomy(), getCurationSettings(childId)])
+      .then(([taxonomy, settings]) => {
+        setInterestOptions((taxonomy.interest ?? []).map((t) => t.label));
+        setCategoryOptions((taxonomy.parent_category ?? []).map((t) => t.label));
+        setRegulationOptions((taxonomy.regulation_goal ?? []).map((t) => ({ key: t.key, label: t.label })));
         // A voice or guided-questions capture screen may have just handed
         // back a patch (sessionStorage bridge, never the backend — ticket
         // 05's "nothing persists until Done" stays true either way).
         const incomingPatch = readAndClearHubDraftPatch(childId);
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { childId: _childId, updatedAt: _updatedAt, ...settingsRest } = settings;
         setDraft({
-          ...settingsRest, // carries autoplay/sensoryMode/dailySchedule (Settings' fields, ticket 13) through untouched
+          ...settings,
           interests: incomingPatch?.interests ?? settings.interests,
-          contentMixMode: incomingPatch?.contentMixMode ?? settings.contentMixMode,
-          contentMixCategories: incomingPatch?.contentMixCategories ?? settings.contentMixCategories,
-          regulationGoals: incomingPatch?.regulationGoals ?? settings.regulationGoals,
+          preferred_categories: incomingPatch?.contentMixCategories ?? settings.preferred_categories,
+          content_mix: incomingPatch?.contentMixMode === "choose_categories" ? "CHOSEN" : settings.content_mix,
+          regulation_goals: incomingPatch?.regulationGoals ?? settings.regulation_goals,
         });
         setPhase("ready");
-      } catch (error) {
+      })
+      .catch((error) => {
         setPhase("error");
         setErrorMessage(error instanceof Error ? error.message : "Couldn't load curation settings");
-      }
-    });
-    return unsubscribe;
-  }, [router, childId]);
+      });
+  }, [status, childId]);
 
-  function patchDraft(patch: Partial<Draft>) {
+  function patchDraft(patch: Partial<CurationSettings>) {
     setDraft((current) => (current ? { ...current, ...patch } : current));
   }
 
-  /**
-   * Toggles `value` in a list field entirely inside the setState updater,
-   * against the freshest `current` — not a `draft.someList` read taken at
-   * click time. Two pill taps issued before React commits the first
-   * re-render would otherwise both close over the same stale list and the
-   * first toggle would be silently lost (found via interaction testing).
-   */
-  function toggleListField(field: "interests" | "contentMixCategories" | "regulationGoals", value: string) {
+  function toggleListField(field: "interests" | "preferred_categories", value: string) {
     setDraft((current) => {
       if (!current) return current;
-      const list = current[field];
+      const list = current[field] ?? [];
       const next = list.includes(value) ? list.filter((v) => v !== value) : [...list, value];
       return { ...current, [field]: next };
     });
   }
 
+  function toggleRegulationGoal(value: string) {
+    setDraft((current) => {
+      if (!current) return current;
+      const list = current.regulation_goals ?? [];
+      const next = list.includes(value) ? list.filter((v) => v !== value) : [...list, value];
+      return { ...current, regulation_goals: next };
+    });
+  }
+
   async function handleFinish() {
-    if (!draft || !userRef.current) return;
+    if (!draft) return;
     setPhase("saving");
     setErrorMessage(null);
     try {
-      await saveCurationSettings(userRef.current, childId, draft);
+      await saveCurationSettings(childId, draft);
       router.push("/session");
     } catch (error) {
       setPhase("ready");
@@ -185,6 +160,10 @@ export default function HubPage() {
       </main>
     );
   }
+
+  const regulationLabels = regulationOptions
+    .filter((goal) => (draft.regulation_goals ?? []).includes(goal.key))
+    .map((goal) => goal.label);
 
   return (
     <main style={{ minHeight: "100vh", display: "flex", justifyContent: "center", padding: "24px" }}>
@@ -215,18 +194,18 @@ export default function HubPage() {
 
         <HubRow
           title="Interests"
-          summary={summarizeInterests(draft.interests)}
+          summary={summarizeList(draft.interests ?? [])}
           expanded={expandedRow === "interests"}
           onToggle={() => setExpandedRow(expandedRow === "interests" ? null : "interests")}
         >
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-            {categories.map((category) => (
+            {interestOptions.map((interest) => (
               <Pill
-                key={category}
-                selected={draft.interests.includes(category)}
-                onClick={() => toggleListField("interests", category)}
+                key={interest}
+                selected={(draft.interests ?? []).includes(interest)}
+                onClick={() => toggleListField("interests", interest)}
               >
-                {category}
+                {interest}
               </Pill>
             ))}
           </div>
@@ -234,33 +213,31 @@ export default function HubPage() {
 
         <HubRow
           title="Content mix"
-          summary={summarizeContentMix(draft)}
+          summary={
+            draft.content_mix === "SURPRISE"
+              ? "Surprise us — a good age-appropriate mix"
+              : (draft.preferred_categories ?? []).length === 0
+                ? "Let me choose categories — none chosen yet"
+                : `Categories: ${summarizeList(draft.preferred_categories ?? [])}`
+          }
           expanded={expandedRow === "contentMix"}
           onToggle={() => setExpandedRow(expandedRow === "contentMix" ? null : "contentMix")}
         >
           <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
-            <input
-              type="radio"
-              checked={draft.contentMixMode === "surprise_us"}
-              onChange={() => patchDraft({ contentMixMode: "surprise_us" as ContentMixMode })}
-            />
+            <input type="radio" checked={draft.content_mix === "SURPRISE"} onChange={() => patchDraft({ content_mix: "SURPRISE" })} />
             Surprise us — a good age-appropriate mix
           </label>
           <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
-            <input
-              type="radio"
-              checked={draft.contentMixMode === "choose_categories"}
-              onChange={() => patchDraft({ contentMixMode: "choose_categories" as ContentMixMode })}
-            />
+            <input type="radio" checked={draft.content_mix === "CHOSEN"} onChange={() => patchDraft({ content_mix: "CHOSEN" })} />
             Let me choose categories
           </label>
-          {draft.contentMixMode === "choose_categories" && (
+          {draft.content_mix === "CHOSEN" && (
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginLeft: 24 }}>
-              {categories.map((category) => (
+              {categoryOptions.map((category) => (
                 <Pill
                   key={category}
-                  selected={draft.contentMixCategories.includes(category)}
-                  onClick={() => toggleListField("contentMixCategories", category)}
+                  selected={(draft.preferred_categories ?? []).includes(category)}
+                  onClick={() => toggleListField("preferred_categories", category)}
                 >
                   {category}
                 </Pill>
@@ -271,17 +248,13 @@ export default function HubPage() {
 
         <HubRow
           title="Regulation goal"
-          summary={summarizeRegulation(draft.regulationGoals)}
+          summary={regulationLabels.length === 0 ? "No restriction — any goal can be included" : summarizeList(regulationLabels)}
           expanded={expandedRow === "regulation"}
           onToggle={() => setExpandedRow(expandedRow === "regulation" ? null : "regulation")}
         >
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-            {REGULATION_GOALS.map((goal) => (
-              <Pill
-                key={goal.tag}
-                selected={draft.regulationGoals.includes(goal.tag)}
-                onClick={() => toggleListField("regulationGoals", goal.tag)}
-              >
+            {regulationOptions.map((goal) => (
+              <Pill key={goal.key} selected={(draft.regulation_goals ?? []).includes(goal.key)} onClick={() => toggleRegulationGoal(goal.key)}>
                 {goal.label}
               </Pill>
             ))}
@@ -290,7 +263,7 @@ export default function HubPage() {
 
         <HubRow
           title="Screen time & breaks"
-          summary={summarizeScreenTime(draft)}
+          summary={`${draft.session_minutes ?? 30} min · every ${draft.break_interval_minutes ?? 15} min · ${BREAK_TYPES.find((t) => t.value === draft.break_type)?.label ?? draft.break_type ?? "—"}`}
           expanded={expandedRow === "screenTime"}
           onToggle={() => setExpandedRow(expandedRow === "screenTime" ? null : "screenTime")}
         >
@@ -298,7 +271,7 @@ export default function HubPage() {
             <p style={{ fontSize: "var(--kq-text-caption)", color: "var(--kq-text-secondary)", marginBottom: 6 }}>Duration</p>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
               {DURATION_OPTIONS.map((minutes) => (
-                <Pill key={minutes} selected={draft.durationDefault === minutes} onClick={() => patchDraft({ durationDefault: minutes })}>
+                <Pill key={minutes} selected={draft.session_minutes === minutes} onClick={() => patchDraft({ session_minutes: minutes })}>
                   {minutes} min
                 </Pill>
               ))}
@@ -308,7 +281,7 @@ export default function HubPage() {
             <p style={{ fontSize: "var(--kq-text-caption)", color: "var(--kq-text-secondary)", marginBottom: 6 }}>Break every</p>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
               {BREAK_INTERVAL_OPTIONS.map((minutes) => (
-                <Pill key={minutes} selected={draft.breakInterval === minutes} onClick={() => patchDraft({ breakInterval: minutes })}>
+                <Pill key={minutes} selected={draft.break_interval_minutes === minutes} onClick={() => patchDraft({ break_interval_minutes: minutes })}>
                   {minutes} min
                 </Pill>
               ))}
@@ -318,7 +291,7 @@ export default function HubPage() {
             <p style={{ fontSize: "var(--kq-text-caption)", color: "var(--kq-text-secondary)", marginBottom: 6 }}>Break type</p>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
               {BREAK_TYPES.map((type) => (
-                <Pill key={type.value} selected={draft.breakType === type.value} onClick={() => patchDraft({ breakType: type.value as BreakType })}>
+                <Pill key={type.value} selected={draft.break_type === type.value} onClick={() => patchDraft({ break_type: type.value })}>
                   {type.label}
                 </Pill>
               ))}

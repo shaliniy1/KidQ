@@ -1,79 +1,84 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { User } from "firebase/auth";
-import { onAuthChange } from "@/services/auth";
-import { addVideo, detectVideo } from "@/services/my-videos";
-import { getCategories } from "@/services/parent-config";
-import type { DetectedVideo, LibraryVisibility } from "@/types/library";
+import { useSession } from "@/hooks/useSession";
+import { getChildren } from "@/services/child-profile";
+import { previewVideo, submitVideo, type SubmissionPreview } from "@/services/my-videos";
 import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
-import { Pill } from "@/components/Pill";
-
-const OTHER_CATEGORY = "Other";
 
 /**
- * P9a Add a Video — updated flow: auto-detect -> score badge -> review ->
- * add (spec Section 7). The score is informational only; even a low or
- * missing result never blocks Add Content.
+ * P9a Add a Video — preview -> KidQ check -> submit (spec Section 7). The
+ * real API scores submissions asynchronously (KidQ check + admin review)
+ * before they're playable; there's no parent-set category or
+ * public/private visibility on the real submission contract, so this is
+ * simpler than PR #15's version — see api/src/http/schemas.ts
+ * submissionBody/submissionPreviewSchema.
  */
 export default function AddVideoPage() {
   const router = useRouter();
+  const status = useSession();
+  const [childId, setChildId] = useState<string | null>(null);
   const [url, setUrl] = useState("");
-  const [phase, setPhase] = useState<"idle" | "detecting" | "detected" | "adding" | "error">("idle");
-  const [detected, setDetected] = useState<DetectedVideo | null>(null);
+  const [phase, setPhase] = useState<"idle" | "previewing" | "previewed" | "submitting" | "submitted" | "error">("idle");
+  const [preview, setPreview] = useState<SubmissionPreview | null>(null);
   const [badgeExpanded, setBadgeExpanded] = useState(false);
-  const [isPublic, setIsPublic] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [categories, setCategories] = useState<string[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const userRef = useRef<User | null>(null);
 
   useEffect(() => {
-    const unsubscribe = onAuthChange((user) => {
-      if (!user) {
-        router.replace("/login");
-        return;
-      }
-      userRef.current = user;
-    });
-    return unsubscribe;
-  }, [router]);
+    if (status === "anon") router.replace("/login");
+  }, [status, router]);
 
   useEffect(() => {
-    getCategories()
-      .then((response) => setCategories(response.categories))
-      .catch(() => setCategories([]));
-  }, []);
+    if (status !== "authed") return;
+    getChildren().then((children) => setChildId(children[0]?.id ?? null));
+  }, [status]);
 
-  async function handleDetect() {
-    if (!url.trim() || !userRef.current) return;
-    setPhase("detecting");
+  async function handlePreview() {
+    if (!url.trim() || !childId) return;
+    setPhase("previewing");
     setErrorMessage(null);
-    setSelectedCategory(null);
     try {
-      const result = await detectVideo(userRef.current, url.trim());
-      setDetected(result);
-      setPhase("detected");
+      const result = await previewVideo(childId, url.trim());
+      setPreview(result);
+      setPhase("previewed");
     } catch (error) {
       setPhase("error");
-      setErrorMessage(error instanceof Error ? error.message : "Couldn't detect that video");
+      setErrorMessage(error instanceof Error ? error.message : "Couldn't check that video");
     }
   }
 
-  async function handleAddContent() {
-    if (!detected || !userRef.current || !selectedCategory) return;
-    setPhase("adding");
+  async function handleSubmit() {
+    if (!preview || !childId) return;
+    setPhase("submitting");
     setErrorMessage(null);
     try {
-      const visibility: LibraryVisibility = isPublic ? "public" : "private";
-      await addVideo(userRef.current, detected, selectedCategory, visibility);
-      router.push("/videos");
+      await submitVideo(childId, url.trim());
+      setPhase("submitted");
     } catch (error) {
-      setPhase("detected");
-      setErrorMessage(error instanceof Error ? error.message : "Couldn't add that video");
+      setPhase("previewed");
+      setErrorMessage(error instanceof Error ? error.message : "Couldn't submit that video");
     }
+  }
+
+  if (phase === "submitted") {
+    return (
+      <main style={{ minHeight: "100vh", display: "flex", justifyContent: "center", padding: "24px" }}>
+        <Card style={{ maxWidth: 440, width: "100%", display: "flex", flexDirection: "column", gap: 14, textAlign: "center" }}>
+          <h1 className="kq-heading" style={{ fontSize: "var(--kq-text-interactive)", color: "var(--kq-charcoal)" }}>
+            Submitted for review
+          </h1>
+          <p style={{ color: "var(--kq-text-secondary)" }}>
+            KidQ is scoring this video now; an admin reviews it before it&apos;s playable. Check My
+            Videos for its status.
+          </p>
+          <Button variant="primary" onClick={() => router.push("/videos")}>
+            Back to My Videos
+          </Button>
+        </Card>
+      </main>
+    );
   }
 
   return (
@@ -100,62 +105,53 @@ export default function AddVideoPage() {
           />
         </label>
 
-        {phase !== "detected" && phase !== "adding" && (
-          <Button variant="primary" disabled={!url.trim() || phase === "detecting"} onClick={handleDetect}>
-            {phase === "detecting" ? "Looking it up…" : "Detect video"}
+        {phase !== "previewed" && phase !== "submitting" && (
+          <Button variant="primary" disabled={!url.trim() || phase === "previewing" || !childId} onClick={handlePreview}>
+            {phase === "previewing" ? "Looking it up…" : "Check this video"}
           </Button>
         )}
 
         {errorMessage && <p style={{ color: "var(--kq-terracotta)", fontSize: "var(--kq-text-caption)" }}>{errorMessage}</p>}
 
-        {detected && (phase === "detected" || phase === "adding") && (
+        {preview && (phase === "previewed" || phase === "submitting") && (
           <>
             <div style={{ borderTop: "1px solid var(--kq-border)", paddingTop: 14, display: "flex", flexDirection: "column", gap: 8 }}>
-              <p style={{ fontWeight: 700, color: "var(--kq-charcoal)" }}>{detected.title}</p>
+              <p style={{ fontWeight: 700, color: "var(--kq-charcoal)" }}>{preview.title}</p>
               <p style={{ fontSize: "var(--kq-text-caption)", color: "var(--kq-text-secondary)" }}>
-                {detected.channel ?? "Unknown channel"}
-                {detected.durationSeconds ? ` · ${Math.round(detected.durationSeconds / 60)} min` : ""}
+                {preview.channel ?? "Unknown channel"}
+                {preview.duration_seconds ? ` · ${Math.round(preview.duration_seconds / 60)} min` : ""}
+                {preview.category ? ` · ${preview.category}` : ""}
               </p>
+
+              {preview.already_in_kidq && (
+                <p style={{ fontSize: "var(--kq-text-caption)", color: "var(--kq-teal)" }}>Already in KidQ&apos;s library.</p>
+              )}
 
               <button
                 onClick={() => setBadgeExpanded(!badgeExpanded)}
                 style={{ alignSelf: "flex-start", fontSize: "var(--kq-text-caption)", fontWeight: 800, color: "var(--kq-teal)", background: "var(--kq-card-mint)", border: "none", borderRadius: "var(--kq-radius-pill)", padding: "4px 10px", cursor: "pointer" }}
               >
-                ✓ {detected.trustBadge}
+                ✓ {preview.kidq_check.status === "REVIEWED" ? "KidQ reviewed" : "Checking…"}
               </button>
               {badgeExpanded && (
-                <p style={{ fontSize: "var(--kq-text-caption)", color: "var(--kq-text-secondary)", fontStyle: "italic" }}>
-                  Detailed pacing / language / content / visual / audio breakdown isn&apos;t
-                  available yet — coming with the full scoring engine. This never blocks
-                  adding the video.
-                </p>
+                <div style={{ fontSize: "var(--kq-text-caption)", color: "var(--kq-text-secondary)" }}>
+                  {preview.kidq_check.note && <p style={{ fontStyle: "italic" }}>{preview.kidq_check.note}</p>}
+                  {preview.kidq_check.dimensions.map((dimension) => (
+                    <p key={dimension.key} style={{ marginTop: 4 }}>
+                      <strong>{dimension.label}:</strong> {dimension.summary}
+                    </p>
+                  ))}
+                </div>
               )}
             </div>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              <span style={{ fontSize: "var(--kq-text-caption)", color: "var(--kq-text-secondary)" }}>
-                What category is this? KidQ can&apos;t detect this automatically yet — pick the
-                closest fit.
-              </span>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                {[...categories, OTHER_CATEGORY].map((category) => (
-                  <Pill key={category} selected={selectedCategory === category} onClick={() => setSelectedCategory(category)}>
-                    {category}
-                  </Pill>
-                ))}
-              </div>
-            </div>
-
-            <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
-              <input type="checkbox" checked={isPublic} onChange={(event) => setIsPublic(event.target.checked)} style={{ width: 20, height: 20, accentColor: "var(--kq-teal)" }} />
-              <span style={{ fontSize: "var(--kq-text-body)", color: "var(--kq-charcoal)" }}>Also suggest this to other families</span>
-            </label>
             <p style={{ fontSize: "var(--kq-text-caption)", color: "var(--kq-text-secondary)" }}>
-              Either way, this video is usable by your family right away — no approval needed.
+              Submitting sends this for KidQ&apos;s AI check and an admin&apos;s review before it&apos;s
+              playable for your family.
             </p>
 
-            <Button variant="primary" disabled={phase === "adding" || !selectedCategory} onClick={handleAddContent}>
-              {phase === "adding" ? "Adding…" : "Add Content"}
+            <Button variant="primary" disabled={phase === "submitting"} onClick={handleSubmit}>
+              {phase === "submitting" ? "Submitting…" : "Submit for review"}
             </Button>
           </>
         )}

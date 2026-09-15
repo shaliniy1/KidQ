@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "@/hooks/useSession";
 import { getTaxonomy } from "@/services/parent-config";
-import { submitOnboarding } from "@/services/child-profile";
+import { submitOnboarding, type OnboardingChild } from "@/services/child-profile";
 import { MASCOT_COLORS, mascotColorForIndex, type MascotColorId } from "@/lib/mascot-colors";
 import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
@@ -18,9 +18,11 @@ interface AgeBandOption {
   label: string;
 }
 
+type AgeBand = OnboardingChild["age_band"];
+
 interface DraftChild {
   nickname: string;
-  ageBand: string | null;
+  ageBand: AgeBand | null;
   // Mascot color is a client-only convenience — there's no backend field for
   // it yet (see INTEGRATION_NOTES.md's lavender-token gap).
   mascotColor: MascotColorId;
@@ -187,7 +189,7 @@ export default function ChildProfilePage() {
             </div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
               {ageBands.map((band) => (
-                <Pill key={band.key} selected={child.ageBand === band.key} onClick={() => updateChild(index, { ageBand: band.key })}>
+                <Pill key={band.key} selected={child.ageBand === band.key} onClick={() => updateChild(index, { ageBand: band.key as AgeBand })}>
                   {band.label}
                 </Pill>
               ))}

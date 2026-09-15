@@ -1,69 +1,60 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { User } from "firebase/auth";
-import { onAuthChange, fetchSessionRouting } from "@/services/auth";
-import { getMyVideos, removeVideo, simulateAdminDecision } from "@/services/my-videos";
-import type { LibraryEntry } from "@/types/library";
+import { useSession } from "@/hooks/useSession";
+import { getChildren } from "@/services/child-profile";
+import { getLibrary, removeFromLibrary, type LibraryEntry } from "@/services/my-videos";
 import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
 
-function tagLabel(entry: LibraryEntry, parentName: string | null): string {
-  const name = parentName ?? "you";
-  if (entry.tag === "kidq_recommended") return "KidQ recommended";
-  if (entry.visibility === "public" && entry.submissionStatus === "approved") {
-    return `Admin-approved, suggested by ${name}`;
-  }
-  return `Picked by ${name}`;
-}
-
-/** P9 My Videos — the parent's own shared video library (spec Section 7). */
+/**
+ * P9 My Videos — the parent's own library for a child (spec Section 7).
+ * Defaults to the first child in a single-child household; a real
+ * multi-child household needs a switcher, matching /session's pattern.
+ */
 export default function MyVideosPage() {
   const router = useRouter();
+  const status = useSession();
   const [phase, setPhase] = useState<"loading" | "ready" | "error">("loading");
+  const [childId, setChildId] = useState<string | null>(null);
   const [entries, setEntries] = useState<LibraryEntry[]>([]);
-  const [parentName, setParentName] = useState<string | null>(null);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const userRef = useRef<User | null>(null);
 
   useEffect(() => {
-    const unsubscribe = onAuthChange(async (user) => {
-      if (!user) {
-        router.replace("/login");
-        return;
-      }
-      userRef.current = user;
-      try {
-        const [videos, routing] = await Promise.all([getMyVideos(user), fetchSessionRouting(user)]);
-        setEntries(videos);
-        setParentName(routing.parentName);
+    if (status === "anon") router.replace("/login");
+  }, [status, router]);
+
+  useEffect(() => {
+    if (status !== "authed") return;
+    getChildren()
+      .then(async (children) => {
+        const first = children[0];
+        if (!first) {
+          setPhase("ready");
+          return;
+        }
+        setChildId(first.id);
+        const library = await getLibrary(first.id);
+        setEntries(library);
         setPhase("ready");
-      } catch (error) {
+      })
+      .catch((error) => {
         setPhase("error");
         setErrorMessage(error instanceof Error ? error.message : "Couldn't load your videos");
-      }
-    });
-    return unsubscribe;
-  }, [router]);
+      });
+  }, [status]);
 
-  async function handleRemove(entryId: string) {
-    if (!userRef.current) return;
-    setEntries((current) => current.filter((e) => e.id !== entryId)); // optimistic
+  async function handleRemove(contentItemId: string) {
+    if (!childId) return;
+    setEntries((current) => current.filter((e) => e.card.id !== contentItemId)); // optimistic
     setOpenMenuId(null);
     try {
-      await removeVideo(userRef.current, entryId);
+      await removeFromLibrary(childId, contentItemId);
     } catch {
-      // best-effort for this prototype — a failed remove just requires a page refresh to reappear
+      // best-effort — a failed remove just requires a page refresh to reappear
     }
-  }
-
-  async function handleSimulateDecision(entryId: string, decision: "approved" | "rejected") {
-    if (!userRef.current) return;
-    await simulateAdminDecision(userRef.current, entryId, decision);
-    const refreshed = await getMyVideos(userRef.current);
-    setEntries(refreshed);
   }
 
   if (phase === "loading") {
@@ -97,17 +88,17 @@ export default function MyVideosPage() {
         {entries.length === 0 && phase === "ready" && <p style={{ color: "var(--kq-text-secondary)" }}>No videos yet.</p>}
 
         {entries.map((entry) => (
-          <Card key={entry.id} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <Card key={entry.card.id} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
               <div>
-                <p style={{ fontWeight: 700, color: "var(--kq-charcoal)" }}>{entry.title}</p>
+                <p style={{ fontWeight: 700, color: "var(--kq-charcoal)" }}>{entry.card.title}</p>
                 <p style={{ fontSize: "var(--kq-text-caption)", color: "var(--kq-text-secondary)" }}>
-                  {entry.durationSeconds ? `${Math.round(entry.durationSeconds / 60)} min · ` : ""}
-                  {tagLabel(entry, parentName)}
+                  {entry.card.duration_seconds ? `${Math.round(entry.card.duration_seconds / 60)} min · ` : ""}
+                  {entry.state === "REQUESTED" ? "Pending KidQ review" : "In your library"}
                 </p>
               </div>
               <button
-                onClick={() => setOpenMenuId(openMenuId === entry.id ? null : entry.id)}
+                onClick={() => setOpenMenuId(openMenuId === entry.card.id ? null : entry.card.id)}
                 aria-label="More options"
                 style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: "var(--kq-text-secondary)", padding: 4 }}
               >
@@ -115,22 +106,9 @@ export default function MyVideosPage() {
               </button>
             </div>
 
-            {entry.visibility === "public" && entry.submissionStatus === "pending" && (
-              <div style={{ fontSize: "var(--kq-text-caption)", color: "var(--kq-text-secondary)" }}>
-                Pending admin review.{" "}
-                <button onClick={() => handleSimulateDecision(entry.id, "approved")} style={{ color: "var(--kq-teal)", textDecoration: "underline", background: "none", border: "none", cursor: "pointer", padding: 0, fontSize: "inherit" }}>
-                  (test) simulate approve
-                </button>{" "}
-                ·{" "}
-                <button onClick={() => handleSimulateDecision(entry.id, "rejected")} style={{ color: "var(--kq-teal)", textDecoration: "underline", background: "none", border: "none", cursor: "pointer", padding: 0, fontSize: "inherit" }}>
-                  simulate reject
-                </button>
-              </div>
-            )}
-
-            {openMenuId === entry.id && (
+            {openMenuId === entry.card.id && (
               <button
-                onClick={() => handleRemove(entry.id)}
+                onClick={() => handleRemove(entry.card.id)}
                 style={{ alignSelf: "flex-start", color: "var(--kq-terracotta)", background: "none", border: "none", cursor: "pointer", padding: "4px 0", fontSize: "var(--kq-text-caption)", fontWeight: 700 }}
               >
                 Remove

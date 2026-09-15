@@ -1,111 +1,67 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import type { User } from "firebase/auth";
-import { onAuthChange } from "@/services/auth";
-import { getChildren } from "@/services/child-profile";
-import { excludeFromChild, getFeedback, getWatchedLog, setFeedback } from "@/services/watched-log";
-import type { ChildProfile } from "@/types/child-profile";
-import type { Sentiment, SessionLogRecord } from "@/types/watched-log";
+import { useSession } from "@/hooks/useSession";
+import { getChildren, type ChildProfile } from "@/services/child-profile";
+import { getWatchedLog } from "@/services/watched-log";
 import { Card } from "@/components/Card";
 
 interface Row {
   sessionId: string;
-  loggedAt: string;
+  loggedAt: string | null;
   contentId: string;
   title: string;
-  durationSeconds: number;
-}
-
-function toRows(logs: SessionLogRecord[]): Row[] {
-  return logs.flatMap((log) =>
-    log.watched.map((video) => ({
-      sessionId: log.id,
-      loggedAt: log.loggedAt,
-      contentId: video.contentId,
-      title: video.title,
-      durationSeconds: video.durationSeconds,
-    }))
-  );
+  durationSeconds: number | null;
 }
 
 /**
- * P8 Handoff & Insight Tray — the factual watched-content log, with
- * optimistic 👍/👎 and per-child "stop recommending this".
+ * P8 Handoff & Insight Tray — the factual watched-content log.
+ *
+ * NOTE: per-video 👍/👎 feedback and "stop recommending this to this child"
+ * have no real backend endpoint yet (see web/src/services/watched-log.ts) —
+ * shown here as disabled affordances rather than silently fake actions.
  */
 export default function WatchedLogPage() {
   const router = useRouter();
+  const status = useSession();
   const params = useParams<{ childId: string }>();
   const childId = params.childId;
 
   const [phase, setPhase] = useState<"loading" | "ready" | "error">("loading");
   const [child, setChild] = useState<ChildProfile | null>(null);
   const [rows, setRows] = useState<Row[]>([]);
-  const [sentiments, setSentiments] = useState<Record<string, Sentiment>>({});
-  const [excluded, setExcluded] = useState<Set<string>>(new Set());
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const userRef = useRef<User | null>(null);
 
   useEffect(() => {
-    const unsubscribe = onAuthChange(async (user) => {
-      if (!user) {
-        router.replace("/login");
-        return;
-      }
-      userRef.current = user;
-      try {
-        const [children, logs, feedback] = await Promise.all([
-          getChildren(user),
-          getWatchedLog(user, childId),
-          getFeedback(user),
-        ]);
+    if (status === "anon") router.replace("/login");
+  }, [status, router]);
+
+  useEffect(() => {
+    if (status !== "authed") return;
+    Promise.all([getChildren(), getWatchedLog(childId)])
+      .then(([children, sessions]) => {
         setChild(children.find((c) => c.id === childId) ?? null);
-        setRows(toRows(logs));
-        const sentimentMap: Record<string, Sentiment> = {};
-        for (const entry of feedback) sentimentMap[entry.contentId] = entry.sentiment;
-        setSentiments(sentimentMap);
+        setRows(
+          sessions.flatMap((session) =>
+            session.slots.flatMap((slot) =>
+              slot.items.map((item) => ({
+                sessionId: session.id,
+                loggedAt: session.ended_at,
+                contentId: item.card.id,
+                title: item.card.title,
+                durationSeconds: item.card.duration_seconds,
+              })),
+            ),
+          ),
+        );
         setPhase("ready");
-      } catch (error) {
+      })
+      .catch((error) => {
         setPhase("error");
         setErrorMessage(error instanceof Error ? error.message : "Couldn't load the watched log");
-      }
-    });
-    return unsubscribe;
-  }, [router, childId]);
-
-  async function handleThumb(contentId: string, sentiment: Sentiment) {
-    if (!userRef.current) return;
-    const previous = sentiments[contentId];
-    setSentiments((current) => ({ ...current, [contentId]: sentiment })); // optimistic
-    try {
-      await setFeedback(userRef.current, contentId, sentiment);
-    } catch {
-      setSentiments((current) => {
-        const next = { ...current };
-        if (previous === undefined) {
-          delete next[contentId];
-        } else {
-          next[contentId] = previous;
-        }
-        return next;
       });
-    }
-  }
-
-  async function handleRemove(contentId: string) {
-    if (!userRef.current) return;
-    setExcluded((current) => new Set(current).add(contentId)); // optimistic
-    try {
-      await excludeFromChild(userRef.current, childId, contentId);
-    } catch {
-      setExcluded((current) => {
-        const next = new Set(current);
-        next.delete(contentId);
-        return next;
-      });
-    }
-  }
+  }, [status, childId]);
 
   if (phase === "loading") {
     return (
@@ -133,37 +89,40 @@ export default function WatchedLogPage() {
         {rows.length === 0 && phase === "ready" && <p style={{ color: "var(--kq-text-secondary)" }}>Nothing watched yet.</p>}
 
         {rows.map((row, index) => (
-          <Card key={`${row.sessionId}-${row.contentId}-${index}`} style={{ display: "flex", flexDirection: "column", gap: 8, opacity: excluded.has(row.contentId) ? 0.5 : 1 }}>
+          <Card key={`${row.sessionId}-${row.contentId}-${index}`} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
               <div>
                 <p style={{ fontWeight: 700, color: "var(--kq-charcoal)" }}>{row.title}</p>
                 <p style={{ fontSize: "var(--kq-text-caption)", color: "var(--kq-text-secondary)" }}>
-                  {Math.round(row.durationSeconds / 60)} min · {new Date(row.loggedAt).toLocaleDateString()}
+                  {row.durationSeconds ? `${Math.round(row.durationSeconds / 60)} min` : ""}
+                  {row.loggedAt ? ` · ${new Date(row.loggedAt).toLocaleDateString()}` : ""}
                 </p>
               </div>
               <div style={{ display: "flex", gap: 6 }}>
                 <button
-                  onClick={() => handleThumb(row.contentId, "up")}
-                  aria-label="Thumbs up"
-                  style={{ fontSize: 18, background: sentiments[row.contentId] === "up" ? "var(--kq-card-mint)" : "none", border: "none", borderRadius: "var(--kq-radius-pill)", padding: 6, cursor: "pointer" }}
+                  disabled
+                  title="Per-video feedback isn't available yet"
+                  aria-label="Thumbs up (not yet available)"
+                  style={{ fontSize: 18, background: "none", border: "none", borderRadius: "var(--kq-radius-pill)", padding: 6, opacity: 0.4, cursor: "not-allowed" }}
                 >
                   👍
                 </button>
                 <button
-                  onClick={() => handleThumb(row.contentId, "down")}
-                  aria-label="Thumbs down"
-                  style={{ fontSize: 18, background: sentiments[row.contentId] === "down" ? "var(--kq-card-peach)" : "none", border: "none", borderRadius: "var(--kq-radius-pill)", padding: 6, cursor: "pointer" }}
+                  disabled
+                  title="Per-video feedback isn't available yet"
+                  aria-label="Thumbs down (not yet available)"
+                  style={{ fontSize: 18, background: "none", border: "none", borderRadius: "var(--kq-radius-pill)", padding: 6, opacity: 0.4, cursor: "not-allowed" }}
                 >
                   👎
                 </button>
               </div>
             </div>
             <button
-              onClick={() => handleRemove(row.contentId)}
-              disabled={excluded.has(row.contentId)}
-              style={{ alignSelf: "flex-start", fontSize: "var(--kq-text-caption)", color: "var(--kq-text-secondary)", textDecoration: "underline", background: "none", border: "none", cursor: "pointer", padding: 0 }}
+              disabled
+              title="Per-child exclude isn't available yet"
+              style={{ alignSelf: "flex-start", fontSize: "var(--kq-text-caption)", color: "var(--kq-text-secondary)", textDecoration: "underline", background: "none", border: "none", cursor: "not-allowed", padding: 0, opacity: 0.5 }}
             >
-              {excluded.has(row.contentId) ? "Removed from future recommendations" : `Remove from ${child?.nickname ?? "this child"}'s videos`}
+              Remove from {child?.nickname ?? "this child"}&apos;s videos
             </button>
           </Card>
         ))}
