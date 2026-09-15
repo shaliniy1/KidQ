@@ -124,6 +124,29 @@
   // Still pushed into `timers`, so clearTimers() and showScreen() cancel it.
   const hold = (fn, ms) => { const id = setTimeout(fn, ms); timers.push(id); return id; };
   const clearTimers = () => { timers.forEach(clearTimeout); timers = []; };
+
+  /* ---------- reopen-after-done persistence ----------
+     The night-light screen (below) is the natural state a child finds on
+     reopening the app once today's session is already used up - not a
+     same-session dead end. That needs to survive a real page reload, so it
+     lives in localStorage, date-stamped rather than a bare boolean: "is the
+     stored date today's date" IS the staleness check, with no separate
+     midnight-reset code needed. No date/localStorage helper already existed
+     in this file to reuse, so this uses the platform's own
+     `Date.toDateString()`. try/catch throughout: storage can be unavailable
+     (private browsing, embedded webview) and that must degrade to "just run
+     the normal flow", never throw. */
+  const SESSION_DONE_KEY = "kidq-session-done-date";
+  function markSessionDone() {
+    try { localStorage.setItem(SESSION_DONE_KEY, new Date().toDateString()); } catch (e) {}
+  }
+  function isSessionDoneToday() {
+    try { return localStorage.getItem(SESSION_DONE_KEY) === new Date().toDateString(); } catch (e) { return false; }
+  }
+  function clearSessionDone() {
+    try { localStorage.removeItem(SESSION_DONE_KEY); } catch (e) {}
+  }
+
   // Volume is set here, at play time, not once at load - so toggling
   // sensory-friendly mid-session applies to the very next sound, not the
   // next page load. Explicit 1 when off (not just "leave it alone") is what
@@ -1434,6 +1457,11 @@
     doneAnnounce.textContent = `High five! What a day! Bye bye, ${state.profile ? state.profile.name : "Aarav"}!`;
   }
   function startAllDone() {
+    // Today's session counts as used up the moment this screen is reached,
+    // not only if the child later taps "Leave for now" below - reopening the
+    // app after just walking away from all-done should land on night-light
+    // too (see the reopen-persistence block up top).
+    markSessionDone();
     allDone.classList.remove("hifived");
     // a same-page restart can reach all-done a second time; clearing here
     // guarantees the next fiveUp() sets are a genuine text change, so the
@@ -1482,6 +1510,14 @@
   // on tap here to run clearTimers() for us).
   $("#high-five").addEventListener("click", fiveUp);
   $("#done-moon").addEventListener("click", (e) => pop(e.currentTarget, true));
+  // Leaving early runs the exact same real transition a later reopen would
+  // (today's flag is already set by startAllDone() above, but this is its
+  // own explicit trigger too) - shares startNightLight() rather than a second,
+  // divergent way of getting there.
+  $("#leave-for-now").addEventListener("click", () => {
+    markSessionDone();
+    startNightLight();
+  });
 
   /* ---------- no session ---------- */
   const noSessionAnnounce = $("#no-session-announce");
@@ -1517,12 +1553,29 @@
 
   /* ---------- night light ---------- */
   const nightLight = $("#screen-night-light");
+  // No per-visit setup needed - the screen's copy is static and the moon
+  // starts unlit every time it's shown fresh (a reload always rebuilds the
+  // DOM at its default state), so this is showScreen() alone. Still a real
+  // startX() function, not an inline showScreen() call, for the same reason
+  // every other screen entry point is one: a single, named place to land on.
+  function startNightLight() {
+    showScreen("screen-night-light");
+  }
   $("#night-moon").addEventListener("click", (e) => {
     const lit = !nightLight.classList.contains("lit");
     nightLight.classList.toggle("lit", lit);
     e.currentTarget.setAttribute("aria-pressed", String(lit));
     pop(e.currentTarget, true);
     if (lit) safePlay(chime);
+  });
+  // Testing/demo only: with the old demo bar gone, this is the one way back
+  // to a fresh "start of day" state without editing localStorage by hand.
+  // Deliberately a single low-emphasis in-context link, not a revival of the
+  // stripped multi-button toolbar (PR #36). Reuses startSplash() itself - the
+  // exact same call this file makes on a real fresh load, below.
+  $("#night-reset").addEventListener("click", () => {
+    clearSessionDone();
+    startSplash();
   });
 
   /* ---------- cast (visual mock only) ---------- */
@@ -1601,5 +1654,10 @@
     }
   });
 
-  startSplash();
+  // If today's session is already used up (see the reopen-persistence block
+  // near the top), reopening the app goes straight to night-light instead of
+  // replaying splash/login/sunrise - the night-light reset link is the way
+  // back to this normal path for testing/demo purposes.
+  if (isSessionDoneToday()) startNightLight();
+  else startSplash();
 })();
