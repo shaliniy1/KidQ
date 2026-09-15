@@ -40,7 +40,7 @@ no code yet. Working prototype being built in Figma.
    3 videos · 25 min").
 3. **Watch** — child gets autonomy *inside* the boundary: one tap starts
    the day; the queue advances itself; the ending is always visible.
-4. **Stop** — no autoplay, ever. The session ends the way a day ends:
+4. **Stop** — no autoplay past the last video, ever. The session ends the way a day ends:
    sun sets, moon rises, "All done for today!", high five, and the
    parent-set next step ("Now: blocks with Dadi 🧱").
 
@@ -48,7 +48,11 @@ no code yet. Working prototype being built in Figma.
 and leads a short off-screen activity — breathing (Stanford-evidenced),
 eye exercise, yoga pose; library also includes find-3-red-things and
 count-to-10. Then it returns to its arc and waits: "Tap the sun for your
-next video." Nothing plays without the tap.
+next video." The child can tap the sun, or pick a different video from the
+session strip. If they do neither, the plan is for the next video to start on
+its own after a few seconds — **decided but not yet built** (`OPEN-ITEMS.md`
+item 25); today the sun waits for the tap with no timeout. Nothing is ever
+*chosen* for them without a tap.
 
 ## Child-mode principles (locked)
 
