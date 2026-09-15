@@ -343,6 +343,16 @@
   const watchSunEl = $("#watch-sun");
   const watchPause = $("#watch-pause");
 
+  // True only while the pause is the child's own tap, never while it's the
+  // browser's. Chrome silently pauses a video-only background tab to save
+  // power (~5s after it's hidden) with no error the app can catch - just a
+  // real `pause` event it used to ignore, leaving the UI stuck claiming
+  // "playing" over a frozen frame. That policy can't be prevented from here,
+  // so the fix is to listen honestly (below) and recover on return to the
+  // tab - but only when userPaused is false, so a browser-imposed recovery
+  // can never talk over a pause the child actually chose.
+  let userPaused = false;
+
   // the whole parent-picked session, always visible: Now playing ringed,
   // watched dimmed, and every card tappable to switch
   function renderStrip() {
@@ -385,6 +395,7 @@
   function startWatching(videoObj) {
     state.current = videoObj;
     demoSkyP = null;
+    userPaused = false; // a new video never starts in a stale user-paused state
     watching.classList.remove("paused", "setting", "swapping");
     watchPause.setAttribute("aria-label", "Pause");
     $("#watch-av").textContent = state.profile.name[0];
@@ -420,6 +431,26 @@
     if (unwatched().length === 0) startSunset(false);
     else if (breakIsDue()) startPlaytimeSeam();
     else autoAdvance();
+  });
+
+  // Keep the UI honest about the video's real state, whatever caused the
+  // change - the browser's background-pause policy, a demo-bar jump's own
+  // video.pause() call, or the click handler below. Screen jumps and the
+  // swapping dip already pause/play the video for their own reasons, so
+  // these only act while watching is actually on screen; the same guard
+  // ended() already uses. The click handler sets the same class/aria-label
+  // itself, so these fire redundantly on that path - idempotent, not a
+  // double-toggle.
+  video.addEventListener("pause", () => {
+    if (!watching.classList.contains("active")) return;
+    if (video.ended) return; // a native pause fires right before ended too
+    watching.classList.add("paused");
+    watchPause.setAttribute("aria-label", "Resume");
+  });
+  video.addEventListener("play", () => {
+    if (!watching.classList.contains("active")) return;
+    watching.classList.remove("paused");
+    watchPause.setAttribute("aria-label", "Pause");
   });
 
   // A break is due when the day has passed the next planned break point and the
@@ -459,9 +490,18 @@
 
   watchPause.addEventListener("click", () => {
     const pausing = !watching.classList.contains("paused");
+    userPaused = pausing;
     watching.classList.toggle("paused", pausing);
     watchPause.setAttribute("aria-label", pausing ? "Resume" : "Pause");
     if (pausing) video.pause(); else attemptPlay(video);
+  });
+
+  // Recover from the browser's own background pause the moment the tab is
+  // back in view - never from a pause the child chose (userPaused wins).
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState !== "visible") return;
+    if (!watching.classList.contains("active")) return;
+    if (video.paused && !userPaused) attemptPlay(video);
   });
 
   /* ---------- sunset → all done ---------- */
