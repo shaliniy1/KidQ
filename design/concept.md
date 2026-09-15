@@ -38,7 +38,7 @@ no code yet. Working prototype being built in Figma.
    a differentiator concept on file).
 2. **Queue** — parent picks today's videos + total time ("Mumma picked
    3 videos · 25 min").
-3. **Watch** — child gets autonomy *inside* the boundary: one tap starts
+3. **Watch** — child gets autonomy *inside* the boundary: one touch starts
    the day; the queue advances itself; the ending is always visible.
 4. **Stop** — no autoplay past the last video, ever. The session ends the way a day ends:
    sun sets, moon rises, "All done for today!", high five, and the
@@ -47,23 +47,23 @@ no code yet. Working prototype being built in Figma.
 **Between videos: Playtime** (activity breaks). The sun hops off its arc
 and leads a short off-screen activity — breathing (Stanford-evidenced),
 eye exercise, yoga pose; library also includes find-3-red-things and
-count-to-10. Then it returns to its arc and waits: "Tap the sun for your
-next video." The child can tap the sun, or pick a different video from the
+count-to-10. Then it returns to its arc and waits: "Touch the sun for your
+next video." The child can touch the sun, or pick a different video from the
 session strip. If they do neither, the plan is for the next video to start on
 its own after a few seconds — **decided but not yet built** (`OPEN-ITEMS.md`
-item 25); today the sun waits for the tap with no timeout. Nothing is ever
-*chosen* for them without a tap.
+item 25); today the sun waits for the touch with no timeout. Nothing is ever
+*chosen* for them without a touch.
 
 ## Child-mode principles (locked)
 
-- **One action per screen.** The sun is the only tappable hero. No nav,
+- **One action per screen.** The sun is the only touchable hero. No nav,
   no search, no thumbnails to browse, no settings in child mode.
 - **The sky is the timer.** Time is visible and finite without numbers:
   the sun travels an arc; the sky shifts cream → dusk → indigo. A small
   "12 min left" label serves parents.
 - **The ending is never a surprise.** "The End 🌙" is a card in the queue
   from the first frame — the most important object on the screen.
-- **Reopening the app does not reopen the tap.** After the session ends,
+- **Reopening the app does not reopen the touch.** After the session ends,
   the child gets a goodnight (moon night-light), not a path back in.
 - **No session = the world is asleep.** If the parent hasn't picked
   videos, the sun is asleep; no child CTA, no nagging.

@@ -223,13 +223,15 @@ Vanilla HTML/CSS/JS with one closure-scoped state machine → React components
 under the App Router. Layout is driven by container queries on `#app` at three
 tiers, with one element inventory at every size.
 
-### [~] 17. Three more activity breaks
+### [x] 17. Three more activity breaks
 **Backend done:** the break library serves find 3 things, stand like a tree, breathe with the sun, count to 10 and follow me with your eyes. Each slot's `break_activity` says which one and what to say.
-**"Follow me with your eyes" screens are done too — shipped as follow the sun**, built on
+**"Follow me with your eyes" is done — shipped as follow the sun**, built on
 `design/follow-the-ball-break` (Tasks 1–10 plus the closing verification
 sweep) per `docs/superpowers/specs/2026-09-14-kidq-follow-the-ball-break-design.md`.
-Still designed but not built: stand like a tree, count to 10 with eyes closed.
-The cadence and rotation already support more entries with no other change.
+**"Stand like a tree" is done too** — see item 43. **"Count to 10, eyes
+closed" is done too, the last of the three** — see item 44. The cadence and
+rotation supported all three with no further change beyond the per-game
+work each one's own spec called for.
 
 Building it surfaced follow-ups that were logged in the spec (sections 11 and
 13.7) — now items 26–35 below.
@@ -242,13 +244,17 @@ where the child left off is the alternative. Deferred once already.
 The strip lets a child switch video mid-session, which supersedes the group's
 earlier "no switching before completion". Already flagged, and easy to revert.
 
-### [ ] 20. Sync the phone mockups
-`kidq-mockups-v1.html` still shows the pre-round-3 design — "The End" card, "Up
-next" instead of the session strip, the old arc colour. Only worth doing if
-those frames are still referenced.
+### [x] 20. Sync the phone mockups
+**Moot — the file doesn't exist in this repo.** `kidq-mockups-v1.html` was a
+static design artifact from the pre-prototype phase, kept in a separate,
+non-git folder (`Downloads/KidQ/`) outside this repository; it was never
+committed here and this repo's `design/mockups/` only ever held the later
+desktop-pivot mockup. The actual up-to-date reference for child mode is
+`design/prototype/` itself — the live interactive build, which every round's
+PR work has kept current by construction. Nothing to sync.
 
 ### [~] 25. Can a small child actually get out of a break?
-A break ends on "Tap the sun for your next video", and nothing continues until
+A break ends on "Touch the sun for your next video", and nothing continues until
 that tap lands. Raised as a doubt that a child at the younger end of 0–6 will
 reliably manage it, and that they are then stuck with no way forward.
 
@@ -509,3 +515,841 @@ re-verified live for this item — both follow directly from unchanged code
 (`fiveUp()`'s pre-existing guard; `hold()`'s unconditional, unclamped
 `setTimeout`), the same guarantees item 25 already established for the
 identical mechanism.
+
+### [x] 39. A backgrounded tab could leave the watching screen frozen with the UI still claiming "playing"
+Chrome silently pauses a video-only background tab to save power — no error
+fires, just a real `pause` event, roughly 5s after the tab is hidden. The app
+only ever listened for `timeupdate` and `ended` on the video, so that pause
+went unnoticed: the pause button kept saying "Pause", `.paused` never got
+added, and the child was left looking at a frozen frame with no visible way
+back in. The policy itself is the browser's, not a bug reachable from here —
+Chrome doesn't expose an opt-out for a hidden video-only stream — so the fix
+is to listen honestly and recover on return, not to fight the pause.
+
+**Built:** `video` now carries real `pause`/`play` listeners that sync
+`#screen-watching`'s `.paused` class and `#watch-pause`'s aria-label to
+whatever actually happened, whoever caused it — the browser, a demo-bar
+screen jump's own `video.pause()`, or the click handler. Both listeners only
+act while the watching screen is the active one (the same guard `ended()`
+already used, since screen jumps and the swapping auto-advance dip pause/
+play the video for their own reasons); the pause listener also skips a
+video that has already `ended`, since a native `pause` fires right before
+`ended` and would otherwise flash the paused UI on every video that finishes
+normally.
+
+A new `userPaused` flag, set in the existing `watchPause` click handler and
+reset whenever `startWatching()` starts a new video, is the one rule that
+matters here: **a deliberate pause by the child is never silently
+overridden.** A `visibilitychange` listener calls the existing `attemptPlay`
+when the tab returns to visible and the video is paused — but only when
+`!userPaused` and the video isn't already `ended` (the swapping dip between
+videos holds a paused-and-ended video on an active watching screen for
+~700ms, and `attemptPlay` on an ended video would seek to 0 and replay it
+briefly), so the recovery only ever undoes the browser's own mid-video
+pause, never the child's or the tail end of a finished video.
+
+Verified live in Chrome (`python -m http.server`, port 8471, the demo bar's
+"Sun: midday" jump straight to watching) at the state level, since
+`document.hidden` is always `true` in this automation environment and every
+`setTimeout` is throttled — which meant Chrome's real background pause was
+genuinely available to trigger and observe, not something to fake:
+- Programmatic `video.pause()` / `video.play()` each correctly toggled
+  `.paused` and the aria-label both ways.
+- Clicking the real pause button, then overriding `document.visibilityState`
+  to `"visible"` and dispatching `visibilitychange`, left the video paused
+  and `HTMLMediaElement.prototype.play` uninvoked (instrumented with a
+  counter) — `userPaused` held.
+- The same override after a *programmatic* (non-user) pause invoked
+  `attemptPlay`: the play-count counter increased and the UI flipped back to
+  "playing" immediately, matching `attemptPlay`'s synchronous `play()` call
+  even though the actual retry (visible in the counter) was blocked by the
+  hidden tab, exactly as `attemptPlay`'s own `.catch` retry is built to
+  handle.
+
+One thing was environment-blocked rather than observed directly: natural
+end-of-video. The dev server (Python's `http.server`) doesn't support HTTP
+Range requests, and combined with `document.hidden`, the demo clips never
+progressed past `readyState 0` — no real `ended` event was reachable. Rather
+than skip the check, the same technique used above for `visibilityState` was
+applied to the video itself: shadowed the read-only `ended` getter to `true`
+on the element instance, dispatched a synthetic `pause` (confirming no
+paused-UI flash), then a synthetic `ended` — which correctly ran the real
+break-seam flow (`screen-watching` lost `active`, `screen-playtime` gained
+it), since video 1 of the demo session lands exactly on the first break
+boundary. Both the anti-flash guard and the ended-flow continuation are
+therefore verified at the code-execution level, just not via an actual
+decoded video frame reaching its last one.
+
+---
+
+## The parent app's Autoplay setting arrives (2026-09-15)
+
+### [x] 40. Mirror the parent app's Autoplay toggle; never strand a non-tapper when it's off
+
+The KidQ Parent app (built by a teammate) now has a per-family **Autoplay**
+toggle: "Play the next video automatically within a session." This
+prototype had no notion of it and always auto-advanced — unconditionally
+between videos (`autoAdvance`), out of a break (item 25's `CHOICE_AUTO_MS`),
+and, separately, the all-done screen's high-five (item 38's
+`HIFIVE_AUTO_MS`). It needed to honour the setting.
+
+**Decided and built (2026-09-15), user-directed.** A session-level
+`autoplay` flag (default ON) stands in for the parent setting, flipped by a
+new Autoplay control on the demo bar, following `#motion-toggle`'s existing
+pattern — a plain variable, not part of `state`, read fresh at each decision
+point rather than reset per session.
+
+- **Autoplay ON is exactly today's behaviour, unchanged.** All three
+  existing timers — `autoAdvance`'s 700ms dip, item 25's `CHOICE_AUTO_MS`,
+  item 38's `HIFIVE_AUTO_MS` — fire exactly as before. Zero regressions was
+  the bar.
+- **Autoplay OFF, between videos:** the `ended` handler no longer calls
+  `autoAdvance()` — it calls `startChoice()` directly instead, landing on
+  the same after-break choice screen (sun plus the remaining parent picks),
+  with no auto-advance timer. The existing copy — "Touch the sun for your next
+  video / or pick one of Mumma & Papa's videos" — turned out to already read
+  correctly from either entry point, so no copy changed.
+- **Autoplay OFF, the choice screen itself (both entry paths):**
+  `CHOICE_AUTO_MS` is never scheduled. In its place, an **escalating-nudge
+  ladder**, added specifically so a pre-reader is never silently
+  stranded — this was *the* concern raised for this item, the same one
+  item 25 raised for the indefinite pre-autoplay wait and item 38 raised
+  for the high-five. With autoplay off, the choice screen has no timeout to
+  fall back on the way autoplay-on does, so instead of ending the wait it
+  interrupts it: a first attention beat at ~7s, then every ~15s after that,
+  for as long as the child sits there. Each beat reuses `pop()`'s existing
+  squash-stretch (`choiceSun`) — the same animation a real tap produces
+  elsewhere in the app — rather than inventing new motion, plus a soft
+  audio cue. It never advances anything by itself; only a tap does that, so
+  nudging "forever" is fine here in a way a timeout wouldn't have been.
+  No separate cancellation wiring was needed: a tap (sun or a card) already
+  runs `startWatching` → `showScreen` → `clearTimers`, and so does every
+  demo-bar jump away from the screen — both already wipe whatever `hold()`
+  is pending, `CHOICE_AUTO_MS`'s or the nudge's, the same way.
+- **The high-five stays exempt from the flag.** `HIFIVE_AUTO_MS` is
+  unconditional either way — decided explicitly, and unchanged in this
+  diff beyond a comment. It ends the session; it doesn't advance content,
+  so "play the next video automatically" has no opinion about it.
+  End-of-session is likewise not an advance: the last video's `ended` still
+  goes straight to sunset in both modes, exactly as before.
+- **Timer discipline:** the nudge uses `hold()`, not `later()` — the delay
+  *is* the nudge, not a transition, so it must not clamp to 200ms under
+  reduced motion, the same reasoning already documented above
+  `CHOICE_AUTO_MS` and `HIFIVE_AUTO_MS`.
+
+**Voice line placeholder.** There is no recorded "Touch the sun for your next
+video" line in the repo — the existing clips (`voice-follow-intro`,
+`voice-follow-done`) are follow-the-sun specific — so the nudge's audio cue
+reuses the soft sunset chime for now, with a `TODO(production)` comment in
+`kidq-desktop-app.js` next to `scheduleNudge`. Production should record a
+spoken "Touch the sun for your next video" line for pre-readers, in the same
+voice as the other clips, and wire it in via `sayLine()` the way
+`startFollow` already does for its own intro line.
+
+**Note for the parent-side settings owner:** suggested copy for the
+Autoplay setting's off-state description, to sit under the toggle:
+*"Off means Aarav continues each video himself."* Flagging it here rather
+than deciding it — it's the parent app's copy to own, not this prototype's.
+
+**Verified live in Chrome** (port 8517), instrumenting `window.setTimeout`,
+`HTMLMediaElement.prototype.play` and a `MutationObserver` on `#choice-sun`
+rather than trusting wall-clock timing, since this machine's automation
+tabs run with `document.hidden === true` throughout (confirmed), which
+throttles `setTimeout` — delays land late but the scheduled `ms` values
+and firing order are exactly what's asserted below, not an artifact:
+
+- **Autoplay ON:** the between-video dip scheduled `setTimeout(…, 700)`
+  and landed on the next video; the after-break choice screen scheduled
+  `setTimeout(…, 4000)` (`CHOICE_AUTO_MS`) and auto-advanced on schedule;
+  a full demo session driven through to all-done (both breaks, including a
+  live "breathe" break with no interaction needed) scheduled
+  `setTimeout(…, 4000)` for `HIFIVE_AUTO_MS` and the high-five auto-fired
+  (`#screen-all-done.hifived`, chime replayed).
+- **Autoplay OFF:** a synthetic `ended` dispatched on the un-final video
+  landed directly on `#screen-choice` with **no** `setTimeout(…, 4000)`
+  anywhere in the log — only `setTimeout(…, 7000)`. Confirmed for both
+  entry paths (straight from a video's `ended`, and after a break). The
+  first nudge fired at ~7s: `#choice-sun`'s class flipped to include
+  `tapped` (matching the new `#screen-choice .kq-sun.tapped svg` CSS pop
+  rule), the chime's `play()` was called, and a fresh `setTimeout(…,
+  15000)` was logged for the next beat. A tap partway through a nudge wait
+  cancelled it cleanly — waited well past when the next 15s beat would
+  have fired and the log showed nothing further for `#choice-sun` after
+  the tap. A demo-bar jump away mid-wait did the same. Toggling the flag
+  between two decision points (after a break finished, before `startChoice`
+  had run) was picked up correctly at the next decision point, with no
+  errors and no stale timers. With reduced motion on, the nudge still
+  logged `setTimeout(…, 7000)` (unclamped, confirming `hold()` is in use,
+  not `later()`), while `pop()`'s own internal cleanup timer clamped to
+  200ms as expected — the global reduced-motion CSS rule
+  (`kidq-desktop-app.css:850`) is what actually shortens the pop animation
+  itself, and needed no item-specific handling.
+- Not independently re-verified live: toggling mid-`CHOICE_AUTO_MS`-wait
+  down to the exact millisecond (an attempt was made; this machine's
+  background-tab timer throttling had, by ~10 minutes into the session,
+  degraded enough that a bounded poll loop hit a 45s CDP timeout, so the
+  attempt was redone as a toggle-between-decision-points instead, which
+  is the case that actually matters — see above). Both directions follow
+  from the same mechanism (the flag is a plain variable read once per
+  decision point, never polled), which the above does establish live.
+
+One thing worth flagging for whoever picks up "port to `web/`" (item 16):
+the nudge ladder's "forever" is correct for a design prototype with no
+session end other than the child's own choices, but a real deployment may
+want a cap — a pre-reader is never stranded now, but neither is a parent
+told anything if a child truly walks away and the nudge just keeps going.
+Not raised as a concern for this item (out of scope — nothing in the brief
+asked for one, and item 38's high-five timer already gives the session a
+hard end regardless), just noted since it wasn't obviously covered
+elsewhere.
+
+---
+
+## The parent app's break settings arrive (2026-09-15)
+
+### [x] 41. Config-driven break schedule + parent-chosen break type (PARENT-KID-CONTRADICTIONS items 2-3)
+
+The prototype hardcoded exactly two breaks, at the 1/3 and 2/3 marks of
+whatever session the child got, first always from MOVE, rest from SETTLE.
+The KidQ Parent app has two settings that made every config but the default
+render wrong: a **break interval** (every 10/15/20 min) and a **break
+type** (Movement / Quiet-calm / Let KidQ alternate). Both are now
+config-driven, per the design at
+`docs/superpowers/specs/2026-09-15-kidq-config-driven-breaks-design.md`
+(Opus-reviewed before this round started).
+
+**Built:**
+- `planBreaks(videos, intervalMinutes)` now targets `k · interval / total`
+  for every `k` with `k · interval < total`, snapping each target to the
+  nearest not-yet-used video boundary — under a **max snap distance** (a
+  target whose nearest remaining boundary is more than half an interval
+  away is dropped, not snapped) and a **min gap** (a boundary within half
+  an interval of an already-chosen break is ineligible for a later target).
+  Both guard against the same failure mode: on a lopsided queue (e.g.
+  20+1+9 min at every-10m), unconstrained snapping used to place two
+  breaks one minute apart. Ties keep the earlier boundary (unchanged,
+  now documented rather than incidental).
+- `gameForBreak(index)` now goes through `bucketForBreak(index)`, which
+  reads the live `breakType` flag: `movement`/`quiet` force a bucket
+  outright; `alternate` (default) buckets on the break's **planned**
+  fraction (`state.breaks[index]`, not `sessionProgress()` at fire time —
+  a strip-switching child can fire a break late, and the planned slot is
+  the contract you'd want an analytics event to match), `≤ 0.5` → move,
+  `> 0.5` → settle. The `≤` matters: the demo session's own default
+  (every-15m) yields exactly one break at fraction 0.5000 exactly, and it
+  has to stay the movement break for this to be a faithful generalisation
+  of "first break is always find" rather than a quiet regression.
+- `breakEveryMinutes` (default 15) and `breakType` (default `"alternate"`)
+  are now fields of the session object — but `prepSession()` *projects*
+  the session object into `state.session`, so an unlisted field is
+  silently dropped the way `pickedBy` already was. Both defaults are
+  applied on that projection line, once, rather than at every read site.
+  Interval is read once, at `prepSession()` (breaks are planned there);
+  breakType is read live, at `gameForBreak()` fire time, seeded from the
+  session's own config each time a session starts but overridable
+  mid-session without disturbing the already-planned break positions.
+- Demo bar gained two controls, both cycling buttons like the existing
+  Autoplay/Reduce-motion toggles rather than a row of one-shot buttons:
+  **Break type** is a live flag exactly like Autoplay — flips `breakType`,
+  read fresh at the next `gameForBreak()` call, no restart. **Breaks:
+  every Nm** cannot apply mid-session (positions are planned once, at
+  `prepSession`), so it restarts the session — always back into the demo
+  `aarav` queue, the one with breaks to show. Its handler runs the same
+  `[data-demo]` prologue every other jump uses (`clearTimers();
+  video.pause();`) before restarting, or a pending `autoAdvance` dip or an
+  autoplay-off nudge chain (item 40) fires into the new session holding
+  stale state.
+- The rotation comment's old claim — "the same session never serves a
+  game twice" — is now "no immediate repeat": true with two breaks, false
+  in general once a config can ask for more breaks than a bucket has
+  entries. The rotation formula itself (`bucket[(breakRotation + index) %
+  bucket.length]`) needed no change to generalise.
+
+**Contract note for the parent-side settings owner:** break count is
+capped by boundary count (`n − 1` for `n` videos) and by the two snapping
+constraints above — a config that asks for more breaks than the queue's
+boundaries and spacing allow gets fewer, silently. This matches the
+parent app's own hedged copy ("About one break every N minutes" already
+reads as approximate, not a guarantee), but is worth stating plainly:
+**the number configured is a target, not a floor.** The concrete case in
+the data: the 17-minute replay session ("yesterday's picks") loses its
+one break entirely at every-20m (`20 min > 17 min total`, zero targets
+generated) — accepted, not a bug, and downstream code already handled
+`state.breaks = []` before this round (any single-boundary or
+single-video queue could already reach it).
+
+**Explicitly not resolved by this round:** item 24's mandatory terminal
+wind-down slot. The interval math above neither implements nor precludes
+it — a future round would need to decide whether a forced last-break slot
+composes with parent-chosen intervals/type or overrides them, and that
+decision hasn't been made.
+
+**Verified:** `node --check`. Break positions were hand-computed for the
+demo queue (videos 8/7/8/7 min, boundaries at .2667/.5/.7667 of the 30-min
+total) and matched live in Chrome (`python -m http.server`, port 8531,
+killed after) at every interval: every-10m → `[.2667, .7667]` (today's
+exact positions, now reachable by config instead of hardcoded), every-15m
+→ `[.5]`, every-20m → `[.7667]`. Bucket selection was confirmed for all
+three `breakType` values, including both discriminating cases (movement
+forced at a fraction `alternate` would call settle; quiet forced at
+exactly 0.5, where `alternate` would call move) — not just the
+non-discriminating ones where `alternate` would have agreed anyway — and
+the live-flag toggle was confirmed to apply with no `prepSession()` call
+in between (no restart). The replay session at every-20m was confirmed to
+play video → video → sunset with no playtime seam and no break-selection
+call at all. Both restart-cleanliness cases in the design (mid-video,
+mid-choice-screen with autoplay off) were confirmed to leave zero live
+timers behind — the specific stale timer id was captured, shown cleared
+the instant the interval control's restart ran, and never fired even
+after many more timer-queue flushes.
+
+As with items 39-40, this machine's automation tabs are always
+`document.hidden`, which throttles real `setTimeout` timing unpredictably
+— real playback and wall-clock waits were not relied on. Unlike those
+items, the thing under test here (`state.breaks`, which bucket a break
+drew from) lives in a closure-private module scope with no existing
+external hook, so verification added temporary `console.log` calls at
+`prepSession()` and `gameForBreak()` plus a virtualised, fully-controlled
+`setTimeout`/`clearTimeout` (queue-and-flush-on-demand, so timer order
+could be driven deterministically instead of raced) and a one-line
+`location.hash`-gated test entry point for reaching the replay session
+directly. All of this was removed before committing — `git diff` against
+this section's own commit carries none of it, and `node --check` was
+re-run clean afterward.
+
+---
+
+## The parent app's Sensory-friendly setting arrives (2026-09-15)
+
+### [x] 42. Sensory-friendly mode: forced reduce-motion + softer (never silent) audio (PARENT-KID-CONTRADICTIONS item 7)
+
+The KidQ Parent app has a family-wide **Sensory-friendly mode** setting:
+"softer sounds, calmer visuals, fewer transitions." This prototype only had
+half of that — a reduced-motion toggle, visual only, with jingle/chime
+volumes untouched regardless of its state.
+
+**Decided (parent cross-check, 2026-09-15): one kid-side flag, two
+effects.** Reduce-motion already delivers "calmer visuals, fewer
+transitions" — the existing `.reduce-motion` class + `reducedMotion`
+variable needed no new mechanism, only a way to force them. The real gap
+was sound, so the second effect is: **every audio element this file plays
+drops to ~40% volume.** Softer, never silent — the audio carries meaning
+(the autoplay-off nudge chime, item 40, is how a pre-reader knows it's
+their move; the find/breathe/follow instructions are how a low-vision or
+colour-blind child gets the instruction at all, per the spoken-instructions
+block above `say()`). Silencing any of it would trade one accessibility
+gap for another.
+
+**Built**, following the same config pattern as `autoplay`/`breakType`
+(items 40/41):
+- `sensoryFriendly` is a session-config field (default `false`), added to
+  `prepSession()`'s projection alongside `breakEveryMinutes`/`breakType` —
+  an unlisted field is silently dropped, so the default is applied right
+  there, once. Like `breakType`, it seeds a live module flag every time a
+  session starts (through `setSensoryFriendly()`, mirroring
+  `setBreakType()`), and the demo bar's own Sensory control then overrides
+  the live flag between `prepSession()` calls — a plain login or restart
+  always reflects the session's own config again, same as break type.
+- **Volume.** `SENSORY_VOLUME = 0.4` (a starting point, not a tuned value —
+  wants testing against real families, same caveat the parent cross-check
+  itself raises). Applied at *play time*, not once at load, in every play
+  helper this file has: `safePlay()` (jingle, chime), `sayLine()` (the
+  recorded follow-the-sun voice clips) and its `say()` fallback (device
+  TTS — `SpeechSynthesisUtterance.volume`, so a device with no clip, or a
+  blocked clip, still gets the softer instruction rather than a full-volume
+  one). Explicit `1` when the flag is off, not just "leave it alone" — that
+  is what restores full volume the moment sensory-friendly turns off, and
+  what keeps a stale `.volume` from a prior sensory-friendly session from
+  surviving into a new one.
+  **Judgment call, one extension beyond the brief's literal "audio
+  element" wording:** the follow-the-sun break's catch sound (`plip()`) is
+  real app audio too — two soft sine tones via Web Audio, not an `<audio>`
+  element and not routed through `safePlay`/`sayLine` — so it was silently
+  exempt from every reading of "audio element." Included it anyway,
+  scaling the gain envelope's peak by the same constant (a `GainNode` has
+  no `.volume` to set directly), on the reasoning that leaving exactly one
+  sound at full volume while everything else the app plays drops to 40%
+  would read as broken, not deliberate, and directly contradicts "this
+  covers ALL audio." Flagged here rather than assumed silently.
+  **Explicitly out of scope:** `video` itself. `startWatching()` already
+  sets `video.muted = true` unconditionally — "demo clips carry no needed
+  audio; jingle/chime are the sound design" (pre-existing comment) — so
+  there is no audio there for this flag to soften either way.
+- **Reduce-motion coupling.** Turning sensory-friendly ON forces
+  `reducedMotion` on: the variable, the root `.reduce-motion` class, and
+  `#motion-toggle`'s own pressed state/label, so the demo bar never shows a
+  lying control. This reuses `setReducedMotion()`, extracted out of
+  `#motion-toggle`'s click handler for exactly this purpose (previously
+  inline, now a named function called by both the manual toggle and the
+  sensory-friendly force/release) — including the existing "never restart
+  mid-ending" follow-break guard, unchanged. Turning sensory-friendly OFF
+  releases the force but does not stomp a reduce-motion the child's own
+  household had chosen independently before the force: `preSensoryMotion`
+  remembers whatever `reducedMotion` was live the moment the force was
+  applied, and release restores exactly that value, not `false`. Both the
+  force and the release are additionally guarded to a genuine value change
+  (`reducedMotion !== target`) before calling `setReducedMotion()` at all —
+  without that guard, releasing sensory-friendly back to an *unchanged*
+  motion value (the case where motion was independently on, stays on)
+  would still re-run `setReducedMotion()`'s follow-break-restart side
+  effect for no reason. OS-level `prefers-reduced-motion` (`reducedMotion`'s
+  own startup default) still governs the baseline underneath all of this —
+  noted in-code, not just here.
+- **Demo bar.** One new toggle, `#sensory-toggle`, "Sensory: Off"/"On",
+  placed right after `#motion-toggle`, following the exact
+  `aria-pressed`/label convention of `#autoplay-toggle`/`#motion-toggle`.
+
+**Contract note for the parent-side settings owner:** this arrives as a
+plain family-wide boolean, same shape as `breakType`/`breakEveryMinutes` —
+nothing new needed from the API beyond carrying the field through.
+
+**Verified:** `node --check`. Live in Chrome
+(`python -m http.server`, port 8561, killed after), instrumenting through
+the DOM rather than the closure-private module state (`sensoryFriendly`,
+`reducedMotion`, `preSensoryMotion` have no external hook) — reading
+`#jingle`/`#chime`'s own `.volume` after triggering their real play paths,
+and the root element's `.reduce-motion` class plus both toggle buttons'
+`aria-pressed`/label:
+- **Flag ON** (toggled mid-session, after `prepSession()` had already run
+  so the toggle wasn't immediately undone by another seed): root gained
+  `.reduce-motion`, `#motion-toggle` read pressed/"Motion reduced", and
+  both `#jingle` (via the sunrise tap) and `#chime` (via the find break's
+  "I found them!") read `.volume === 0.4` on the very next play after the
+  toggle.
+- **Flag OFF after ON, both pre-force states:** motion was off before the
+  force → off again after release, jingle/chime back to `.volume === 1`.
+  Motion was turned on *manually* before the force → confirmed it stayed
+  on after release (not reset to off), matching the "never stomp an
+  independent choice" rule.
+- **Session-config path:** temporarily added `sensoryFriendly: true` to
+  the demo `aarav` session data (removed before committing — `git diff`
+  carries none of it), reloaded, and started that session through the
+  ordinary Sunrise demo button with the `#sensory-toggle` control never
+  touched by hand. The flag came up already on, the demo bar's own label
+  read "Sensory: On" with no click involved, reduce-motion was forced, and
+  the next jingle played at `.volume === 0.4` — confirms `prepSession()`'s
+  projection seeds the live flag on its own, and that the demo bar's label
+  never drifts from what the session actually configured.
+- **Regression:** with the flag left off throughout, jingle/chime stayed
+  at `.volume === 1`, and `#motion-toggle` was independently exercised
+  mid-way through a live follow-the-sun break (unchanged behaviour, now
+  reached through the extracted `setReducedMotion()`) — the break stayed
+  on screen, not re-celebrating, exactly as before this diff.
+- No console errors across any of the above.
+
+Not independently instrumented live: `plip()`'s gain scaling and
+`SpeechSynthesisUtterance.volume` on the `say()` fallback. Both are
+read-once-at-call parameters with no queryable element to inspect
+afterward (unlike `<audio>`'s persistent `.volume`), so this is a
+code-level guarantee — the same `sensoryFriendly ? SENSORY_VOLUME : 1`
+expression already verified live for `safePlay`/`sayLine` — rather than
+something observed firing softer live in this environment.
+
+## Stand like a tree (2026-09-15)
+
+### [x] 43. "Stand like a tree" activity break, built
+Per `docs/superpowers/specs/2026-09-14-kidq-tree-pose-break-design.md`, built
+on `design/tree-pose-break`. `BREAK_GAMES.move` is now `["find", "tree"]` —
+the change item 17 flagged as making movement-bucket rotation real — and
+`BREAK_START.tree = startTree` joins the dispatch map, plus a
+`data-break="tree"` demo-bar button.
+
+**Asset.** "Young woman meditating in yoga tree pose" by Farfique
+(LottieFiles, Lottie Simple License). The documented download-URL technique
+(Download button → editor → signed `private-cdn.lottie.host` fetch) wasn't
+needed: the same public `.lottie` bundle that powers the LottieFiles page's
+own live preview player is embedded directly in the page's server-rendered
+HTML (`assets-v2.lottiefiles.com/.../K9v8FCUpy1.lottie`, 17,876 bytes —
+matching the page's own stated 17.5KB dotLottie figure almost exactly).
+Recoloured via `scratchpad/recolor-tree.py` into
+`design/prototype/kidq-tree-anim.js` (`window.KIDQ_TREE_ANIM`, header
+comment documents the exact mapping) — never hand-edited. Clothing only:
+tank top `#F2F2F2` → cream `#FAF4E8`, shorts/bikini `#631218` → dusk
+`#C9B8E8`, shorts/bikini shadow `#561216`/`#561217` → the existing
+dusk-deep `#A991D6` (already used in this file for the high-five fallback's
+second hand). Skin and hair untouched. The top-level "Shadow" layer (the
+ground/mat ellipse) is removed entirely, not just recoloured. Verified: no
+pure white/black fill remains anywhere in the bundle; no baked-in
+lettering; the mirrored hold (`scaleX(-1)` on the Lottie container, never
+the stage — see brand.md) renders clean, checked at 300×300 side by side
+with the unmirrored pose.
+
+**Voice.** Three new clips via the same edge-tts pipeline as follow
+(`en-IN-NeerjaNeural`, `--rate=-10%`, confirmed against commit `a32e1a5`'s
+own regeneration note rather than guessed): `voice-tree-intro.mp3` (6.360s),
+`voice-tree-count.mp3` (7.800s — "5… 4… 3… 2… 1!", word-start offsets read
+from edge-tts's own `--write-subtitles` output: 1758/3327/4827/6244ms),
+`voice-tree-switch.mp3` (1.872s — "Other leg!"). Ending reuses
+`voice-follow-done.mp3` (2.016s) — no duplicate file, per spec. The hold
+chain is tuned to these REAL measured lengths, not the spec's own ~5.5s/
+~1.1s-per-number estimates — at this unhurried a pace the real gap between
+numbers runs ~1.4–1.7s. Consequence, flagged honestly: the full run is
+**~26.6s** end to end (measured via instrumentation, see below), not the
+spec's "~20s, same band as breathing" — a direct, logged result of
+following the spec's own explicit instruction to tune to the measured clip
+rather than the other way round.
+
+**Count presentation — changed mid-build from the spec's small text
+sub-line, twice, both by user steer, not a unilateral call:** (1) the
+current number now renders as one BIG digit (36/44/54px across the three
+tiers) with the still-to-come numbers trailing small and dimmed beside it,
+popping in on every change via the existing `pop()` vocabulary — "a bit fun
+and playful and visible," per the steer; (2) the digit's colour was
+overruled a second time — sun-gold measured 1.2–1.9:1 against this app's
+cream sky (nowhere near the 3:1 AA floor for large text), so it sits in
+plain **teal** (`var(--teal)`, the app's one UI accent), measured
+4.04–4.88:1 across the sky's three gradient stops. Written up as the
+shared **break-count digit pattern** in brand.md §5 (not a tree-only
+style), since count-to-10 (item 17's remaining entry) will reuse it.
+
+**Scene.** Side-tree decor rule and sun-as-sidekick sizing documented in
+brand.md §5, alongside the digit pattern. One real layout bug caught and
+fixed before commit: the side trees were first anchored to the raw
+viewport bottom (`bottom:0`), which sits far below the vertically-CENTRED
+content cluster on a tall test viewport and would clip the trees off-screen
+entirely on a real, shorter phone height — refactored to anchor off the
+viewport's own vertical centre instead. A second: the sun sidekick's
+position percentage was computed against the wrong containing block (the
+full-width scene, not the stage), pushing it partly off-screen at some
+tablet widths — fixed by nesting it inside the stage. A third: the
+assembled cluster ran 90–120px taller than find's own cluster (the tallest
+of the other three break screens) at every width on the first pass: the
+stage was trimmed from a 220/258/300px cap to 196/228/264px and the
+cluster's own gap from 18px to 14px, closing it to ~20–40px over find —
+logged in brand.md as the reasoning for staying close to, not a full step
+above, breathing's own hero caps.
+
+**Verified** (§9, adapted to this machine's hidden-tab limits — see the
+spec's own note): all eight widths (390/600/601/900/1099/1100/1440/1920)
+via raw `getBoundingClientRect()` tables — nothing overflows, nothing
+shrinks as the container grows, her stage never rectangularly intersects
+either side tree at any width (a stronger check than a silhouette check).
+Full hands-off run verified via `setTimeout` instrumentation (overriding
+`window.setTimeout` to log every scheduled delay before it fires) rather
+than watching it play, since automation tabs are always `document.hidden`
+here and rAF/Lottie frames never advance visually — the captured schedule
+matches the coded constants exactly (COUNT_STEP_MS, COUNT_MS=7800,
+SWITCH_MS=2100, the final `hold(startChoice, 1900)`) with only ordinary
+~10ms timer jitter, both dots ending lit and the mirrored class set.
+Reduced-motion run verified the same way plus a `MutationObserver` on the
+stage's class list: confirms the crossfade path fires (never the bounce
+`.flipping` class), the still-pose `goToAndStop`, and an identical
+~26.6s total (every phase here uses `hold()`, never `later()` — grepped to
+confirm). Real-session dispatch path verified by driving an actual
+`aarav` session through two videos via synthetic `ended` events (the demo
+mp4s are too short to make a real 15-minute wait meaningful) — the break
+lands on `screen-playtime` synchronously, then `screen-tree` after the
+1600ms seam hold, through `gameForBreak()`'s own array indexing, not the
+toolbar's direct jump. Recolour bundle greps clean (no pure `#fff`/`#000`).
+`node --check` clean on every JS file touched.
+
+**Human check still needed, not simulated here:** whether the pose, the
+sun's wobble, and the tree sway actually *look* right in motion — this
+environment can confirm the schedule and DOM state but not judge visual
+motion in a hidden tab.
+
+## Count to ten (2026-09-15)
+
+### [x] 44. "Count to 10, eyes closed" activity break, built
+Per `docs/superpowers/specs/2026-09-15-kidq-count-to-ten-break-design.md`,
+built on `design/count-break` (worktree `KidQ-fork-count`, off main at
+`7d1e692`, which already includes tree pose). `BREAK_GAMES.settle` is now
+`["breathe", "follow", "count"]` — the key the array's own comment had
+reserved — plus `BREAK_START.count = startCount` and a `data-break="count"`
+demo-bar button. This closes item 17: all three activity breaks the
+round-1 spec named are now built.
+
+**Voice.** Eleven new clips, same edge-tts pipeline as follow/tree
+(`en-IN-NeerjaNeural`, `--rate=-10%`, confirmed against commit `e7fa524`):
+`voice-count-intro.mp3` (3.696s, "Close your eyes… and count with me!"),
+`voice-count-1.mp3` … `voice-count-10.mp3` (ten SEPARATE per-number clips,
+per spec §4's own explicit reasoning — the hold chain triggers each at its
+own tick so digits and audio can't drift in any mode, including the
+device-TTS fallback — all eleven measure **exactly 1.872s each**, mutagen),
+`voice-count-open.mp3` (2.280s, "Open your eyes!"). Ending reuses
+`voice-follow-done.mp3` unchanged, same decision and naming wart as tree.
+Tick spacing is the measured per-number clip length itself (1872ms) —
+"chain follows audio" (spec §3) taken literally: each number gets exactly
+enough room to finish before the next starts, `hush()` the safety net
+tree's own build didn't need but this spec calls for explicitly ("Each
+sayLine call in this chain calls hush() first"), implemented on every one
+of the ten ticks plus the "Open!" transition. `TEN_OPEN_MS` (2500) adds a
+~220ms buffer past the measured 2.28s open clip, same reasoning as tree's
+own `SWITCH_MS` cushion. Consequence, flagged honestly exactly as tree's
+own item 43 did: the full run measures **~27.4s coded (~28.8s observed
+through real browser timers, the gap ordinary hidden-tab setTimeout
+coalescing)**, not the spec's own "~18.5s target" — ten clips at 1.872s
+each is already ~19s on its own, before intro/open/celebration. Not
+compressed to fit: this is the settle game, "sleepy and unhurried" is the
+explicit design goal (spec §4), and forcing a faster cadence would fight
+that goal directly.
+
+**Scene.** Donor is BREATHING's own `.bsun` dual-group `eyesOpen`/
+`eyesClosed` markup (spec §2's own explicit steer, Opus-reviewed) — the
+sunrise sun's eyes were rejected as a donor since its unscoped
+`.eyes-awake{opacity:0}` only lifts under `.screen.risen`, which
+`#screen-count` never gets. New ID-scoped CSS under `#screen-count`, not
+shared-component reuse (no shared sun component exists). A single `.dim`
+state class on `#screen-count` itself drives both the sky dim (the
+existing `.kq-duskveil` mechanism, pinned to a NEW ~0.25 opacity — the
+existing `.screen.setting`'s own 0.85 is a full dusk) and the closed eyes
+together, since the spec's sequence pairs them at the same two beats.
+Digit colour stays the shared teal (`var(--teal)`) tree's own build
+established, but RE-MEASURED against this screen's dimmed sky rather than
+inherited: alpha-compositing `.kq-duskveil`'s gradient at 0.25 opacity over
+the day sky's own three gradient stops gives **3.72–4.05:1** contrast
+across the composited range (worst case at the sky's bottom stop) — clears
+the 3:1 AA large-text floor with real margin, closer to the floor than
+tree's own 4.04–4.88:1 against the undimmed sky but not close enough to
+need a different colour. Digit entrance is deliberately quieter than
+tree's own `pop()` (spec §1: "a slow pulse, not a bounce" — count is the
+settle game): a new `kq-countpulse` keyframe, `.82→1` scale + `.55→1`
+opacity, ~300ms, its own small remove/reflow/add re-trigger helper rather
+than widening `pop()`'s two hardcoded class names for a third animation
+only this screen uses. Trail direction is the opposite of tree's: tree
+counts down and its trail previews what's still coming; this game counts
+up and its trail shows the WALKED-THROUGH numbers behind the current one
+(spec §1's own wording) — at nine numbers wide (big="10", trail="1 · 2 ·
+… · 9") this is one wider than tree's own four-wide max, the width risk
+spec §1 names by name. Measured rather than assumed to need mitigation
+(§8.1, below): the shared `.kq-breakcount-trail` size and `" · "`
+punctuation already carry real margin (180px scrollWidth against 330px
+usable at the 390px tier), so the only addition is
+`font-variant-numeric:tabular-nums`, to keep that measurement stable as
+the digits themselves change width — no smaller font, no thinner
+separator needed after all. No dots, no side decor, no new assets of any
+kind (spec §2) — the cheapest break in the set.
+
+**Demo note** (spec §8 item 5): the default "alternate" break-type config
+cannot demo count on its own. Under alternate, `bucketForBreak` sends a
+break to `move` at fraction ≤ 0.5 and `settle` above it; the default
+every-15-minute session on the demo `aarav` data plans exactly ONE break,
+landing at fraction 0.5000 — the `<=` boundary keeps it `move` (today's
+"first break is always find/tree" behaviour, unchanged by this build), so
+alternate can only reach `settle` — and only maybe reach count within
+that, depending on rotation — at every-10-minutes (two breaks, the second
+above 0.5) or wider gaps. To demo count specifically, use the demo bar's
+Break type: Quiet (forces every break to `settle`) or Breaks: every 10m
+(so there is a second, `settle`-side break to draw from) — exactly the
+combination the verification below drives.
+
+**Verified** (§8, same hidden-tab adaptation tree's own item 43 logged):
+- **8 widths** (390/600/601/900/1099/1100/1440/1920) via raw
+  `getBoundingClientRect()`/`scrollWidth` tables, worst-case digit state
+  forced (big="10", trail at its nine-number widest): no overflow, no
+  clipping, at any width. Cluster height (headline top to digit-row
+  bottom) runs 7px UNDER find's own reference cluster at 390px and
+  6.5–10.5px over it at the wider tiers — well inside tree's own precedent
+  of running 20–40px over at every width.
+- **Hands-off full run**, both motion modes, verified via the same
+  `setTimeout`-override instrumentation tree's own item 43 used (captures
+  the coded schedule without needing rAF/paint, which never advance in a
+  hidden automation tab): the full-motion run's `hold()` delays land
+  exactly on the coded constants (600, 4296, then 1872×9, 18720, 2500,
+  1900) with only ordinary timer jitter; the reduced-motion run's `hold()`
+  delays are **identical**, confirming spec §5 ("nothing shortened — all
+  `hold()`") — only the digit-pulse cleanup's own `later()` calls clamp
+  from 350ms to 200ms, a cosmetic detail outside the break's own pacing.
+- **Silent fallback**: every `<audio>.play()` forced to reject AND
+  `window.speechSynthesis` replaced with `null` (both the recorded clips
+  and the device-TTS fallback unreachable at once) — the `hold()` schedule
+  is bit-for-bit identical to the normal run; the digits still walk, same
+  total time, confirming §3's claim that visuals and the hold chain never
+  depend on audio actually playing.
+- **Eyes actually toggle**: computed `opacity` of both `.eyesOpen`/
+  `.eyesClosed` groups confirmed `1`/`0` at rest, `0`/`1` under `.dim`,
+  back to `1`/`0` on removal — instant in both directions (no `transition`
+  on that property, matching the sunrise sun's own reduced-motion
+  behaviour by construction, not by special-casing). The sky-dim
+  `.kq-duskveil` opacity target was confirmed the same way with its
+  `transition-duration` temporarily zeroed (`0`/`.25`/`0`) rather than by
+  waiting through the live 1.4s transition: this automation tab is always
+  `document.hidden`, and Chrome never ticks CSS transitions forward for a
+  hidden tab's compositor, so the live opacity reads frozen at its
+  pre-transition value even a full second past the transition's own
+  duration — a test-harness limitation (the same one that keeps rAF/Lottie
+  from advancing), not a bug in the rule; the CSSOM match and the
+  transition-bypassed target value both confirm the rule itself is
+  correct, and the mechanism (`.kq-duskveil` + `!important`
+  `transition-duration:.12s` under `.reduce-motion`) is the one already
+  proven live on the watching screen.
+- **`startCount` reached from the real session path**: Break type set to
+  Quiet, breaks every 10 minutes, driven through the actual `aarav` demo
+  session (sunrise tap → `ended` event on the video, real `state.current`/
+  `state.watched` set by the real code path, not synthesised) across
+  **7 fresh page reloads** (`breakRotation` reseeds per load, not per
+  session restart, confirmed by checking that `window.speechSynthesis`
+  and injected debug globals from a prior trial do NOT survive a `navigate`
+  call — a genuine reload, not a bfcache restore). All three settle games
+  appeared (count ×4, follow ×2, breathe ×1) — one more trial than tree's
+  own item 43 logged ("verified uniform, 6 % 3 == 0"), added here because
+  the first six landed on only two of the three games and a seventh was
+  needed to see breathing actually fire before calling the wiring
+  confirmed.
+- Celebration state inspected directly mid-run: `#screen-count` carries
+  `active celebrate` (not `dim`), headline reads "You did it! ✨", the
+  digit row computes `display:none` and both digit spans are cleared —
+  matching `#screen-count.celebrate` exactly as written.
+- Console clean across every run above (normal, reduced-motion, silent
+  fallback, all seven quiet-type reloads). `node --check` clean.
+
+**Human check still needed, not simulated here:** whether the digit's
+quieter pulse actually reads as calmer than tree's pop, and whether the
+sky-dim/eyes-close/eyes-open beats feel right in motion — this environment
+can confirm the schedule, the DOM state and the CSS rules' target values,
+but not judge visual motion or timing *feel* in a hidden tab.
+
+## Break-count digits ride balloons (2026-09-15)
+
+### [x] 45. The shared break-count digit now arrives on a balloon, both screens
+User request: "make them like coming on balloon" — balloon over ball because
+the splash's own KidQ letters are already glossy inflating balloons
+(`kidq-desktop-app.css:89–141`), an established brand vocabulary, not a new
+shape to introduce. Built on `design/balloon-digits`, worktree
+`KidQ-fork-balloon`, off `main` at `94f175f` (tree pose + count break + the
+pick-pill package + the Touch docs sweep, all already in). Touches only
+`design/prototype/index.html`, `kidq-desktop-app.css`, `kidq-desktop-app.js`
+and `brand.md` §5 — no other screen, no backend, no asset files.
+
+**Recipe, not a new style.** Same 5-stop radial-gradient recipe as the
+splash's own balloons (identical hex values), same four hues in the same
+cycling order the splash's own letters use — teal → gold → coral → dusk →
+repeat, one step per digit change. A shared `setBalloonHue(el, i)` helper
+(`kidq-desktop-app.js`, beside `pop()`) drives both screens so the cycle can
+never drift between them. Only the gradient's *size* departs from the
+splash's own default farthest-corner sizing: an explicit `circle
+calc(var(--cnt) * .729)` radius, because a small round digit badge's own
+centre only reaches t≈0.3 of the splash's default sizing (still the
+near-white highlight band) — measured as cream failing on teal and coral
+too, not just gold. The smaller radius moves the badge centre to t≈0.55,
+the recipe's own literal mid-point between the 36/40% "true hue" stop and
+the 62/66% deep one, without touching a single colour value.
+
+**Digit ink per hue, measured** (`scratchpad/balloon-*.js` this session;
+full table and worked geometry in `brand.md` §5 and the CSS comment above
+`.kq-digitballoon`):
+
+| hue   | sampled colour (t=0.55) | cream   | ink     | used |
+|-------|--------------------------|---------|---------|------|
+| teal  | `#258776`                | 4.00:1  | 3.25:1  | cream |
+| gold  | `#F6B43B`                | 1.66:1  | 7.83:1  | **ink** |
+| coral | `#D0604C`                | 3.52:1  | 3.70:1  | cream |
+| dusk  | `#7C67B6`                | 4.28:1  | 3.04:1  | cream |
+
+All eight combinations clear the 3:1 AA large-text floor. Gold is the one
+hue cream can't sit on (matching the pre-existing flat-sun-vs-sky finding
+already on record in brand.md §5, not a new gap this balloon build
+introduces) — ink flips in on the same `hue-gold` class the body's own
+gradient swaps on, one class, two effects, never drifts.
+
+**Balloon-vs-sky (non-text, 3:1 floor), also measured, honestly mixed:**
+the balloon is `aria-hidden` decoration around the digit (the digit text
+is the one piece actually carrying the count), so this is a self-imposed
+bar past what WCAG 1.4.11 requires of decorative graphics — checked anyway,
+per the design brief. At the same t=0.55 body tone: bright sky (tree) —
+teal 3.42:1, coral 3.01:1, dusk 3.67:1 clear, gold 1.43:1 does not; dimmed
+sky (count, `.kq-duskveil` @ .25) — teal 3.15:1 and dusk 3.39:1 still
+clear, coral drops to 2.78:1 (a real but narrow miss) and gold to 1.32:1
+(fails harder). Not re-tuned to force a pass — the brief asked to reuse the
+recipe's colour values, not invent past them, and the digit text itself
+(the functional half of the pattern) clears 3:1 on all four hues regardless
+of which sky sits behind the balloon. Logged honestly in brand.md §5 rather
+than silently dropped, matching this file's own habit for a known,
+narrow, out-of-scope gap.
+
+**Entrance, one per screen, both reusing existing vocabulary:** tree's
+balloon bounces in on the *same* `pop()` squash-stretch the bare digit used
+before — now targeting the whole balloon wrapper (body + knot + string +
+digit move as one unit, since `transform` on the wrapper carries every
+absolutely-positioned child with it), same hold-chain trigger, same
+re-entrancy discipline, nothing else changed. Count's balloon instead
+floats gently up into place — a new `kq-balloonfloat` keyframe
+(`translateY(14px)→0`, `.4→1` opacity, no scale, no squash-stretch) on the
+same remove/reflow/add re-trigger helper count already had, replacing the
+old `kq-countpulse` scale-pulse (retired, not left dead) rather than
+stacking a second animation on top of it. Both keyframes' `100%` state
+matches the wrapper's own unanimated rest state exactly
+(`transform:none`, `opacity:1`) — the same discipline `pop()` itself
+already held — so reduced motion's blanket crush to `.001ms` never leaves
+a balloon stuck mid-bounce or mid-float; confirmed live (below), not just
+reasoned about.
+
+**Knot & string.** Knot: a small solid triangle in the same hue's own 100%
+(deepest) recipe stop — the shape's own shadow colour, not a new one.
+String: a short, slightly-tilted 1.5px thread in `var(--ink-soft)`, one
+neutral colour across all four hues (real balloon string doesn't recolour
+with the balloon) and deliberately short, per the brief ("a short string")
+— no balloon trail: the trail stays plain text exactly as before, since a
+balloon there would be clutter, not a count aid.
+
+**Sharing judgment call** (asked for explicitly): the balloon SHAPE and
+hue-cycling are one shared implementation — `.kq-digitballoon` +
+`.kq-balloon-body/-knot/-string`, the four `hue-*` classes, and
+`setBalloonHue()` — used identically by both screens, no copy-paste. The
+*entrance* stays two separate, screen-scoped CSS rules
+(`#screen-tree .kq-digitballoon.tapped` → `pop()`;
+`#screen-count .kq-digitballoon.pulse` → `kq-balloonfloat`) rather than one
+shared "balloon entrance" abstraction: the two screens already used two
+different triggering helpers before this session for reasons specific to
+each one's own timing structure (`pop()`'s hardcoded two-class shape vs
+count's own small re-trigger helper), and forcing a shared entrance
+function would have meant either widening `pop()` past that established
+shape or losing the bounce-vs-float distinction the brief asked for by
+name. Judged: not worth it for two three-line CSS rules that already read
+clearly on their own.
+
+**Verified**, same hidden-tab-honest discipline items 43/44 established
+(this session's tab was a real, visible Chrome window — not automation's
+usual hidden tab — but the same instrumentation was used anyway rather
+than trusting a screenshot mid-flight):
+- `node --check` clean on `kidq-desktop-app.js` (and the other three
+  prototype JS files, untouched, checked anyway).
+- **Contrast**, all eight digit-ink combinations and both balloon-vs-sky
+  checks (bright + dimmed), computed directly (not eyeballed) — table
+  above; full working in `scratchpad/balloon-*.js`, this session.
+- **Balloon + digit computed styles per tick**, both screens, driven
+  through a real `data-break` click with `window.setTimeout` never
+  overridden (a visible tab, so real timers): tree's hue/digit sequence
+  read back exactly `5:teal → 4:gold → 3:coral → 2:dusk → 1:teal` on BOTH
+  legs (resets to teal each leg, matching `setTreeCount(0)`'s own hue
+  reset); count's read back `1:teal → 2:gold → … → 9:teal → 10:gold` —
+  both exactly `i % 4` against `BALLOON_HUES`, no drift, no off-by-one.
+  Digit `color` sampled via `getComputedStyle` at all ten count ticks:
+  `rgb(250,244,232)` (cream) on teal/coral/dusk, `rgb(46,42,36)` (ink) on
+  gold — matches the table exactly, not just the class name.
+- **8-width sweep** (390/600/601/900/1099/1100/1440/1920), both screens,
+  worst-case content forced (tree: any digit; count: big="10" — the one
+  two-character value — with the full nine-number trail): zero overflow,
+  zero collision with the stage/sun/side-trees/trail at any width, via raw
+  `getBoundingClientRect()` overlap checks, not a visual skim. "10"'s own
+  text width measured against its balloon's width directly (a Range
+  bounding box, not the flex box) — clears with 6.7–10px margin on each
+  side across all three size tiers, comfortably inside the oval, never
+  touching its edge.
+- **Reduced-motion runs**, both screens, full hands-off: `animation-
+  duration` reads `1e-6s` (the global crush) on both `.tapped` and
+  `.pulse`, and both settle to `transform:none; opacity:1` — the wrapper's
+  own rest state — confirmed by computed style, not inferred. A full
+  reduced-motion tree run (real timers, real wall clock) reproduced the
+  identical hue/digit sequence and landed within a few hundred ms of the
+  normal-motion run's own ~26.6s total, confirming (as tree's own item 43
+  already established for `pop()`) that reduced motion changes nothing
+  about the `hold()`-driven schedule — this file has no
+  `animationend`/`transitionend` listener anywhere (grepped), so it
+  structurally can't.
+- **Re-entrancy**: the tree break re-triggered a second time, same tab,
+  same session, straight from the first run's celebration exit — balloon
+  came back at `hue-teal`, digit `5`, trail `4 · 3 · 2 · 1`, no stale
+  `hue-gold`/`hue-dusk`/`tapped`/`celebrate` residue carried over.
+- **Console clean** across every run above (normal, reduced-motion,
+  re-entrancy) — checked with `read_console_messages`, not assumed from a
+  quiet screenshot.
+- Served on an uncommon local port for every check above, `python -m
+  http.server` on the prototype directory; killed after.
+
+**Human check still needed, not simulated here:** whether the glossy
+highlight and the bounce-vs-float distinction actually read as intended in
+motion, and whether the balloon reads as clearly "balloon" rather than
+"badge" at the smallest (390px) size — this environment confirmed geometry,
+computed styles and timing, not the felt motion or the shape's silhouette
+recognisability, in a real but unattended browser tab.
