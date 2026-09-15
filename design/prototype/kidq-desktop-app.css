@@ -307,7 +307,7 @@ button{font-family:inherit; -webkit-tap-highlight-color:transparent}
    between consecutive screens. Uses only the existing ink-soft token, no new
    colour. */
 #screen-watching .kq-sun svg, #screen-cast .kq-sun svg, #screen-choice .kq-sun svg{
-  filter:drop-shadow(0 1.5px 3.5px rgba(107,100,89,.65))}
+  filter:drop-shadow(0 1.5px 3.5px color-mix(in srgb, var(--ink-soft) 65%, transparent))}
 /* the status-pill slot: the time pill, and the Playtime pill on the two break
    screens where it has no headline to sit above. Position is shared; each pill
    keeps its own fill. */
@@ -366,26 +366,41 @@ button{font-family:inherit; -webkit-tap-highlight-color:transparent}
 .kq-eq i:nth-child(2){animation-delay:.2s}
 .kq-eq i:nth-child(3){animation-delay:.45s}
 /* "melt kept, edges firmed" (user-approved): the day-bar deliberately keeps its
-   melt-into-the-sky gradient (no colour change) but gets a soft ink-soft inset
-   hairline so its edge reads against the page. Set once here at class level -
-   NOT per responsive tier - so it carries through the base/tablet/wide overrides
-   at :1191, :1218 and :1282 (position/size only, no box-shadow of their own)
-   without duplication. Alpha .5 chosen after tuning upward from the originally-mocked
-   .28: composited over the page background (#FAF4E8) it measures ~2.06:1,
-   and over the track's lightest stop (#F7EBD2) ~2.00:1 - short of the 3:1
-   non-text-UI target (ink-soft's own ceiling only clears 3:1 past ~alpha .72,
-   which reads as a visible dark border rather than a hairline and would undo
-   the approved "melt kept" treatment), but a clear, visually-confirmed step up
-   from .28 while still reading quiet. See OPEN-ITEMS.md item 35 / this pass's
-   own entry for the full reasoning. */
+   melt-into-the-sky gradient (no colour change) but gets a soft ink-soft
+   hairline so its edge reads against the page. NOT a box-shadow on
+   .kq-daybar itself: box-shadow paints as part of the element's own
+   background layer, UNDER its children in paint order, so an inset ring
+   there was fully hidden behind .veil, which ships at width:100% at session
+   start and exactly covers the bar's own box - caught in review, reproduced
+   live before this fix. Painted as a ::after overlay instead: generated
+   content is appended last, so (all three being position:absolute with no
+   explicit stacking otherwise) it paints ABOVE both .veil and .knob by
+   default - .knob is bumped to z-index:1 so the ring doesn't draw a line
+   across its face where the two overlap. Set once here at class level -
+   NOT per responsive tier - so it carries through the base/tablet/wide
+   overrides at :1206, :1233 and :1297 (position/size only, no shadow of
+   their own) without duplication. Alpha .5 (ink-soft, via the same
+   color-mix-with-transparent pattern as :553, confirmed rendering
+   identically to the rgba literal before swapping) chosen after tuning
+   upward from the originally-mocked .28, by eye on the live screen at
+   .28/.5/.72. Measured with the veil in its session-start (100%) state,
+   across the gradient's four stops composited under the veil: cream 0%
+   2.05:1, gold 34% 2.00:1, dusk 68% 1.98:1, night 100% 1.76:1 - short of
+   the 3:1 non-text-UI target (ink-soft's own ceiling only clears 3:1 past
+   ~alpha .72, which reads as a visible dark border and would undo the
+   "melt kept" treatment), a considered compromise logged in OPEN-ITEMS.md
+   item 55. */
 .kq-daybar{position:absolute; left:20px; right:20px; top:530px; height:12px; border-radius:99px;
-  background:linear-gradient(90deg,#F7EBD2 0%,#FFC64D 34%,#C9B8E8 68%,#2B2955 100%);
-  box-shadow:inset 0 0 0 1px rgba(107,100,89,.5)}
+  background:linear-gradient(90deg,#F7EBD2 0%,#FFC64D 34%,#C9B8E8 68%,#2B2955 100%)}
+.kq-daybar::after{content:""; position:absolute; inset:0; border-radius:99px;
+  box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--ink-soft) 50%, transparent);
+  pointer-events:none}
 .kq-daybar .veil{position:absolute; top:0; bottom:0; right:0; border-radius:0 99px 99px 0;
   background:rgba(250,244,232,.78)}
 .kq-daybar .knob{position:absolute; top:50%; width:20px; height:20px; transform:translate(-50%,-50%);
-  border-radius:50%; background:var(--sun); border:3px solid #fff;
-  box-shadow:0 2px 6px rgba(46,42,36,.45), 0 0 0 1px rgba(107,100,89,.4)}
+  border-radius:50%; background:var(--sun); border:3px solid #fff; z-index:1;
+  box-shadow:0 2px 6px color-mix(in srgb, var(--ink) 45%, transparent),
+             0 0 0 1px color-mix(in srgb, var(--ink-soft) 40%, transparent)}
 .kq-now{position:absolute; left:0; right:0; top:562px; text-align:center; padding:0 30px}
 .kq-now .title{font-family:var(--disp); font-weight:700; font-size:21px; color:var(--ink); line-height:1.2}
 .kq-now .sub{display:flex; justify-content:center; align-items:center; gap:8px; margin-top:6px;
