@@ -78,6 +78,33 @@
   // variable, not part of `state`, so switching profiles or restarting the
   // demo flow does not reset it. Flipped by the demo bar's Autoplay control.
   let autoplay = true;
+  // Stands in for the KidQ Parent app's per-family break-type setting
+  // (Movement / Quiet-calm / Let KidQ alternate). Unlike autoplay/reducedMotion
+  // above, this DOES have a session-level source of truth: state.session.breakType,
+  // defaulted in prepSession's projection below. prepSession reinitialises this
+  // live variable from that field every time a session starts, so a plain
+  // login flow reflects the parent's own setting with no demo-bar touch needed.
+  // The demo bar's Break-type control then overrides it live, mid-session,
+  // exactly like autoplay/motion-toggle: read fresh at gameForBreak() fire
+  // time (see bucketForBreak below), no restart needed, since breakType only
+  // decides which bucket a break draws from, never where breaks land.
+  let breakType = "alternate";
+  // Label map for the demo bar's Break-type control, and the ONE place that
+  // ever changes `breakType` — both the toggle's own click handler and
+  // prepSession's reseed line (below) call this, so the button's label can
+  // never drift from the value gameForBreak() actually reads. Before this,
+  // prepSession() reseeding the variable directly (correct) left the label
+  // showing whatever the demo bar last set it to (stale) — a control whose
+  // label lies is worse than no control. No element-existence guard: every
+  // prepSession() call in this file runs from inside an event handler wired
+  // after this script's top-level code (including #breaktype-toggle's own
+  // wiring, near the bottom) has already run, so the button always exists by
+  // the time this fires.
+  const BREAK_TYPES = { alternate: "Alternate", movement: "Movement", quiet: "Quiet" };
+  function setBreakType(v) {
+    breakType = v;
+    $("#breaktype-toggle").textContent = `Break type: ${BREAK_TYPES[breakType]}`;
+  }
   const later = (fn, ms) => { const id = setTimeout(fn, reducedMotion ? Math.min(ms, 200) : ms); timers.push(id); return id; };
   // Phase timing for activity breaks. Unlike later(), this does NOT clamp under
   // reduced motion: a 1.5s hold in a break is the activity itself, not a
@@ -172,12 +199,15 @@
                   breaks: [], breaksTaken: 0 };
 
   /* ---------- activity breaks ----------
-     Exactly two breaks per session, at the 1/3 and 2/3 points of the parent's
-     allotted minutes, each landing on the nearest video boundary (never
-     mid-video). Fewer videos means fewer places a break can sit: 2 videos have
-     only one boundary, 1 video has none.
-     Break 1 draws from MOVE (child is still fresh), break 2 from SETTLE (the
-     day is winding down) — the same arc the sun itself travels.             */
+     Break count and positions are config-driven (KidQ Parent app: break
+     interval every 10/15/20 min), each landing on the nearest video boundary
+     (never mid-video). Fewer videos means fewer places a break can sit: 2
+     videos have only one boundary, 1 video has none.
+     Break-type config (Movement / Quiet-calm / Let KidQ alternate) decides
+     which bucket each break draws from — see bucketForBreak below. Under the
+     default "alternate" setting this reproduces the original arc: early
+     breaks draw from MOVE (child is still fresh), later ones from SETTLE (the
+     day is winding down) — the same arc the sun itself travels.            */
   const BREAK_GAMES = {
     move:   ["find"],
     settle: ["breathe", "follow"]
@@ -185,11 +215,33 @@
     //             "count" joins settle
   };
 
-  // Returns the two break points as fractions of the session's total minutes.
+  // Returns the planned break points as fractions of the session's total
+  // minutes, for a given break interval (parent-configured: 10/15/20 min).
   // Boundary i sits after video i, so i runs 1..n-1. Working in fractions (not
   // video indices) keeps breaks correct when the child switches videos from the
   // session strip — the day's progress is what decides, not the running order.
-  function planBreaks(videos) {
+  //
+  // Targets are k * interval / total for every k with k * interval < total —
+  // interval-many minutes in, twice that, and so on, up to but not reaching
+  // the end of the queue. Each target snaps to the nearest not-yet-used video
+  // boundary, under two constraints (Opus review 2026-09-15 — unbounded
+  // snapping mis-places breaks on lopsided queues, e.g. a 20+1+9-min queue at
+  // every-10m put breaks at minutes 20 and 21):
+  //   - max snap distance: a target whose nearest remaining boundary is more
+  //     than half an interval away is dropped, not snapped.
+  //   - min gap: a boundary within half an interval of an already-chosen
+  //     break is not eligible for a later target.
+  // Ties (a boundary exactly as close to a target as another) keep the
+  // earlier boundary: the `<` below is strict, and bounds are walked in
+  // increasing order, so the first (smaller) one found wins.
+  //
+  // Consequences, both intentional: break count is capped by boundary count
+  // (n-1 for n videos) and by the constraints above, so a config that asks
+  // for more breaks than fit gets fewer — matches the parent app's own
+  // hedged copy ("About one break every N minutes"); and a session shorter
+  // than one interval produces zero targets, so zero breaks
+  // (state.breaks = []) — downstream code already handles that.
+  function planBreaks(videos, intervalMinutes) {
     if (videos.length < 2) return [];
     const total = videos.reduce((s, v) => s + v.minutes, 0);
     if (!total) return [];
@@ -199,36 +251,71 @@
       cum += videos[i].minutes;
       bounds.push(cum / total);
     }
+    const halfInterval = (intervalMinutes / 2) / total;
     const picked = [];
-    [1 / 3, 2 / 3].forEach((target) => {
+    for (let k = 1; k * intervalMinutes < total; k++) {
+      const target = (k * intervalMinutes) / total;
       let best = null;
       bounds.forEach((b) => {
         if (picked.includes(b)) return;
+        if (picked.some((p) => Math.abs(b - p) <= halfInterval)) return; // min gap
         if (best === null || Math.abs(b - target) < Math.abs(best - target)) best = b;
       });
-      if (best !== null) picked.push(best);
-    });
+      if (best !== null && Math.abs(best - target) <= halfInterval) picked.push(best); // max snap distance
+    }
     return picked.sort((a, b) => a - b);
   }
 
-  // Rotate within each bucket so the same session never serves a game twice and
-  // consecutive sessions differ. Rotation is per-load; a real build would seed
-  // this from the child's recent history.
+  // Rotate within each bucket so consecutive breaks drawing from the same
+  // bucket don't repeat immediately, and consecutive sessions differ (no
+  // immediate repeat — with more breaks than bucket entries, a bucket does
+  // eventually repeat within a session; the old "never twice in a session"
+  // claim stops being true once break count can exceed two). Rotation is
+  // per-load; a real build would seed this from the child's recent history.
   let breakRotation = Math.floor(Math.random() * 6);
+
+  // Which bucket break `index` draws from, honouring the live breakType flag.
+  function bucketForBreak(index) {
+    if (breakType === "movement") return "move";
+    if (breakType === "quiet") return "settle";
+    // alternate (default): the PLANNED fraction decides (state.breaks[index]),
+    // not sessionProgress() at fire time — a strip-switching child can fire a
+    // break late, and the planned slot is the contract. <= 0.5, not <: the
+    // default every-15m session yields exactly one break at fraction 0.5000,
+    // and it must stay the movement break, matching today's original
+    // "first break is always find" behaviour.
+    return state.breaks[index] <= 0.5 ? "move" : "settle";
+  }
   function gameForBreak(index) {
-    const bucket = index === 0 ? BREAK_GAMES.move : BREAK_GAMES.settle;
+    const bucket = BREAK_GAMES[bucketForBreak(index)];
     return bucket[(breakRotation + index) % bucket.length];
   }
 
   function prepSession(profileId, sessionOverride) {
     state.profile = KidQData.profiles.find((p) => p.id === profileId) || KidQData.profiles[0];
     const src = sessionOverride || KidQData.sessions[state.profile.id];
-    state.session = src ? { totalMinutes: src.totalMinutes, replay: !!src.replay, videos: [...src.videos] } : null;
+    state.session = src ? {
+      totalMinutes: src.totalMinutes,
+      replay: !!src.replay,
+      videos: [...src.videos],
+      // Parent-configured break settings. prepSession PROJECTS the session
+      // object — a field not listed here is silently dropped (as pickedBy
+      // already was, above) — so these two get their defaults applied right
+      // here, once, rather than at every read site.
+      breakEveryMinutes: src.breakEveryMinutes ?? 15,
+      breakType: src.breakType ?? "alternate"
+    } : null;
     state.watched = new Set();
     state.progress = {};
     state.current = null;
-    state.breaks = state.session ? planBreaks(state.session.videos) : [];
+    // Interval is read once, here, at planning time.
+    state.breaks = state.session ? planBreaks(state.session.videos, state.session.breakEveryMinutes) : [];
     state.breaksTaken = 0;
+    // Seeds the live breakType flag (declared near `autoplay` above) from this
+    // session's own config, through setBreakType() so the demo bar's label
+    // stays in sync too. breakType itself is read live at gameForBreak() fire
+    // time, not captured here — this line only sets its starting value.
+    setBreakType(state.session ? state.session.breakType : "alternate");
     return !!state.session;
   }
 
@@ -1141,6 +1228,45 @@
     autoplay = !autoplay;
     e.currentTarget.setAttribute("aria-pressed", String(!autoplay));
     e.currentTarget.textContent = autoplay ? "Autoplay: On" : "Autoplay: Off";
+  });
+
+  // Previews the KidQ Parent app's break-type setting (Movement / Quiet-calm /
+  // Let KidQ alternate). A live flag exactly like autoplay above: just cycles
+  // the module-level `breakType` variable (through setBreakType, declared
+  // near it above, which also keeps this button's own label in sync), read
+  // fresh at gameForBreak() fire time, so the change applies from the NEXT
+  // break onward with no restart — breakType only decides which bucket a
+  // break draws from, never where breaks land, so the already-planned
+  // state.breaks positions are untouched.
+  const BREAK_TYPE_ORDER = ["alternate", "movement", "quiet"];
+  $("#breaktype-toggle").addEventListener("click", () => {
+    const i = BREAK_TYPE_ORDER.indexOf(breakType);
+    setBreakType(BREAK_TYPE_ORDER[(i + 1) % BREAK_TYPE_ORDER.length]);
+  });
+
+  // Previews the KidQ Parent app's break-interval setting (every 10/15/20
+  // min). Unlike breakType above, this CANNOT apply mid-session — breaks are
+  // planned once, at prepSession() — so this control restarts the session,
+  // always into the demo aarav session (the one with breaks to show). It
+  // runs the same [data-demo] prologue every jump above uses (clearTimers();
+  // video.pause();) before restarting, or a pending autoAdvance later() /
+  // autoplay-off nudge hold() chain would fire into the new session with
+  // stale state. The override carries the CURRENT live breakType forward
+  // (not the aarav session's own default) so cycling the interval doesn't
+  // silently revert a type the demo bar was already showing — a plain login
+  // or "↻ Restart full flow" still reseeds breakType from the session's own
+  // config, which is correct: the parent's config is the source of truth,
+  // and setBreakType() now keeps this button's label honest either way.
+  const BREAK_EVERY_OPTIONS = [10, 15, 20];
+  let demoBreakEvery = 15;
+  $("#breakevery-toggle").addEventListener("click", (e) => {
+    clearTimers();
+    video.pause();
+    const i = BREAK_EVERY_OPTIONS.indexOf(demoBreakEvery);
+    demoBreakEvery = BREAK_EVERY_OPTIONS[(i + 1) % BREAK_EVERY_OPTIONS.length];
+    e.currentTarget.textContent = `Breaks: every ${demoBreakEvery}m`;
+    prepSession("aarav", { ...KidQData.sessions.aarav, breakEveryMinutes: demoBreakEvery, breakType });
+    startSunrise();
   });
 
   $("#motion-toggle").addEventListener("click", (e) => {
