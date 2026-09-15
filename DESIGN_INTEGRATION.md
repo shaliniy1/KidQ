@@ -525,3 +525,20 @@ Local verification URLs:
 - `http://localhost:3000/kid` — Kid experience
 - `http://localhost:3000/parent` — Parent experience
 - `http://localhost:3000/analytics` — Parent analytics
+
+## 20. Parent Entry Consent Placement
+
+Consent is now shown inline on the Parent login surface after either
+`Continue with Google` or `First-time parent setup` is selected. It does not
+open a separate route or push consent into the family-question screen.
+After the parent accepts, the Google path enters the Parent home and the
+first-time path enters the questions-only family setup screen. The setup
+screen contains the parent name, child nickname, and age-band questions plus
+the existing analytics privacy note.
+
+The login surface keeps both entry buttons visible. Selecting Google reveals
+consent below the First-time parent setup button without replacing the login
+surface. Selecting First-time parent setup opens a sign-up panel with Google
+sign-up, followed by the same inline consent step. The sign-in subtitle is
+highlighted in KidQ teal, and the one-account-per-family guidance is included
+inside the privacy copy.
