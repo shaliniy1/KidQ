@@ -18,7 +18,11 @@
 
   <!-- splash -->
   <section class="screen" id="screen-splash" aria-label="KidQ is opening">
-    <div class="kq-sky kq-sky--predawn">
+    <!-- Night sky (not predawn): sets up the sky-as-timer arc (night here
+         -> the sunrise screen's "Touch the sun to start your day") and
+         measures better for the KidQ letters' own gradient than predawn did
+         (brand.md §5, splash-backdrop bullet). -->
+    <div class="kq-sky kq-sky--night">
       <span class="kq-star" style="left:15%; top:8%"></span>
       <span class="kq-star" style="left:82%; top:12%; animation-delay:-1.2s; width:3px; height:3px"></span>
       <span class="kq-star" style="left:62.7%; top:4.1%; animation-delay:-2.57s; width:2px; height:2px"></span>
@@ -45,8 +49,12 @@
       <span class="kq-star" style="left:27.2%; top:13.6%; animation-delay:-1.57s; width:3px; height:3px"></span>
       <svg class="kq-cloud" style="top:18%; animation-delay:-8s" width="70" height="30" viewBox="0 0 70 30"><ellipse cx="35" cy="21" rx="34" ry="8" fill="#C9B8E8" opacity=".7"/><circle cx="17" cy="15" r="9.5" fill="#C9B8E8" opacity=".65"/><circle cx="36" cy="10" r="12" fill="#C9B8E8" opacity=".65"/><circle cx="54" cy="14" r="9" fill="#C9B8E8" opacity=".65"/><path d="M16.5 13.5 q1.7 1.3 3.4 0" stroke="#6B6459" stroke-width="1.4" fill="none" stroke-linecap="round"/><path d="M22.5 13.5 q1.7 1.3 3.4 0" stroke="#6B6459" stroke-width="1.4" fill="none" stroke-linecap="round"/><path d="M17 17.5 Q21 19.5 25 17.5" stroke="#6B6459" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>
       <svg class="kq-cloud c2" style="top:28%" width="54" height="24" viewBox="0 0 54 24"><ellipse cx="27" cy="17" rx="26" ry="6.5" fill="#C9B8E8" opacity=".68"/><circle cx="14" cy="12" r="7.5" fill="#C9B8E8" opacity=".62"/><circle cx="29" cy="8" r="9" fill="#C9B8E8" opacity=".62"/><circle cx="43" cy="11" r="6.8" fill="#C9B8E8" opacity=".62"/><path d="M11 11.5 q1.3 1 2.6 0" stroke="#6B6459" stroke-width="1.2" fill="none" stroke-linecap="round"/><path d="M16 11.5 q1.3 1 2.6 0" stroke="#6B6459" stroke-width="1.2" fill="none" stroke-linecap="round"/><path d="M11.3 14.7 Q14.5 16.2 17.7 14.7" stroke="#6B6459" stroke-width="1.3" fill="none" stroke-linecap="round"/></svg>
+      <div class="kq-digitballoon kq-splashdrift sd1 hue-teal pos-tl"><span class="kq-balloon-body"></span><span class="kq-balloon-knot"></span><span class="kq-balloon-string"></span></div>
+      <div class="kq-digitballoon kq-splashdrift sd2 hue-coral pos-l"><span class="kq-balloon-body"></span><span class="kq-balloon-knot"></span><span class="kq-balloon-string"></span></div>
+      <div class="kq-digitballoon kq-splashdrift sd3 hue-dusk pos-r"><span class="kq-balloon-body"></span><span class="kq-balloon-knot"></span><span class="kq-balloon-string"></span></div>
+      <div class="kq-digitballoon kq-splashdrift sd4 hue-rose pos-b"><span class="kq-balloon-body"></span><span class="kq-balloon-knot"></span><span class="kq-balloon-string"></span></div>
     </div>
-    <span class="balloon-slot"><i class="seed s1"></i><span class="balloon b1">K</span></span><span class="balloon-slot"><i class="seed s2"></i><span class="balloon b2">i</span></span><span class="balloon-slot"><i class="seed s3"></i><span class="balloon b3">d</span></span><span class="balloon-slot"><i class="seed s4"></i><span class="balloon b4">Q</span></span>
+    <span class="balloon-slot" aria-hidden="true"><i class="seed s1"></i><span class="balloon b1">K</span></span><span class="balloon-slot" aria-hidden="true"><i class="seed s2"></i><span class="balloon b2">i</span></span><span class="balloon-slot" aria-hidden="true"><i class="seed s3"></i><span class="balloon b3">d</span></span><span class="balloon-slot" aria-hidden="true"><i class="seed s4"></i><span class="balloon b4">Q</span></span>
   </section>
 
   <!-- login: who's watching -->
@@ -499,6 +507,10 @@
           <p class="wn-label">What's next</p>
           <div class="wn-row" id="wn-row"></div>
         </div>
+        <!-- the headline/hf-say swaps above are plain display toggles with no
+             aria-live of their own - this is the one announcement for the
+             whole high-five moment, set once in fiveUp() -->
+        <p class="sr-only" id="done-announce" aria-live="polite"></p>
       </div>
     </div>
   </section>
@@ -569,6 +581,10 @@
           <svg viewBox="0 0 20 20" width="17" height="17" aria-hidden="true"><path d="M10 17 C4 12 2 8.5 4.2 6.2 A3.4 3.4 0 0 1 10 7.4 A3.4 3.4 0 0 1 15.8 6.2 C18 8.5 16 12 10 17 Z" fill="#E2705E"/></svg>
           <span>Watch yesterday's videos again?</span>
         </button>
+        <!-- sleeping-sun/waiting-moon only ever toggle a CSS wiggle/pop - this
+             announces the same gentle "nothing to see yet" confirmation for
+             screen-reader users when either is touched -->
+        <p class="sr-only" id="no-session-announce" aria-live="polite"></p>
       </div>
     </div>
   </section>
@@ -649,7 +665,7 @@
         </div>
       </div>
       <span class="kq-timeleft">12 min left</span>
-      <p class="kq-castpill">
+      <p class="kq-castpill" aria-live="polite">
         <svg width="17" height="14" viewBox="0 0 20 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="1" width="18" height="12" rx="2"/><path d="M6 15 h8"/></svg>
         <span class="playing-txt">Playing on Living Room TV</span>
         <span class="paused-txt">Paused on TV</span>
@@ -676,28 +692,6 @@
   </section>
 
 </div>
-
-<nav class="demo-bar" aria-label="Prototype scenarios">
-  <button id="restart-flow">↻ Restart full flow</button>
-  <button data-demo="login">Who's watching</button>
-  <button data-demo="sunrise">Sunrise</button>
-  <button data-demo="no-session">No session</button>
-  <button data-demo="night-light">Night light</button>
-  <button data-demo="cast">Cast</button>
-  <button data-break="breathe">Break: breathe</button>
-  <button data-break="find">Break: find 3</button>
-  <button data-break="follow">Break: follow sun</button>
-  <button data-break="tree">Break: tree</button>
-  <button data-break="count">Break: count</button>
-  <button data-sky="0.08">Sun: rise</button>
-  <button data-sky="0.5">Sun: midday</button>
-  <button data-sky="0.95" data-dusk="1">Sun: sunset</button>
-  <button id="autoplay-toggle" aria-pressed="false">Autoplay: On</button>
-  <button id="breaktype-toggle">Break type: Alternate</button>
-  <button id="breakevery-toggle">Breaks: every 15m</button>
-  <button id="motion-toggle" aria-pressed="false">Reduce motion</button>
-  <button id="sensory-toggle" aria-pressed="false">Sensory: Off</button>
-</nav>
 
 <audio id="jingle" src="proposal-src/splash-jingle.mp3" preload="auto"></audio>
 <audio id="chime" src="proposal-src/sunset-chime.mp3" preload="auto"></audio>
