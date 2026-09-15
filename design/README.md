@@ -35,13 +35,13 @@ screen time rather than extend it.
 |---|---|
 | Splash | Balloon letters, ~2.4s |
 | Who's watching | Child picker, pre-dawn sky |
-| Sunrise | One tap on the sun starts the session |
+| Sunrise | One touch on the sun starts the session |
 | Watching | Player, sun on the arc, day bar, full session strip |
 | Playtime | Seam into a break |
 | Break: breathe | Three slow breaths with the sun |
 | Break: find 3 | Find three things of one colour in the room |
 | Break: follow the sun | Track the sun with your eyes and catch it, three times |
-| After-break choice | Tap the sun for next, or pick any remaining video |
+| After-break choice | Touch the sun for next, or pick any remaining video |
 | Sunset → All done | High five, then what's next |
 | No session | "The sun is still asleep" — deliberately no child CTA |
 | Night light | After the session, a warm glow. No way back to videos. |
@@ -55,13 +55,13 @@ Behaviour worth knowing before porting:
 - **The sun tracks allotted time, not videos finished.** Switching videos never
   rewinds it; rewatching something finished never pushes it forward.
 - **Autoplay runs between videos.** Out of a break is different: the choice
-  screen waits indefinitely for a tap today. Auto-advancing there too, after a
+  screen waits indefinitely for a touch today. Auto-advancing there too, after a
   pause, is **decided but not yet built** — see `OPEN-ITEMS.md` item 25 (it
   lives unreconciled on `design/autoplay-item25`). The reasoning: a break
   exists to interrupt screen time, and the interruption is the activity itself
   plus the choice screen that follows it, not an indefinite wait — the old rule
-  left a young child with no way forward if they did not realise the tap was
-  theirs to make, and on a cast TV the device that can tap may be in another
+  left a young child with no way forward if they did not realise the touch was
+  theirs to make, and on a cast TV the device that can touch may be in another
   room.
 
 ## The seam: `KidQData`
