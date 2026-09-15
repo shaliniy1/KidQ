@@ -303,11 +303,13 @@
   // claim stops being true once break count can exceed two). Rotation is
   // per-load; a real build would seed this from the child's recent history.
   // *12, not *6 (spec 2026-09-16 kidq-flower-candle-break-design.md, Opus
-  // finding 3): 6 was the LCM of the old bucket sizes (move:2, settle:2) —
-  // with flower_candle added, settle is now 4 entries, and 12 is the LCM of
-  // 2 and 4. Left at 6, `0..5 mod 4` would give breathe/follow double the
-  // pick frequency of count/flower_candle — this keeps every settle entry
-  // equally likely across a full rotation cycle.
+  // finding 3; math corrected in a later diff review — see below): 6 was
+  // the LCM of the old bucket sizes (move:2, settle:3); settle is now 4, so
+  // the seed range must be a common multiple of 2 and 4 — 12 = LCM(2,3,4),
+  // which also stays valid if a bucket returns to 3 entries. Left at 6,
+  // `0..5 mod 4` would give breathe/follow double the pick frequency of
+  // count/flower_candle — this keeps every settle entry equally likely
+  // across a full rotation cycle.
   let breakRotation = Math.floor(Math.random() * 12);
 
   // Which bucket break `index` draws from, honouring the live breakType flag.

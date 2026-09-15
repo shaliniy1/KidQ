@@ -399,12 +399,20 @@ instructions" should not be counted on when designing any future break.
 generated (edge-tts) neural-voice output, prototype-only until licensing for
 production use is cleared.
 
-### [ ] 35. `brand.md`'s game-content-colours reasoning needs an outlined-gold-hero note
+### [x] 35. `brand.md`'s game-content-colours reasoning needs an outlined-gold-hero note
 The find-game colours section reasons about contrast from ink-on-fill. The
 SETTLE hero (follow the sun) is gold with no ink ring — contrast against the
 day sky is carried entirely by the amber rim outline (measured 3.9–4.7:1
 across the three day-sky stops, task-7-report.md). `brand.md` should note this
 second contrast mechanism exists alongside the ink-on-fill one.
+
+**Fixed (2026-09-16, via item 55's flower-and-candle build).** `brand.md`
+§2 now carries a "Flower-and-candle prop colours" subsection that names the
+outlined-gold mechanism explicitly and generally: "gold content keeps its
+hue and earns contrast from an outline ring, everywhere gold has to sit on
+the day sky" — citing follow-the-sun's own rim (3.9–4.7:1, this item's own
+number) as the first instance and the flower-candle flame's `#9C6A18` ring
+(3.66–4.41:1) as the second. See item 55 for the full build account.
 
 ## Surfaced by the splash redesign ("Constellation Seeds"), not yet tracked elsewhere
 
@@ -1674,9 +1682,12 @@ Per `docs/superpowers/specs/2026-09-16-kidq-flower-candle-break-design.md`
 `7c3fa69`). `BREAK_GAMES.settle` is now `["breathe", "follow", "count",
 "flower_candle"]` and `BREAK_START.flower_candle = startFlowerCandle` joins
 the dispatch map. Rotation seed widened `Math.random()*6` → `*12` (Opus
-finding 3) so a 4-entry settle bucket rotates evenly (6 was the LCM of the
-old 2/2 bucket sizes; 12 is the LCM of 2/4) — left at 6, breathe/follow
-would draw twice as often as count/flower_candle.
+finding 3; math corrected in a later diff review) so a 4-entry settle
+bucket rotates evenly: 6 was the LCM of the old bucket sizes (move:2,
+settle:3); settle is now 4, so the seed range must be a common multiple of
+2 and 4 — 12 = LCM(2,3,4), which also stays valid if a bucket returns to 3
+entries. Left at 6, breathe/follow would draw twice as often as count/
+flower_candle.
 
 Promoted from breathing's own offline-fallback SVG row (`#screen-breathing`),
 not a new invention: same flower-left/sun-centre/candle-right trio, same
@@ -1703,14 +1714,18 @@ same established lesson).
 
 **Colours — amended live during build, twice, both user calls made through
 the coordinator, not spec deviations chosen unilaterally:**
-1. Spec's original flame body (coral `#C2543F`) was rejected on sight
-   ("candle light is not looking good") and reverted to gold `#F0A72E`
-   (matching the fallback row's original colour) with cream inner kept.
+1. Spec's original flame body (coral `#C2543F`) was rejected on sight —
+   recorded wording: "is not looking good.. our svg version earlier was
+   better" — and reverted to gold `#F0A72E` (matching the fallback row's
+   original colour) with cream inner kept.
    Flat gold alone still fails the 3:1 decorative floor against this sky
    (Opus finding 1's original 1.60–1.93:1), so a ~2px outline ring in
    `#9C6A18` carries the contrast instead: measures **3.66–4.41:1** against
    the three sky stops (re-verified with the scratchpad script, numbers
-   below).
+   below). This is the same outlined-gold-hero mechanism item 35 asked
+   `brand.md` to document (follow-the-sun's own rim being the first
+   instance) — **advances/closes item 35**, now written up in `brand.md`
+   §2's own new subsection below.
 2. The flame's face was cut entirely (first to eyes-only, then to no face
    at all) — only the flower keeps a face now. The blow phase is a plain
    ~500ms fade (delayed ~600ms so it follows the voice cue rather than
