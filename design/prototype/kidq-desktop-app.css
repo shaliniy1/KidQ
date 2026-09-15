@@ -537,7 +537,16 @@ button{font-family:inherit; -webkit-tap-highlight-color:transparent}
 #screen-choice .kq-sun.tapped svg{animation:pop .55s ease-out}
 
 /* ---------- all done ---------- */
-.kq-moontop{position:absolute; left:50%; top:56px; width:110px; height:110px; margin-left:-55px;
+/* a normal flex item now (see index.html) - it used to be position:absolute with a fixed
+   top:56px, which put it on a collision course with .kq-donehead on any viewport short
+   enough that the centered content block rose to meet it (reproduced via a
+   getBoundingClientRect sweep: overlap starting around h<=578px at typical widths and
+   h<=610px at the >=1100px tier, where the headline grows to 44px and needs more room). */
+/* margin-bottom clears .kq-moonhalo's own -26px inset (below) plus its kq-halopulse
+   scale(1.08) peak (~28px effective overflow at rest), which otherwise overhangs past
+   the column's 24px gap no matter how much room there is - a fixed relationship
+   between constants already declared elsewhere in this file, not a per-tier nudge. */
+.kq-moontop{position:relative; width:110px; height:110px; margin-bottom:6px;
   border:none; padding:0; background:none; cursor:pointer; animation:kq-mfloat 7s ease-in-out infinite}
 .kq-moonhalo{position:absolute; inset:-26px; border-radius:50%; pointer-events:none;
   background:radial-gradient(circle, rgba(250,244,232,.34) 0%, rgba(250,244,232,0) 66%);

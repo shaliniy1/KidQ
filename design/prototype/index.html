@@ -345,22 +345,26 @@
       <span class="kq-star" style="left:66%; top:26%; animation-delay:-2.5s"></span>
       <span class="kq-star" style="left:22%; top:34%; animation-delay:-.7s; width:3px; height:3px"></span>
       <span class="kq-star" style="left:12%; top:58%; animation-delay:-1.9s"></span>
-      <button class="kq-moontop" id="done-moon" aria-label="Sleepy moon">
-        <span class="kq-moonhalo"></span>
-        <svg class="kq-moon" viewBox="0 0 64 64" aria-hidden="true">
-          <circle cx="32" cy="32" r="26" fill="#FAF4E8"/><circle cx="21" cy="24" r="4" fill="#E4D6B8"/>
-          <circle cx="42" cy="43" r="3" fill="#E4D6B8"/>
-          <g class="m-sleepy" stroke="#6B6459" stroke-width="2" fill="none" stroke-linecap="round">
-            <path d="M23 31 q3 2.5 6 0"/><path d="M35 31 q3 2.5 6 0"/>
-            <path d="M27 39.5 Q32 43.5 37 39.5"/>
-          </g>
-          <g class="m-awake">
-            <circle cx="26" cy="30.5" r="2.5" fill="#6B6459"/><circle cx="38" cy="30.5" r="2.5" fill="#6B6459"/>
-            <path d="M26 38 Q32 44.5 38 38" stroke="#6B6459" stroke-width="2.2" fill="none" stroke-linecap="round"/>
-          </g>
-        </svg>
-      </button>
-      <div class="kq-centercol" style="gap:24px; padding-top:120px">
+      <div class="kq-centercol" style="gap:24px">
+        <!-- moon lives in the flex flow (like night-light's .kq-nlmoon), not pinned at a
+             fixed top offset - that let it collide with the headline below it on short
+             viewports, since only width has a responsive breakpoint system here, not
+             height. Flow + gap guarantees separation at every size. -->
+        <button class="kq-moontop" id="done-moon" aria-label="Sleepy moon">
+          <span class="kq-moonhalo"></span>
+          <svg class="kq-moon" viewBox="0 0 64 64" aria-hidden="true">
+            <circle cx="32" cy="32" r="26" fill="#FAF4E8"/><circle cx="21" cy="24" r="4" fill="#E4D6B8"/>
+            <circle cx="42" cy="43" r="3" fill="#E4D6B8"/>
+            <g class="m-sleepy" stroke="#6B6459" stroke-width="2" fill="none" stroke-linecap="round">
+              <path d="M23 31 q3 2.5 6 0"/><path d="M35 31 q3 2.5 6 0"/>
+              <path d="M27 39.5 Q32 43.5 37 39.5"/>
+            </g>
+            <g class="m-awake">
+              <circle cx="26" cy="30.5" r="2.5" fill="#6B6459"/><circle cx="38" cy="30.5" r="2.5" fill="#6B6459"/>
+              <path d="M26 38 Q32 44.5 38 38" stroke="#6B6459" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+            </g>
+          </svg>
+        </button>
         <h1 class="kq-donehead base">All done for<br>today!</h1>
         <h1 class="kq-donehead gn" id="done-gn">Bye bye,<br>Aarav! 👋</h1>
         <button class="kq-hifive" id="high-five" aria-label="High five!">
