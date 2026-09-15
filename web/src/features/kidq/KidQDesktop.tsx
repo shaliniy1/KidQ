@@ -16,7 +16,8 @@ import {
 } from "@/services/session";
 import { getLibrary, type LibraryEntry } from "@/services/my-videos";
 import { getActivities, type ParentActivity } from "@/services/activity-breaks";
-import { KidQPlayer } from "@kidq/player";
+import { getStory, type Story } from "@/services/story";
+import { KidQPlayer, KidQStoryReader } from "@kidq/player";
 
 type Stage = "profile" | "library" | "sunrise" | "watching" | "timedBreak" | "playtime" | "breathing" | "follow" | "find" | "choice" | "end" | "noSession" | "night" | "cast";
 type SlotItem = AssembledSession["slots"][number]["items"][number];
@@ -85,6 +86,7 @@ export default function KidQDesktop() {
   const [activities, setActivities] = useState<ParentActivity[]>([]);
   const playerRef = useRef<React.ElementRef<typeof KidQPlayer>>(null);
   const [handledBreakpoints, setHandledBreakpoints] = useState<Set<number>>(new Set());
+  const [story, setStory] = useState<Story | null>(null);
 
   useEffect(() => {
     getChildren().then(setChildren).catch(() => setChildren([]));
@@ -97,6 +99,20 @@ export default function KidQDesktop() {
 
   const queue = useMemo(() => flattenQueue(session), [session]);
   const currentEntry: QueueEntry | undefined = queue[current];
+  const isStorybook = currentEntry?.item.card.content_type === "STORYBOOK";
+
+  useEffect(() => {
+    if (stage !== "watching" || !isStorybook || !currentEntry) {
+      setStory(null);
+      return;
+    }
+    let cancelled = false;
+    getStory(currentEntry.item.card.id)
+      .then((result) => { if (!cancelled) setStory(result); })
+      .catch(() => { if (!cancelled) setStory(null); });
+    return () => { cancelled = true; };
+  }, [stage, isStorybook, currentEntry]);
+
   const video = currentEntry
     ? {
         title: currentEntry.item.card.title,
@@ -232,7 +248,7 @@ export default function KidQDesktop() {
   if (!video) return <NoSession onBack={() => setStage("profile")} onReplay={handleReplay} />;
 
   const sunPosition = progress <= 8 ? { left: "10%", top: "92%" } : progress >= 96 ? { left: "90%", top: "92%" } : { left: `${progress}%`, top: "30%" };
-  return <Shell label={`${childName}'s session`}><section className={`${styles.world} ${progress >= 96 ? styles.end : ""}`}><div className={styles.cloudOne} /><div className={styles.cloudTwo} /><div className={styles.arc} aria-hidden="true"><svg viewBox="0 0 1280 220" preserveAspectRatio="none"><path d="M70 205 Q640 15 1210 205" fill="none" stroke="#E4D6B8" strokeWidth="3" strokeDasharray="1 11" strokeLinecap="round" /><line x1="70" y1="205" x2="1210" y2="205" stroke="#E4D6B8" strokeWidth="3" strokeLinecap="round" /></svg></div><div className={styles.sun} style={sunPosition} aria-label="Session progress"><span className={styles.halo} /><Sun /></div><span className={styles.timeLeft}>{remaining} min left</span><div className={styles.childHeader}><span className={styles.avatar}>{childName[0]}</span><div><h2>{childName}&apos;s watch time</h2><p>video {current + 1} of {queue.length}</p></div></div><div className={styles.content}><div className={styles.player}><KidQPlayer ref={playerRef} player={currentEntry.item.card.player} title={video.title} poster={currentEntry.item.card.thumbnail_url} attribution={currentEntry.item.card.attribution} onPlayback={(event) => { if (event.type === "time") checkTimedBreakpoint(event.position); }} onEnded={() => void finishVideo()} /></div><div className={styles.dayBar} aria-label={`${progress}% of session elapsed`}><span style={{ width: `${100 - progress}%` }} /><b className={styles.progressSun} style={{ left: `${progress}%` }} aria-hidden="true"><Sun /></b></div><div className={styles.now}><h3>{paused ? "Paused for now" : video.title}</h3><p><Heart /><span><strong>Picked by {video.pickedBy}</strong> · {video.minutes} min</span></p></div><p className={styles.upNext}>Your session</p><div className={styles.queue}>{queue.map((entry, index) => <button key={entry.item.id} className={`${styles.queueCard} ${index === current ? styles.queueCurrent : ""}`} onClick={() => startWatching(index)}><span>{entry.item.card.title}</span></button>)}<button className={styles.endCard} onClick={finishVideo}>The End 🌙<small>Finish &amp; play</small></button></div><div className={styles.sessionActions}><button onClick={finishVideo}>{current === queue.length - 1 ? "Finish videos" : "Finish this video"}</button><button onClick={() => setStage("cast")}>Cast mode</button></div></div></section></Shell>;
+  return <Shell label={`${childName}'s session`}><section className={`${styles.world} ${progress >= 96 ? styles.end : ""}`}><div className={styles.cloudOne} /><div className={styles.cloudTwo} /><div className={styles.arc} aria-hidden="true"><svg viewBox="0 0 1280 220" preserveAspectRatio="none"><path d="M70 205 Q640 15 1210 205" fill="none" stroke="#E4D6B8" strokeWidth="3" strokeDasharray="1 11" strokeLinecap="round" /><line x1="70" y1="205" x2="1210" y2="205" stroke="#E4D6B8" strokeWidth="3" strokeLinecap="round" /></svg></div><div className={styles.sun} style={sunPosition} aria-label="Session progress"><span className={styles.halo} /><Sun /></div><span className={styles.timeLeft}>{remaining} min left</span><div className={styles.childHeader}><span className={styles.avatar}>{childName[0]}</span><div><h2>{childName}&apos;s watch time</h2><p>video {current + 1} of {queue.length}</p></div></div><div className={styles.content}><div className={isStorybook ? styles.storyFrame : styles.player}>{isStorybook ? (story ? <KidQStoryReader title={story.title} pages={story.pages} credits={story.credits} attribution={story.attribution} onFinished={() => void finishVideo()} /> : <div className={styles.playerArt}><span>{video.title}</span><small>Loading the book…</small></div>) : <KidQPlayer ref={playerRef} player={currentEntry.item.card.player} title={video.title} poster={currentEntry.item.card.thumbnail_url} attribution={currentEntry.item.card.attribution} onPlayback={(event) => { if (event.type === "time") checkTimedBreakpoint(event.position); }} onEnded={() => void finishVideo()} />}</div><div className={styles.dayBar} aria-label={`${progress}% of session elapsed`}><span style={{ width: `${100 - progress}%` }} /><b className={styles.progressSun} style={{ left: `${progress}%` }} aria-hidden="true"><Sun /></b></div><div className={styles.now}><h3>{paused ? "Paused for now" : video.title}</h3><p><Heart /><span><strong>Picked by {video.pickedBy}</strong> · {video.minutes} min</span></p></div><p className={styles.upNext}>Your session</p><div className={styles.queue}>{queue.map((entry, index) => <button key={entry.item.id} className={`${styles.queueCard} ${index === current ? styles.queueCurrent : ""}`} onClick={() => startWatching(index)}><span>{entry.item.card.title}</span></button>)}<button className={styles.endCard} onClick={finishVideo}>The End 🌙<small>Finish &amp; play</small></button></div><div className={styles.sessionActions}><button onClick={finishVideo}>{current === queue.length - 1 ? "Finish videos" : "Finish this video"}</button><button onClick={() => setStage("cast")}>Cast mode</button></div></div></section></Shell>;
 }
 
 function Shell({ children, label }: { children: React.ReactNode; label: string }) { return <main className={styles.page}><header className={styles.productBar}><Link className={styles.brand} href="/">KidQ<span>✦</span></Link><span className={styles.modeLabel}>{label}</span><div className={styles.headerActions}><Link className={styles.navButton} href="/kid?choose=1">Choose another child</Link><Link className={`${styles.navButton} ${styles.navButtonPrimary}`} href="/parent">Parent view</Link></div></header>{children}<footer className={styles.footer}><span>Parent-picked · finite queue · no endless feed</span><Link href="/parent">Open parent view</Link></footer></main>; }

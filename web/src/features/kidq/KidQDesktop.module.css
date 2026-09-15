@@ -23,7 +23,7 @@
 .controls { display: flex; align-items: center; gap: 8px; color: #6b6459; font-size: 13px; }
 .controls button, .footer button { border: 1px solid #ddd3c2; background: #faf4e8; border-radius: 999px; color: #16594f; padding: 8px 14px; font: 600 13px Mukta; cursor: pointer; }
 .controls button:hover, .controls .active, .footer button:hover { background: #1f7a6d; color: #fff; border-color: #1f7a6d; }
-.world { position: relative; overflow: hidden; container-type: inline-size; width: 100%; max-width: 1280px; height: 740px; margin: auto; border-radius: 12px; background: linear-gradient(180deg, #fdf8ec 0%, #f7ebd2 58%, #f1e2c4 100%); box-shadow: 0 0 0 1px #ddd3c2, 0 36px 70px -30px #2e2a2466; }
+.world { position: relative; overflow: hidden; container-type: inline-size; width: 100%; max-width: 1280px; height: 820px; margin: auto; border-radius: 12px; background: linear-gradient(180deg, #fdf8ec 0%, #f7ebd2 58%, #f1e2c4 100%); box-shadow: 0 0 0 1px #ddd3c2, 0 36px 70px -30px #2e2a2466; }
 .world.end::before { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, #9f8ccb 0%, #c9b8e8 40%, #f3b583 100%); opacity: .85; pointer-events: none; }
 .cloudOne, .cloudTwo { position: absolute; background: #fff; border-radius: 50%; opacity: .8; }
 .cloudOne { top: 36px; left: 7%; width: 100px; height: 24px; box-shadow: 28px -6px 0 -4px #fff; }
@@ -39,8 +39,9 @@
 .avatar { width: 46px; height: 46px; border-radius: 50%; background: #1f7a6d; color: #fff; display: grid; place-items: center; font: 800 19px "Baloo 2"; }
 .childHeader h2 { font: 700 19px/1.15 "Baloo 2"; margin: 0; }
 .childHeader p { margin: 2px 0 0; font-size: 14px; color: #6b6459; }
-.content { position: absolute; left: 0; right: 0; top: 224px; bottom: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 11px; padding: 0 30px 22px; }
+.content { position: absolute; left: 0; right: 0; top: 224px; bottom: 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 16px; overflow-y: auto; padding: 18px 30px 28px; }
 .player { position: relative; width: 100%; max-width: 480px; aspect-ratio: 16 / 9; border-radius: 24px; overflow: hidden; background: linear-gradient(135deg, #d8c89c, #b9a574); box-shadow: 0 12px 28px -16px #2e2a2466; display: grid; place-items: center; }
+.storyFrame { position: relative; width: 100%; max-width: 480px; aspect-ratio: unset; overflow: visible; background: none; box-shadow: none; display: block; }
 .playerArt { display: flex; flex-direction: column; align-items: center; color: #faf4e8; text-shadow: 0 2px 5px #2e2a2488; }
 .playerArt span { font: 700 27px "Baloo 2"; }
 .playerArt small { font-size: 16px; }
@@ -51,12 +52,12 @@
 .dayBar { position: relative; width: 100%; max-width: 480px; height: 12px; border-radius: 99px; background: linear-gradient(90deg, #f7ebd2 0%, #ffc64d 34%, #c9b8e8 68%, #2b2955 100%); }
 .dayBar span { position: absolute; top: 0; right: 0; bottom: 0; border-radius: 0 99px 99px 0; background: #faf4e8c7; }
 .dayBar b { position: absolute; top: 50%; width: 20px; height: 20px; transform: translate(-50%, -50%); border-radius: 50%; background: #ffc64d; border: 3px solid #fff; box-shadow: 0 2px 6px #2e2a244d; }
-.now { text-align: center; }.now h3 { font: 700 21px/1.2 "Baloo 2"; margin: 0; }.now p { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 6px 0 0; color: #6b6459; font-size: 14.5px; }.now strong { color: #2e2a24; }.heart { width: 19px; height: 19px; }
+.now { width: 100%; text-align: center; }.now h3 { font: 700 23px/1.2 "Baloo 2"; margin: 0; }.now p { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 6px 0 0; color: #6b6459; font-size: 15px; }.now strong { color: #2e2a24; }.heart { width: 19px; height: 19px; }
 .upNext { margin: 0; color: #6b6459; font-size: 13px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
-.queue { display: flex; gap: 14px; justify-content: center; }.queueCard, .endCard { width: 120px; height: 68px; border-radius: 14px; border: 2px solid #2e2a241a; background: linear-gradient(135deg, #d8c89c, #b9a574); display: grid; place-items: center; color: #faf4e8; font: 700 16px "Baloo 2"; cursor: pointer; }.queueCard:hover { outline: 3px solid #ffc64d; }.endCard { background: #2b2955; border: 2px dashed #c9b8e8; cursor: default; }
+.queue { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; width: min(760px, 100%); }.queueCard, .endCard { width: 100%; min-width: 0; min-height: 86px; height: auto; padding: 12px 10px; border-radius: 14px; border: 2px solid #2e2a241a; background: linear-gradient(135deg, #d8c89c, #b9a574); display: grid; place-items: center; text-align: center; overflow-wrap: anywhere; color: #faf4e8; font: 700 16px/1.15 "Baloo 2"; cursor: pointer; }.queueCard:hover { outline: 3px solid #ffc64d; }.endCard { background: #2b2955; border: 2px dashed #c9b8e8; cursor: default; }
 .footer { max-width: 1280px; margin: 18px auto 0; display: flex; justify-content: space-between; align-items: center; color: #6b6459; font-size: 13px; }.footer button { padding: 5px 12px; }
 @keyframes pulse { 0%, 100% { transform: scale(1); opacity: .85; } 50% { transform: scale(1.08); opacity: 1; } }
-@media (max-width: 900px) { .page { padding: 24px 14px 50px; }.productBar { flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }.headerActions { width: 100%; justify-content: flex-end; margin-left: 0; }.navButton { min-height: 36px; padding: 7px 12px; }.pageHeader { align-items: flex-start; flex-direction: column; margin-bottom: 24px; }.controls { flex-wrap: wrap; }.world { height: 600px; border-radius: 10px; }.timeLeft { top: 95px; right: 24px; }.childHeader { top: 18px; left: 26px; }.content { top: 156px; padding: 0 24px 14px; }.player, .dayBar { max-width: 420px; }.sun { width: 70px; height: 70px; }.footer { font-size: 12px; } }
+@media (max-width: 900px) { .page { padding: 24px 14px 50px; }.productBar { flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }.headerActions { width: 100%; justify-content: flex-end; margin-left: 0; }.navButton { min-height: 36px; padding: 7px 12px; }.pageHeader { align-items: flex-start; flex-direction: column; margin-bottom: 24px; }.controls { flex-wrap: wrap; }.world { height: 700px; border-radius: 10px; }.timeLeft { top: 95px; right: 24px; }.childHeader { top: 18px; left: 26px; }.content { top: 156px; padding: 18px 24px 20px; }.player, .dayBar { max-width: 420px; }.sun { width: 70px; height: 70px; }.footer { font-size: 12px; } }
 @media (prefers-reduced-motion: reduce) { .sun, .halo { transition: none; animation: none; } }
 
 /* React child-flow states. The progress sun intentionally lives inside the
@@ -107,8 +108,8 @@
   .profileChoices { flex-direction: column; gap: 12px; width: min(260px, 100%); }
   .profileChoices button { width: 100%; padding: 18px 16px; }
   .noLogin { margin-top: 22px; }
-  .queue { width: 100%; flex-wrap: wrap; gap: 10px; }
-  .queueCard, .endCard { width: min(120px, calc((100vw - 78px) / 2)); }
+  .queue { grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; gap: 10px; }
+  .queueCard, .endCard { min-height: 76px; padding: 10px 8px; font-size: 14px; }
   .sunriseScreen, .choiceScreen, .castScreen, .noSession, .nightLight { min-height: 600px; }
   .sunriseCenter h1, .choiceScreen h1, .noSession h1, .nightLight h1 { font-size: clamp(32px, 10vw, 44px); }
   .sunButton { width: 124px; height: 124px; }
