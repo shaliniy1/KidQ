@@ -410,7 +410,7 @@ export async function contentPool() {
       continue;
     }
     const fits = candidate.categories.length ? candidate.categories : [candidate.category as string];
-    for (const band of ageBandsFor(candidate.ageMin, candidate.ageMax)) {
+    for (const band of candidate.ageBands) {
       perBand.set(band, (perBand.get(band) ?? 0) + 1);
       for (const category of fits) perPair.set(`${band}|${category}`, (perPair.get(`${band}|${category}`) ?? 0) + 1);
     }

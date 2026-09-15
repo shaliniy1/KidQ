@@ -5,6 +5,8 @@
 
 export interface ChildProfileInput {
   ageYears: number;
+  /** The band the parent actually picked (never estimated) — the hard age gate checks this, not ageYears. */
+  ageBand: string;
   languages: string[];
   interests: string[];
   developmentGoals: string[];
@@ -30,6 +32,8 @@ export interface CandidateInput {
   categories: string[];
   /** The parent categories (the seven groups) the item falls under, primary first. */
   parentCategories?: string[];
+  /** Every age band this item fits (it may legitimately span more than one); the hard age gate. */
+  ageBands: string[];
   interests: string[];
   developmentGoals: string[];
   regulationGoals: string[];
@@ -83,7 +87,7 @@ export function eligibilityProblems(candidate: CandidateInput): EligibilityProbl
   if (!candidate.playable) problems.push("NOT_PLAYABLE");
   if (candidate.blocked) problems.push("SAFETY_FLAG");
   if (candidate.kidqScore === null) problems.push("NOT_SCORED");
-  if (candidate.ageMin === null || candidate.ageMax === null) problems.push("NO_AGE");
+  if (candidate.ageBands.length === 0) problems.push("NO_AGE");
   if (!candidate.category) problems.push("NO_CATEGORY");
   if (candidate.developmentGoals.length === 0 && candidate.regulationGoals.length === 0) problems.push("NO_GOAL");
   return problems;
@@ -100,8 +104,9 @@ const matchesPreferred = (candidate: CandidateInput, preferred: string[]) =>
   (candidate.parentCategories ?? []).some((key) => preferred.includes(key)) || categoriesOf(candidate).some((key) => preferred.includes(key));
 
 function passesHardFilters(candidate: CandidateInput, profile: ChildProfileInput): boolean {
-  if (candidate.ageMin === null || candidate.ageMax === null) return false;
-  if (profile.ageYears < candidate.ageMin || profile.ageYears > candidate.ageMax) return false;
+  // The child's own band, exactly — never a continuous estimated-age comparison, so a 0–2-only item
+  // can never reach a 2–3 child even at the boundary. An item may span more than one band on purpose.
+  if (!candidate.ageBands.includes(profile.ageBand)) return false;
   if (candidate.language && profile.languages.length > 0) {
     if (!profile.languages.map(baseLanguage).includes(baseLanguage(candidate.language))) return false;
   }

@@ -199,6 +199,21 @@ describe("API", () => {
     expect(await ids(mathsOnly)).toEqual([]);
   });
 
+  it("recommends strictly from the child's own age bucket, never a neighbouring one", async () => {
+    // Tagged right at the 2–3/3–4 boundary, so a continuous age comparison (rather than exact bucket
+    // membership) could let this leak into the wrong band depending on rounding.
+    const forToddlers = await importVideo("AAAAAAAAAAA", [agentOutput({ classification: { category: "maths", age_min: 0, age_max: 2 } })], "Peekaboo counting");
+    const forPreschool = await importVideo("BBBBBBBBBBB", [agentOutput({ classification: { category: "maths", age_min: 2, age_max: 3 } })], "Counting to five");
+    for (const id of [forToddlers, forPreschool]) await publish(id, { decision: "APPROVED", reason: "Calm and clear." }).expect(201);
+
+    const toddler = await createChild(PARENT_A, { age_band: "0_2" });
+    const preschooler = await createChild(PARENT_A, { age_band: "2_3" });
+    const ids = async (childId: string) =>
+      (await request(app).get(`/children/${childId}/recommendations`).set("Authorization", PARENT_A)).body.items.map((item: { card: { id: string } }) => item.card.id);
+    expect(await ids(toddler)).toEqual([forToddlers]);
+    expect(await ids(preschooler)).toEqual([forPreschool]);
+  });
+
   it("starts a session from the child's library only, logs how it went, and keeps families apart", async () => {
     const counting = await importVideo("AAAAAAAAAAA");
     const song = await importVideo("GGGGGGGGGGG", [agentOutput({ classification: { category: "music_rhymes" } })], "Slow lullaby");

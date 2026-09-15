@@ -308,6 +308,7 @@ export function toCandidate(row: Row): CandidateInput {
     category: row.category,
     categories: row.categories?.length ? row.categories : row.category ? [row.category] : [],
     parentCategories: row.parent_categories ?? [],
+    ageBands: row.age_bands ?? [],
     interests: row.interests ?? [],
     developmentGoals: row.development_goals ?? [],
     regulationGoals: row.regulation_goals ?? [],
@@ -349,9 +350,10 @@ async function rankFor(db: Db, profile: ChildProfileInput, excluded: Set<string>
   };
 }
 
-export function profileOf(child: Pick<Child, "age_years" | "languages" | "interests" | "development_goals" | "regulation_goals" | "content_mix" | "preferred_categories"> & { session_minutes: number }): ChildProfileInput {
+export function profileOf(child: Pick<Child, "age_years" | "age_band" | "languages" | "interests" | "development_goals" | "regulation_goals" | "content_mix" | "preferred_categories"> & { session_minutes: number }): ChildProfileInput {
   return {
     ageYears: child.age_years,
+    ageBand: child.age_band,
     languages: child.languages,
     interests: child.interests,
     developmentGoals: child.development_goals,
