@@ -236,6 +236,52 @@ Scale in use (size / weight / face):
   directly on the sky, no badge. The whole count row is `aria-hidden`; the
   break's own headline stays the sole accessible carrier, so a five-times-a-
   break digit swap never spams a screen reader's `aria-live` region.
+- **Count-to-ten scene:** eyes-closed sun as hero, sized like breathing's own
+  (`min(40cqw,190px)` → `214px` → `240px`) — the closest sibling in
+  complexity: one bounded hero, no side decor, no dots, no new assets of any
+  kind (the cheapest break in the set, deliberately). Eyes are the one new
+  mechanism this scene adds. **Donor: BREATHING's own `.bsun` dual-group
+  `eyesOpen`/`eyesClosed` markup** — the only sun with a working eye
+  *toggle* — not the sunrise sun's eyes, whose unscoped
+  `.eyes-awake{opacity:0}` only lifts under `.screen.risen`, a class
+  `#screen-count` never gets ("Open your eyes!" would render no eyes at
+  all). This is new markup + new ID-scoped CSS, not shared-component reuse —
+  no shared sun component exists yet; rays and mouth stay the fixed smile
+  every static sun already uses, no toggle needed there. A single state
+  class (`.dim`, on `#screen-count` itself) drives both the sky dim and the
+  closed eyes together, since the sequence pairs them at the same two beats
+  (entry closes both, "Open!" opens both) — reusing the existing
+  `.kq-duskveil` overlay (`kidq-desktop-app.css:66-68`) that already powers
+  the watching screen's own dusk, pinned to a NEW ~0.25 opacity of its own
+  (`.screen.setting`'s existing 0.85 is a full dusk, far too strong for
+  "dims slightly"). **Digits walk while the eyes are closed, on purpose:**
+  the child playing can't see the screen, but a peeking child (guaranteed at
+  this age), a watching parent, and the sibling-break visual-count pattern
+  all still want it, so the sub-line stays visible and `aria-hidden` (never
+  `aria-live`) exactly like every other break's count row — the headline
+  alone carries the accessible experience. **Digit entrance diverges from
+  tree's own `pop()`:** count is the settle game, so each digit's entrance
+  is a quiet ~300ms scale-up pulse (`kq-countpulse`: `.82→1` scale, `.55→1`
+  opacity), not tree's springy squash-stretch bounce — its own small
+  remove/reflow/add re-trigger helper, not a widened `pop()`, since that
+  helper's two hardcoded class names (`tapped`/`moontap`) aren't reusable
+  for a third animation only this screen needs. **Trail direction is the
+  opposite of tree's:** tree counts down and its trail previews what's
+  still coming; count-to-ten counts up and its trail shows the
+  WALKED-THROUGH numbers behind the current one — at nine numbers wide (one
+  more than tree's own four-wide max) this was the width risk named and
+  measured explicitly (item 44): the shared `.kq-breakcount-trail` size and
+  `" · "` punctuation turned out to already carry real margin (180px
+  against 330px usable at the narrowest tier) with no override needed,
+  `font-variant-numeric:tabular-nums` added only to keep that measurement
+  stable as the digits themselves change width. Digit colour is the SAME
+  shared teal (`var(--teal)`) as tree's own — re-measured, not inherited
+  blindly, against THIS screen's dimmed sky specifically: `.kq-duskveil`
+  composited at 0.25 opacity over the day sky's own three gradient stops
+  shifts the contrast to **3.72–4.05:1** across the composited gradient —
+  still clears the 3:1 AA large-text floor with real margin, closer to it
+  than tree's own 4.04–4.88:1 against the undimmed sky, but not close
+  enough to need a different colour.
 - **Player card:** 16:9, radius 24, soft shadow `0 12px 28px -16px
   rgba(46,42,36,.4)`, at (20, 310) width 350. Corner pause: 44 px cream
   circle, teal-deep icon, top-right 14,14. Playing bars: 3 teal bars
