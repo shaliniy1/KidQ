@@ -114,7 +114,7 @@ Scale in use (size / weight / face):
 | Now-playing title (cast) | 23 / 700 / Baloo |
 | Now-playing title (phone) | 21 / 700 / Baloo |
 | Session header name | 17 / 700 / Baloo |
-| Tap instruction ("Tap the sun to start your day") | 19 / 600 / Mukta, ink |
+| Touch instruction ("Touch the sun to start your day") | 19 / 600 / Mukta, ink |
 | Night hint / sub-lines | 17 / 500 / Mukta, dusk on night |
 | Heart line / break sub-line | 16.5 / 500 / Mukta |
 | Queue "The End 🌙" | 15 / 800 / Baloo, cream |
@@ -259,7 +259,7 @@ factual labels. Never nagging, never gamified.
   (all-done high-five, and the night-light reopen screen), regardless of
   the visual night sky those closing moments sit on — that sky is the
   app's own day-is-over motif, not a claim about the real clock.
-- Instructions are one line, verb-first: "Tap the sun to start your day",
+- Instructions are one line, verb-first: "Touch the sun to start your day",
   "Keep your head still — follow me with your eyes!"
 - The parent's presence is always credited: "Mumma picked 3 videos".
 - Affirmations, not rewards: "You did it! ✨", "Here we go! ☀️" — no
@@ -271,6 +271,12 @@ factual labels. Never nagging, never gamified.
   to pick today's videos".
 - Emoji are functional objects (🌙 ☀️ 🖐 🧱 ♥), used sparingly, one per
   line max.
+- **"Touch", not "tap" (2026-09-15).** Group feedback: family members who
+  aren't comfortable with apps don't reliably know "tap"; "touch" is
+  universal and warmer. All child-facing instruction and aria-label copy
+  uses "touch" (e.g. "Touch the sun to start your day"). Interaction/build
+  vocabulary — CSS class names like `.tapped`, code comments about tap
+  targets — is unaffected; this is copy only.
 
 ## 7. Accessibility
 
@@ -279,7 +285,7 @@ factual labels. Never nagging, never gamified.
   light; dusk and cream carry text on night skies.
 - All interactive elements are real buttons with aria-labels that
   describe the outcome ("Start today's watching session", "Night light —
-  tap to turn on or off" with `aria-pressed`).
+  touch to turn on or off" with `aria-pressed`).
 - Live-changing captions (break phase lines) use `aria-live="polite"`.
 - Full `prefers-reduced-motion` support.
 

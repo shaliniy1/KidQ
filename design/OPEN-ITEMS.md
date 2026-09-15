@@ -245,7 +245,7 @@ next" instead of the session strip, the old arc colour. Only worth doing if
 those frames are still referenced.
 
 ### [~] 25. Can a small child actually get out of a break?
-A break ends on "Tap the sun for your next video", and nothing continues until
+A break ends on "Touch the sun for your next video", and nothing continues until
 that tap lands. Raised as a doubt that a child at the younger end of 0–6 will
 reliably manage it, and that they are then stuck with no way forward.
 
@@ -597,7 +597,7 @@ point rather than reset per session.
 - **Autoplay OFF, between videos:** the `ended` handler no longer calls
   `autoAdvance()` — it calls `startChoice()` directly instead, landing on
   the same after-break choice screen (sun plus the remaining parent picks),
-  with no auto-advance timer. The existing copy — "Tap the sun for your next
+  with no auto-advance timer. The existing copy — "Touch the sun for your next
   video / or pick one of Mumma & Papa's videos" — turned out to already read
   correctly from either entry point, so no copy changed.
 - **Autoplay OFF, the choice screen itself (both entry paths):**
@@ -628,12 +628,12 @@ point rather than reset per session.
   reduced motion, the same reasoning already documented above
   `CHOICE_AUTO_MS` and `HIFIVE_AUTO_MS`.
 
-**Voice line placeholder.** There is no recorded "Tap the sun for your next
+**Voice line placeholder.** There is no recorded "Touch the sun for your next
 video" line in the repo — the existing clips (`voice-follow-intro`,
 `voice-follow-done`) are follow-the-sun specific — so the nudge's audio cue
 reuses the soft sunset chime for now, with a `TODO(production)` comment in
 `kidq-desktop-app.js` next to `scheduleNudge`. Production should record a
-spoken "Tap the sun for your next video" line for pre-readers, in the same
+spoken "Touch the sun for your next video" line for pre-readers, in the same
 voice as the other clips, and wire it in via `sayLine()` the way
 `startFollow` already does for its own intro line.
 
