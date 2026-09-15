@@ -71,6 +71,71 @@
 
   let timers = [];
   let reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  // Stands in for the KidQ Parent app's per-family "Autoplay" toggle ("Play the
+  // next video automatically within a session"). Default ON, matching today's
+  // shipped behaviour exactly - flipping it off must change nothing about the
+  // ON path (item 40). Session-level like reducedMotion above: a plain
+  // variable, not part of `state`, so switching profiles or restarting the
+  // demo flow does not reset it. Flipped by the demo bar's Autoplay control.
+  let autoplay = true;
+  // Stands in for the KidQ Parent app's per-family break-type setting
+  // (Movement / Quiet-calm / Let KidQ alternate). Unlike autoplay/reducedMotion
+  // above, this DOES have a session-level source of truth: state.session.breakType,
+  // defaulted in prepSession's projection below. prepSession reinitialises this
+  // live variable from that field every time a session starts, so a plain
+  // login flow reflects the parent's own setting with no demo-bar touch needed.
+  // The demo bar's Break-type control then overrides it live, mid-session,
+  // exactly like autoplay/motion-toggle: read fresh at gameForBreak() fire
+  // time (see bucketForBreak below), no restart needed, since breakType only
+  // decides which bucket a break draws from, never where breaks land.
+  let breakType = "alternate";
+  // Label map for the demo bar's Break-type control, and the ONE place that
+  // ever changes `breakType` — both the toggle's own click handler and
+  // prepSession's reseed line (below) call this, so the button's label can
+  // never drift from the value gameForBreak() actually reads. Before this,
+  // prepSession() reseeding the variable directly (correct) left the label
+  // showing whatever the demo bar last set it to (stale) — a control whose
+  // label lies is worse than no control. No element-existence guard: every
+  // prepSession() call in this file runs from inside an event handler wired
+  // after this script's top-level code (including #breaktype-toggle's own
+  // wiring, near the bottom) has already run, so the button always exists by
+  // the time this fires.
+  const BREAK_TYPES = { alternate: "Alternate", movement: "Movement", quiet: "Quiet" };
+  function setBreakType(v) {
+    breakType = v;
+    $("#breaktype-toggle").textContent = `Break type: ${BREAK_TYPES[breakType]}`;
+  }
+  // Stands in for the KidQ Parent app's family-wide "Sensory-friendly mode"
+  // setting ("softer sounds, calmer visuals, fewer transitions" - parent-app
+  // cross-check, PARENT-KID-CONTRADICTIONS item 7 / OPEN-ITEMS item 42). One
+  // flag, two effects: forces reduce-motion on (already delivers "calmer
+  // visuals, fewer transitions" - see setReducedMotion/setSensoryFriendly,
+  // defined near #motion-toggle below since the coupling needs followScreen)
+  // and drops every audio element this file plays to SENSORY_VOLUME. Never to
+  // 0 - softer, never silent - the audio carries meaning (e.g. the
+  // autoplay-off nudge chime, item 40, is how a pre-reader knows it's their
+  // move). Session-config field like breakType above: prepSession() seeds
+  // this live flag from state.session.sensoryFriendly every time a session
+  // starts (through setSensoryFriendly, which also keeps the demo bar's own
+  // Sensory label honest, mirroring setBreakType/#breaktype-toggle); the demo
+  // bar's Sensory control then overrides it live between prepSession() calls,
+  // same as breakType.
+  let sensoryFriendly = false;
+  // Softer, never silent. A starting point, not a tuned value - real number
+  // wants testing against real families (PARENT-KID-CONTRADICTIONS item 7).
+  // Scope: only audio the app itself produces as sound design - jingle,
+  // chime, spoken instructions (say/sayLine) and the follow-break's
+  // synthesized catch sound (plip). `video` is deliberately untouched: it is
+  // permanently `video.muted = true` (startWatching) - the demo clips carry
+  // no needed audio, so there is nothing there for this flag to soften.
+  const SENSORY_VOLUME = 0.4;
+  // The reduce-motion value that was live the moment sensory-friendly last
+  // forced it on - restored when sensory-friendly turns off, so releasing the
+  // force never stomps a reduce-motion the user chose independently before
+  // the force (see setSensoryFriendly below). OS-level
+  // prefers-reduced-motion (reducedMotion's own startup default, above) still
+  // governs the baseline either way; this only remembers what to snap back to.
+  let preSensoryMotion = false;
   const later = (fn, ms) => { const id = setTimeout(fn, reducedMotion ? Math.min(ms, 200) : ms); timers.push(id); return id; };
   // Phase timing for activity breaks. Unlike later(), this does NOT clamp under
   // reduced motion: a 1.5s hold in a break is the activity itself, not a
@@ -78,7 +143,11 @@
   // Still pushed into `timers`, so clearTimers() and showScreen() cancel it.
   const hold = (fn, ms) => { const id = setTimeout(fn, ms); timers.push(id); return id; };
   const clearTimers = () => { timers.forEach(clearTimeout); timers = []; };
-  const safePlay = (m) => { if (!m) return; m.currentTime = 0; m.play().catch(() => {}); };
+  // Volume is set here, at play time, not once at load - so toggling
+  // sensory-friendly mid-session applies to the very next sound, not the
+  // next page load. Explicit 1 when off (not just "leave it alone") is what
+  // restores full volume after the flag is turned back off.
+  const safePlay = (m) => { if (!m) return; m.currentTime = 0; m.volume = sensoryFriendly ? SENSORY_VOLUME : 1; m.play().catch(() => {}); };
   const attemptPlay = (m) => { m.play().catch(() => { later(() => m.play().catch(() => {}), 200); }); };
 
   /* ---------- spoken instructions ----------
@@ -117,6 +186,7 @@
       if (voicePick) u.voice = voicePick;
       u.rate = 0.9;   // unhurried, to match the pace of everything else here
       u.pitch = 1.05; // a touch warm, well short of chirpy
+      u.volume = sensoryFriendly ? SENSORY_VOLUME : 1; // sensory-friendly (item 42): same constant as every other audio path
       speech.speak(u);
     } catch (e) { /* never let a missing voice break a break */ }
   }
@@ -132,6 +202,7 @@
     const fallBack = () => { if (!fellBack) { fellBack = true; say(text); } };
     try {
       clip.currentTime = 0;
+      clip.volume = sensoryFriendly ? SENSORY_VOLUME : 1; // set at play time, same reasoning as safePlay above
       speakingClip = clip;
       const p = clip.play();
       if (p && p.catch) p.catch(fallBack);
@@ -165,12 +236,15 @@
                   breaks: [], breaksTaken: 0 };
 
   /* ---------- activity breaks ----------
-     Exactly two breaks per session, at the 1/3 and 2/3 points of the parent's
-     allotted minutes, each landing on the nearest video boundary (never
-     mid-video). Fewer videos means fewer places a break can sit: 2 videos have
-     only one boundary, 1 video has none.
-     Break 1 draws from MOVE (child is still fresh), break 2 from SETTLE (the
-     day is winding down) — the same arc the sun itself travels.             */
+     Break count and positions are config-driven (KidQ Parent app: break
+     interval every 10/15/20 min), each landing on the nearest video boundary
+     (never mid-video). Fewer videos means fewer places a break can sit: 2
+     videos have only one boundary, 1 video has none.
+     Break-type config (Movement / Quiet-calm / Let KidQ alternate) decides
+     which bucket each break draws from — see bucketForBreak below. Under the
+     default "alternate" setting this reproduces the original arc: early
+     breaks draw from MOVE (child is still fresh), later ones from SETTLE (the
+     day is winding down) — the same arc the sun itself travels.            */
   const BREAK_GAMES = {
     move:   ["find"],
     settle: ["breathe", "follow"]
@@ -178,11 +252,33 @@
     //             "count" joins settle
   };
 
-  // Returns the two break points as fractions of the session's total minutes.
+  // Returns the planned break points as fractions of the session's total
+  // minutes, for a given break interval (parent-configured: 10/15/20 min).
   // Boundary i sits after video i, so i runs 1..n-1. Working in fractions (not
   // video indices) keeps breaks correct when the child switches videos from the
   // session strip — the day's progress is what decides, not the running order.
-  function planBreaks(videos) {
+  //
+  // Targets are k * interval / total for every k with k * interval < total —
+  // interval-many minutes in, twice that, and so on, up to but not reaching
+  // the end of the queue. Each target snaps to the nearest not-yet-used video
+  // boundary, under two constraints (Opus review 2026-09-15 — unbounded
+  // snapping mis-places breaks on lopsided queues, e.g. a 20+1+9-min queue at
+  // every-10m put breaks at minutes 20 and 21):
+  //   - max snap distance: a target whose nearest remaining boundary is more
+  //     than half an interval away is dropped, not snapped.
+  //   - min gap: a boundary within half an interval of an already-chosen
+  //     break is not eligible for a later target.
+  // Ties (a boundary exactly as close to a target as another) keep the
+  // earlier boundary: the `<` below is strict, and bounds are walked in
+  // increasing order, so the first (smaller) one found wins.
+  //
+  // Consequences, both intentional: break count is capped by boundary count
+  // (n-1 for n videos) and by the constraints above, so a config that asks
+  // for more breaks than fit gets fewer — matches the parent app's own
+  // hedged copy ("About one break every N minutes"); and a session shorter
+  // than one interval produces zero targets, so zero breaks
+  // (state.breaks = []) — downstream code already handles that.
+  function planBreaks(videos, intervalMinutes) {
     if (videos.length < 2) return [];
     const total = videos.reduce((s, v) => s + v.minutes, 0);
     if (!total) return [];
@@ -192,36 +288,78 @@
       cum += videos[i].minutes;
       bounds.push(cum / total);
     }
+    const halfInterval = (intervalMinutes / 2) / total;
     const picked = [];
-    [1 / 3, 2 / 3].forEach((target) => {
+    for (let k = 1; k * intervalMinutes < total; k++) {
+      const target = (k * intervalMinutes) / total;
       let best = null;
       bounds.forEach((b) => {
         if (picked.includes(b)) return;
+        if (picked.some((p) => Math.abs(b - p) <= halfInterval)) return; // min gap
         if (best === null || Math.abs(b - target) < Math.abs(best - target)) best = b;
       });
-      if (best !== null) picked.push(best);
-    });
+      if (best !== null && Math.abs(best - target) <= halfInterval) picked.push(best); // max snap distance
+    }
     return picked.sort((a, b) => a - b);
   }
 
-  // Rotate within each bucket so the same session never serves a game twice and
-  // consecutive sessions differ. Rotation is per-load; a real build would seed
-  // this from the child's recent history.
+  // Rotate within each bucket so consecutive breaks drawing from the same
+  // bucket don't repeat immediately, and consecutive sessions differ (no
+  // immediate repeat — with more breaks than bucket entries, a bucket does
+  // eventually repeat within a session; the old "never twice in a session"
+  // claim stops being true once break count can exceed two). Rotation is
+  // per-load; a real build would seed this from the child's recent history.
   let breakRotation = Math.floor(Math.random() * 6);
+
+  // Which bucket break `index` draws from, honouring the live breakType flag.
+  function bucketForBreak(index) {
+    if (breakType === "movement") return "move";
+    if (breakType === "quiet") return "settle";
+    // alternate (default): the PLANNED fraction decides (state.breaks[index]),
+    // not sessionProgress() at fire time — a strip-switching child can fire a
+    // break late, and the planned slot is the contract. <= 0.5, not <: the
+    // default every-15m session yields exactly one break at fraction 0.5000,
+    // and it must stay the movement break, matching today's original
+    // "first break is always find" behaviour.
+    return state.breaks[index] <= 0.5 ? "move" : "settle";
+  }
   function gameForBreak(index) {
-    const bucket = index === 0 ? BREAK_GAMES.move : BREAK_GAMES.settle;
+    const bucket = BREAK_GAMES[bucketForBreak(index)];
     return bucket[(breakRotation + index) % bucket.length];
   }
 
   function prepSession(profileId, sessionOverride) {
     state.profile = KidQData.profiles.find((p) => p.id === profileId) || KidQData.profiles[0];
     const src = sessionOverride || KidQData.sessions[state.profile.id];
-    state.session = src ? { totalMinutes: src.totalMinutes, replay: !!src.replay, videos: [...src.videos] } : null;
+    state.session = src ? {
+      totalMinutes: src.totalMinutes,
+      replay: !!src.replay,
+      videos: [...src.videos],
+      // Parent-configured break settings. prepSession PROJECTS the session
+      // object — a field not listed here is silently dropped (as pickedBy
+      // already was, above) — so these get their defaults applied right
+      // here, once, rather than at every read site.
+      breakEveryMinutes: src.breakEveryMinutes ?? 15,
+      breakType: src.breakType ?? "alternate",
+      // The parent app's family-wide Sensory-friendly setting (item 42).
+      sensoryFriendly: src.sensoryFriendly ?? false
+    } : null;
     state.watched = new Set();
     state.progress = {};
     state.current = null;
-    state.breaks = state.session ? planBreaks(state.session.videos) : [];
+    // Interval is read once, here, at planning time.
+    state.breaks = state.session ? planBreaks(state.session.videos, state.session.breakEveryMinutes) : [];
     state.breaksTaken = 0;
+    // Seeds the live breakType flag (declared near `autoplay` above) from this
+    // session's own config, through setBreakType() so the demo bar's label
+    // stays in sync too. breakType itself is read live at gameForBreak() fire
+    // time, not captured here — this line only sets its starting value.
+    setBreakType(state.session ? state.session.breakType : "alternate");
+    // Seeds the live sensoryFriendly flag the same way, through
+    // setSensoryFriendly() (defined near #motion-toggle below, since it
+    // composes with the reduce-motion coupling) so the demo bar's Sensory
+    // label never drifts from what the app is actually doing either.
+    setSensoryFriendly(state.session ? state.session.sensoryFriendly : false);
     return !!state.session;
   }
 
@@ -343,6 +481,16 @@
   const watchSunEl = $("#watch-sun");
   const watchPause = $("#watch-pause");
 
+  // True only while the pause is the child's own tap, never while it's the
+  // browser's. Chrome silently pauses a video-only background tab to save
+  // power (~5s after it's hidden) with no error the app can catch - just a
+  // real `pause` event it used to ignore, leaving the UI stuck claiming
+  // "playing" over a frozen frame. That policy can't be prevented from here,
+  // so the fix is to listen honestly (below) and recover on return to the
+  // tab - but only when userPaused is false, so a browser-imposed recovery
+  // can never talk over a pause the child actually chose.
+  let userPaused = false;
+
   // the whole parent-picked session, always visible: Now playing ringed,
   // watched dimmed, and every card tappable to switch
   function renderStrip() {
@@ -385,6 +533,7 @@
   function startWatching(videoObj) {
     state.current = videoObj;
     demoSkyP = null;
+    userPaused = false; // a new video never starts in a stale user-paused state
     watching.classList.remove("paused", "setting", "swapping");
     watchPause.setAttribute("aria-label", "Pause");
     $("#watch-av").textContent = state.profile.name[0];
@@ -419,7 +568,31 @@
     renderStrip();
     if (unwatched().length === 0) startSunset(false);
     else if (breakIsDue()) startPlaytimeSeam();
-    else autoAdvance();
+    else if (autoplay) autoAdvance();
+    // Autoplay off (item 40): no auto dip - land on the same choice screen a
+    // break sends the child to, sun plus the remaining parent picks, and let
+    // startChoice() decide there's no CHOICE_AUTO_MS timer to schedule.
+    else startChoice();
+  });
+
+  // Keep the UI honest about the video's real state, whatever caused the
+  // change - the browser's background-pause policy, a demo-bar jump's own
+  // video.pause() call, or the click handler below. Screen jumps and the
+  // swapping dip already pause/play the video for their own reasons, so
+  // these only act while watching is actually on screen; the same guard
+  // ended() already uses. The click handler sets the same class/aria-label
+  // itself, so these fire redundantly on that path - idempotent, not a
+  // double-toggle.
+  video.addEventListener("pause", () => {
+    if (!watching.classList.contains("active")) return;
+    if (video.ended) return; // a native pause fires right before ended too
+    watching.classList.add("paused");
+    watchPause.setAttribute("aria-label", "Resume");
+  });
+  video.addEventListener("play", () => {
+    if (!watching.classList.contains("active")) return;
+    watching.classList.remove("paused");
+    watchPause.setAttribute("aria-label", "Pause");
   });
 
   // A break is due when the day has passed the next planned break point and the
@@ -431,17 +604,21 @@
 
   // The parent's picks play through on their own: one video rolls into the next
   // after a short dip, with no tap. This is not feed autoplay - the list is
-  // finite, parent-chosen, and still ends at sunset.
+  // finite, parent-chosen, and still ends at sunset. This is the AUTOPLAY-ON
+  // path only (the `ended` handler above only calls this when `autoplay` is
+  // true) - it is exactly today's shipped behaviour and item 40 must not
+  // change a byte of it.
   //
-  // Breaks are still the exception: the choice screen after a break (startChoice,
-  // below) waits indefinitely for a tap and does not advance on its own. Adding
-  // that too, after a pause, is DECIDED but NOT YET BUILT - see OPEN-ITEMS.md
-  // item 25 for the full reasoning; it lives unreconciled on the separate
-  // design/autoplay-item25 branch (commit 9836604), not in this file (final
-  // review I2). Until it lands, a child who does not realise it is their move
-  // is stranded on the choice screen, and on a cast TV the device that can tap
-  // may not even be in the room. A tap still wins once it lands: it picks the
-  // video, and picking a card picks a different one.
+  // Breaks used to be the exception here too: the choice screen after a break
+  // (startChoice, below) waited indefinitely for a tap. Item 25 gave it its own
+  // self-advance (CHOICE_AUTO_MS, in startChoice) so a child who doesn't
+  // realise it's their move - or, on a cast TV, whose device isn't even in the
+  // room - isn't stranded there either; that's now built, not just decided.
+  // Item 40 makes CHOICE_AUTO_MS itself conditional on this same `autoplay`
+  // flag: off, the choice screen nudges instead of timing out (see
+  // scheduleNudge near startChoice). A tap still wins the instant it lands,
+  // on every path: it picks the video, and picking a card picks a different
+  // one.
   //
   // No jingle here: the jingle marks a child's choice, and this isn't one. If the
   // child taps a different card during the dip, their startWatching clears this
@@ -459,9 +636,23 @@
 
   watchPause.addEventListener("click", () => {
     const pausing = !watching.classList.contains("paused");
+    userPaused = pausing;
     watching.classList.toggle("paused", pausing);
     watchPause.setAttribute("aria-label", pausing ? "Resume" : "Pause");
     if (pausing) video.pause(); else attemptPlay(video);
+  });
+
+  // Recover from the browser's own background pause the moment the tab is
+  // back in view - never from a pause the child chose (userPaused wins), and
+  // never from a video that's already ended: autoAdvance's swapping dip holds
+  // watching active for ~700ms with the old video paused-and-ended before the
+  // src swap lands, and attemptPlay on an ended video would seek to 0 and
+  // replay it for a split second. That case belongs to the ended flow, not
+  // to this recovery.
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState !== "visible") return;
+    if (!watching.classList.contains("active")) return;
+    if (video.paused && !video.ended && !userPaused) attemptPlay(video);
   });
 
   /* ---------- sunset → all done ---------- */
@@ -748,11 +939,17 @@
       plipCtx = plipCtx || new (window.AudioContext || window.webkitAudioContext)();
       if (plipCtx.state === "suspended") plipCtx.resume().catch(() => {});
       const t = plipCtx.currentTime;
+      // Sensory-friendly mode (item 42): this is real app audio (the
+      // follow-the-sun catch sound), just synthesized via Web Audio rather
+      // than an <audio> element, so it gets the same treatment as every
+      // other sound the app plays - scaling the gain envelope's peak,
+      // since a GainNode has no .volume property to set directly.
+      const vol = sensoryFriendly ? SENSORY_VOLUME : 1;
       [659, 880].forEach((f, i) => {
         const o = plipCtx.createOscillator(), g = plipCtx.createGain();
         o.type = "sine"; o.frequency.value = f;
         g.gain.setValueAtTime(0.0001, t + i * .09);
-        g.gain.exponentialRampToValueAtTime(.16, t + i * .09 + .02);
+        g.gain.exponentialRampToValueAtTime(.16 * vol, t + i * .09 + .02);
         g.gain.exponentialRampToValueAtTime(.0001, t + i * .09 + .24);
         o.connect(g); g.connect(plipCtx.destination);
         o.start(t + i * .09); o.stop(t + i * .09 + .26);
@@ -842,6 +1039,41 @@
   const choiceScreen = $("#screen-choice");
   const choiceSun = $("#choice-sun");
   const CHOICE_AUTO_MS = 4000; // item 25: choice screen self-advances if no tap. ~4s is a starting point to tune against a real child.
+
+  // Item 40: with the parent's Autoplay setting off, this screen has no
+  // CHOICE_AUTO_MS timer to fall back on - so, same worry item 25 raised, a
+  // pre-reader who doesn't realise it's their move could be left sitting here
+  // forever. Instead of a timeout, the sun nudges itself: a first attention
+  // beat at ~7s, then every ~15s after that, for as long as the child sits
+  // here. It never advances anything on its own - only a tap does that - so
+  // "forever" is fine here in a way it wasn't for CHOICE_AUTO_MS.
+  //
+  // The beat reuses pop()'s existing squash-stretch (the same animation a
+  // real tap produces elsewhere in the app) rather than inventing new motion,
+  // plus a soft audio cue. hold(), not later(): the delay IS the nudge, not a
+  // transition, so it must not clamp to 200ms under reduced motion - same
+  // reasoning as CHOICE_AUTO_MS and HIFIVE_AUTO_MS.
+  //
+  // No cancellation wiring needed here: a tap (sun or a card) runs
+  // startWatching -> showScreen -> clearTimers, and so does every demo-bar
+  // jump away from this screen - both already wipe whatever hold() is
+  // pending, CHOICE_AUTO_MS's or this one's, exactly the same way.
+  //
+  // Audio placeholder: there's no recorded "Tap the sun for your next video"
+  // line in the repo - voice-follow-intro/-done are follow-the-sun specific -
+  // so this reuses the soft sunset chime for now. TODO(production): record a
+  // spoken "Tap the sun for your next video" line for pre-readers, in the
+  // same voice as the other clips, and play it here via sayLine() the way
+  // startFollow does for its own intro line.
+  const NUDGE_FIRST_MS = 7000, NUDGE_REPEAT_MS = 15000;
+  function scheduleNudge(ms) {
+    hold(() => {
+      pop(choiceSun);
+      safePlay(chime);
+      scheduleNudge(NUDGE_REPEAT_MS);
+    }, ms);
+  }
+
   function startChoice() {
     // No video left: the day is over, and the decided flow ends at the moon -
     // sunset, then the all-done screen. A choice screen with nothing to choose
@@ -877,7 +1109,10 @@
     showScreen("screen-choice");
     // No jingle: the jingle marks a child's choice, and this isn't one. A card tap
     // runs startWatching -> showScreen -> clearTimers, which cancels this pending timer.
-    hold(() => { const next = unwatched()[0]; if (next) startWatching(next); }, CHOICE_AUTO_MS);
+    if (autoplay) hold(() => { const next = unwatched()[0]; if (next) startWatching(next); }, CHOICE_AUTO_MS);
+    // Autoplay off (item 40): never schedule CHOICE_AUTO_MS - nudge instead,
+    // see scheduleNudge above.
+    else scheduleNudge(NUDGE_FIRST_MS);
   }
   choiceSun.addEventListener("click", () => {
     if (!choiceScreen.classList.contains("active")) return;
@@ -908,6 +1143,11 @@
   // child's OWN choice), the chime here already plays on other non-tap moments
   // elsewhere in the app (e.g. startSunset), so it stays on for the auto path too
   // - the day still earns its send-off whether or not the five landed.
+  //
+  // Deliberately NOT gated by the `autoplay` flag added for item 40: this
+  // timer ends the session, it doesn't advance content, so the parent's
+  // Autoplay setting ("play the next video automatically") has no opinion
+  // about it either way.
   const HIFIVE_AUTO_MS = 4000; // starting point to tune against a real child, same as item 25
   function fiveUp() {
     if (allDone.classList.contains("hifived")) return;
@@ -935,8 +1175,11 @@
     KidQData.whatsNext.forEach((item) => {
       const card = document.createElement("div");
       card.className = "wn-card" + (item.picked ? " wn-pick" : "");
+      // the pick's caption reuses the heart-line vocabulary (beating coral heart
+      // + "who picked" text) from the pitch's badge, re-skinned calm: no pill,
+      // no floating hearts - same rule as every port from the proposal file
       card.innerHTML = `<div class="scene">${SCENES[item.scene] || ""}</div><span>${item.label}</span>` +
-        (item.picked ? `<svg class="wn-pick-heart" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 17 C4 12 2 8.5 4.2 6.2 A3.4 3.4 0 0 1 10 7.4 A3.4 3.4 0 0 1 15.8 6.2 C18 8.5 16 12 10 17 Z" fill="#E2705E"/></svg>` : "");
+        (item.picked ? `<span class="wn-pick-tag"><svg class="kq-mheart" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 17 C4 12 2 8.5 4.2 6.2 A3.4 3.4 0 0 1 10 7.4 A3.4 3.4 0 0 1 15.8 6.2 C18 8.5 16 12 10 17 Z" fill="#E2705E"/></svg>${item.pickedBy || "Mumma & Papa"}'s pick</span>` : "");
       row.appendChild(card);
     });
     showScreen("screen-all-done");
@@ -1026,11 +1269,74 @@
 
   $("#restart-flow").addEventListener("click", () => { clearTimers(); video.pause(); startSplash(); });
 
-  $("#motion-toggle").addEventListener("click", (e) => {
-    reducedMotion = !reducedMotion;
+  // Item 40: previews the KidQ Parent app's per-family Autoplay setting.
+  // Just flips the flag - it's read fresh at each decision point (the `ended`
+  // handler, startChoice's own scheduling) the next time one is reached, the
+  // same way reducedMotion below is. A timer already scheduled under the old
+  // value (an in-flight autoAdvance dip, a pending CHOICE_AUTO_MS, an
+  // already-running nudge chain) runs to completion rather than being torn
+  // down mid-flight; each still gets cleared by its own tap or screen change
+  // via clearTimers(), same as always, so nothing is left stale.
+  $("#autoplay-toggle").addEventListener("click", (e) => {
+    autoplay = !autoplay;
+    e.currentTarget.setAttribute("aria-pressed", String(!autoplay));
+    e.currentTarget.textContent = autoplay ? "Autoplay: On" : "Autoplay: Off";
+  });
+
+  // Previews the KidQ Parent app's break-type setting (Movement / Quiet-calm /
+  // Let KidQ alternate). A live flag exactly like autoplay above: just cycles
+  // the module-level `breakType` variable (through setBreakType, declared
+  // near it above, which also keeps this button's own label in sync), read
+  // fresh at gameForBreak() fire time, so the change applies from the NEXT
+  // break onward with no restart — breakType only decides which bucket a
+  // break draws from, never where breaks land, so the already-planned
+  // state.breaks positions are untouched.
+  const BREAK_TYPE_ORDER = ["alternate", "movement", "quiet"];
+  $("#breaktype-toggle").addEventListener("click", () => {
+    const i = BREAK_TYPE_ORDER.indexOf(breakType);
+    setBreakType(BREAK_TYPE_ORDER[(i + 1) % BREAK_TYPE_ORDER.length]);
+  });
+
+  // Previews the KidQ Parent app's break-interval setting (every 10/15/20
+  // min). Unlike breakType (and sensoryFriendly, item 42) above, this
+  // CANNOT apply mid-session — breaks are planned once, at prepSession() —
+  // so this control restarts the session, always into the demo aarav
+  // session (the one with breaks to show). It runs the same [data-demo]
+  // prologue every jump above uses (clearTimers(); video.pause();) before
+  // restarting, or a pending autoAdvance later() / autoplay-off nudge
+  // hold() chain would fire into the new session with stale state. The
+  // override carries the CURRENT live breakType AND sensoryFriendly forward
+  // (not the aarav session's own defaults) so cycling the interval doesn't
+  // silently revert either setting the demo bar was already showing — a
+  // plain login or "↻ Restart full flow" still reseeds both from the
+  // session's own config, which is correct: the parent's config is the
+  // source of truth, and setBreakType()/setSensoryFriendly() now keep this
+  // button's siblings' labels honest either way.
+  const BREAK_EVERY_OPTIONS = [10, 15, 20];
+  let demoBreakEvery = 15;
+  $("#breakevery-toggle").addEventListener("click", (e) => {
+    clearTimers();
+    video.pause();
+    const i = BREAK_EVERY_OPTIONS.indexOf(demoBreakEvery);
+    demoBreakEvery = BREAK_EVERY_OPTIONS[(i + 1) % BREAK_EVERY_OPTIONS.length];
+    e.currentTarget.textContent = `Breaks: every ${demoBreakEvery}m`;
+    prepSession("aarav", { ...KidQData.sessions.aarav, breakEveryMinutes: demoBreakEvery, breakType, sensoryFriendly });
+    startSunrise();
+  });
+
+  // Applies a reduced-motion value everywhere it must be reflected - the
+  // live variable, the root class, and #motion-toggle's own pressed
+  // state/label - extracted out of the toggle's click handler (item 42) so
+  // sensory-friendly's forced-on/released-off transitions (setSensoryFriendly,
+  // below) can reuse exactly the effects a manual toggle produces, instead of
+  // duplicating them. Defined here rather than up with reducedMotion's other
+  // declarations because it needs followScreen, below.
+  function setReducedMotion(v) {
+    reducedMotion = v;
     document.documentElement.classList.toggle("reduce-motion", reducedMotion);
-    e.currentTarget.setAttribute("aria-pressed", String(reducedMotion));
-    e.currentTarget.textContent = reducedMotion ? "Motion reduced" : "Reduce motion";
+    const btn = $("#motion-toggle");
+    btn.setAttribute("aria-pressed", String(reducedMotion));
+    btn.textContent = reducedMotion ? "Motion reduced" : "Reduce motion";
     // Never restart mid-ending: the break stays "active" through its own
     // celebration AND through the silent hold startChoice/startSunset uses to
     // reach the moon (neither calls showScreen), so a naive restart-if-active
@@ -1040,12 +1346,42 @@
     if (followScreen.classList.contains("active") && !followScreen.classList.contains("celebrate")) {
       clearTimers(); startFollow();
     }
+  }
+  $("#motion-toggle").addEventListener("click", () => {
+    setReducedMotion(!reducedMotion);
   });
   if (reducedMotion) {
     document.documentElement.classList.add("reduce-motion");
     $("#motion-toggle").setAttribute("aria-pressed", "true");
     $("#motion-toggle").textContent = "Motion reduced";
   }
+
+  // Sensory-friendly mode (item 42): forces reduce-motion on/off through
+  // setReducedMotion above, without ever stomping a reduce-motion the user
+  // chose independently before the force. `changed` guards BOTH the
+  // motion-coupling side effect (skip entirely when sensoryFriendly's own
+  // value isn't actually moving - e.g. prepSession() reseeding to the same
+  // default on every plain login must not touch motion at all) and, within
+  // that, setReducedMotion is only called when the target value actually
+  // differs from the live one, so releasing the force back to an unchanged
+  // value can't spuriously restart an in-flight follow break.
+  function setSensoryFriendly(v) {
+    const changed = v !== sensoryFriendly;
+    sensoryFriendly = v;
+    const btn = $("#sensory-toggle");
+    btn.setAttribute("aria-pressed", String(sensoryFriendly));
+    btn.textContent = sensoryFriendly ? "Sensory: On" : "Sensory: Off";
+    if (!changed) return;
+    if (sensoryFriendly) {
+      preSensoryMotion = reducedMotion; // remember what was live before the force
+      if (!reducedMotion) setReducedMotion(true);
+    } else if (reducedMotion !== preSensoryMotion) {
+      setReducedMotion(preSensoryMotion); // release: restore, never assume off
+    }
+  }
+  $("#sensory-toggle").addEventListener("click", () => {
+    setSensoryFriendly(!sensoryFriendly);
+  });
 
   // Debounced so a window drag doesn't restart the break once per resize
   // event (M7); the celebrate guard mirrors the motion-toggle handler above

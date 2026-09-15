@@ -509,3 +509,432 @@ re-verified live for this item — both follow directly from unchanged code
 (`fiveUp()`'s pre-existing guard; `hold()`'s unconditional, unclamped
 `setTimeout`), the same guarantees item 25 already established for the
 identical mechanism.
+
+### [x] 39. A backgrounded tab could leave the watching screen frozen with the UI still claiming "playing"
+Chrome silently pauses a video-only background tab to save power — no error
+fires, just a real `pause` event, roughly 5s after the tab is hidden. The app
+only ever listened for `timeupdate` and `ended` on the video, so that pause
+went unnoticed: the pause button kept saying "Pause", `.paused` never got
+added, and the child was left looking at a frozen frame with no visible way
+back in. The policy itself is the browser's, not a bug reachable from here —
+Chrome doesn't expose an opt-out for a hidden video-only stream — so the fix
+is to listen honestly and recover on return, not to fight the pause.
+
+**Built:** `video` now carries real `pause`/`play` listeners that sync
+`#screen-watching`'s `.paused` class and `#watch-pause`'s aria-label to
+whatever actually happened, whoever caused it — the browser, a demo-bar
+screen jump's own `video.pause()`, or the click handler. Both listeners only
+act while the watching screen is the active one (the same guard `ended()`
+already used, since screen jumps and the swapping auto-advance dip pause/
+play the video for their own reasons); the pause listener also skips a
+video that has already `ended`, since a native `pause` fires right before
+`ended` and would otherwise flash the paused UI on every video that finishes
+normally.
+
+A new `userPaused` flag, set in the existing `watchPause` click handler and
+reset whenever `startWatching()` starts a new video, is the one rule that
+matters here: **a deliberate pause by the child is never silently
+overridden.** A `visibilitychange` listener calls the existing `attemptPlay`
+when the tab returns to visible and the video is paused — but only when
+`!userPaused` and the video isn't already `ended` (the swapping dip between
+videos holds a paused-and-ended video on an active watching screen for
+~700ms, and `attemptPlay` on an ended video would seek to 0 and replay it
+briefly), so the recovery only ever undoes the browser's own mid-video
+pause, never the child's or the tail end of a finished video.
+
+Verified live in Chrome (`python -m http.server`, port 8471, the demo bar's
+"Sun: midday" jump straight to watching) at the state level, since
+`document.hidden` is always `true` in this automation environment and every
+`setTimeout` is throttled — which meant Chrome's real background pause was
+genuinely available to trigger and observe, not something to fake:
+- Programmatic `video.pause()` / `video.play()` each correctly toggled
+  `.paused` and the aria-label both ways.
+- Clicking the real pause button, then overriding `document.visibilityState`
+  to `"visible"` and dispatching `visibilitychange`, left the video paused
+  and `HTMLMediaElement.prototype.play` uninvoked (instrumented with a
+  counter) — `userPaused` held.
+- The same override after a *programmatic* (non-user) pause invoked
+  `attemptPlay`: the play-count counter increased and the UI flipped back to
+  "playing" immediately, matching `attemptPlay`'s synchronous `play()` call
+  even though the actual retry (visible in the counter) was blocked by the
+  hidden tab, exactly as `attemptPlay`'s own `.catch` retry is built to
+  handle.
+
+One thing was environment-blocked rather than observed directly: natural
+end-of-video. The dev server (Python's `http.server`) doesn't support HTTP
+Range requests, and combined with `document.hidden`, the demo clips never
+progressed past `readyState 0` — no real `ended` event was reachable. Rather
+than skip the check, the same technique used above for `visibilityState` was
+applied to the video itself: shadowed the read-only `ended` getter to `true`
+on the element instance, dispatched a synthetic `pause` (confirming no
+paused-UI flash), then a synthetic `ended` — which correctly ran the real
+break-seam flow (`screen-watching` lost `active`, `screen-playtime` gained
+it), since video 1 of the demo session lands exactly on the first break
+boundary. Both the anti-flash guard and the ended-flow continuation are
+therefore verified at the code-execution level, just not via an actual
+decoded video frame reaching its last one.
+
+---
+
+## The parent app's Autoplay setting arrives (2026-09-15)
+
+### [x] 40. Mirror the parent app's Autoplay toggle; never strand a non-tapper when it's off
+
+The KidQ Parent app (built by a teammate) now has a per-family **Autoplay**
+toggle: "Play the next video automatically within a session." This
+prototype had no notion of it and always auto-advanced — unconditionally
+between videos (`autoAdvance`), out of a break (item 25's `CHOICE_AUTO_MS`),
+and, separately, the all-done screen's high-five (item 38's
+`HIFIVE_AUTO_MS`). It needed to honour the setting.
+
+**Decided and built (2026-09-15), user-directed.** A session-level
+`autoplay` flag (default ON) stands in for the parent setting, flipped by a
+new Autoplay control on the demo bar, following `#motion-toggle`'s existing
+pattern — a plain variable, not part of `state`, read fresh at each decision
+point rather than reset per session.
+
+- **Autoplay ON is exactly today's behaviour, unchanged.** All three
+  existing timers — `autoAdvance`'s 700ms dip, item 25's `CHOICE_AUTO_MS`,
+  item 38's `HIFIVE_AUTO_MS` — fire exactly as before. Zero regressions was
+  the bar.
+- **Autoplay OFF, between videos:** the `ended` handler no longer calls
+  `autoAdvance()` — it calls `startChoice()` directly instead, landing on
+  the same after-break choice screen (sun plus the remaining parent picks),
+  with no auto-advance timer. The existing copy — "Tap the sun for your next
+  video / or pick one of Mumma & Papa's videos" — turned out to already read
+  correctly from either entry point, so no copy changed.
+- **Autoplay OFF, the choice screen itself (both entry paths):**
+  `CHOICE_AUTO_MS` is never scheduled. In its place, an **escalating-nudge
+  ladder**, added specifically so a pre-reader is never silently
+  stranded — this was *the* concern raised for this item, the same one
+  item 25 raised for the indefinite pre-autoplay wait and item 38 raised
+  for the high-five. With autoplay off, the choice screen has no timeout to
+  fall back on the way autoplay-on does, so instead of ending the wait it
+  interrupts it: a first attention beat at ~7s, then every ~15s after that,
+  for as long as the child sits there. Each beat reuses `pop()`'s existing
+  squash-stretch (`choiceSun`) — the same animation a real tap produces
+  elsewhere in the app — rather than inventing new motion, plus a soft
+  audio cue. It never advances anything by itself; only a tap does that, so
+  nudging "forever" is fine here in a way a timeout wouldn't have been.
+  No separate cancellation wiring was needed: a tap (sun or a card) already
+  runs `startWatching` → `showScreen` → `clearTimers`, and so does every
+  demo-bar jump away from the screen — both already wipe whatever `hold()`
+  is pending, `CHOICE_AUTO_MS`'s or the nudge's, the same way.
+- **The high-five stays exempt from the flag.** `HIFIVE_AUTO_MS` is
+  unconditional either way — decided explicitly, and unchanged in this
+  diff beyond a comment. It ends the session; it doesn't advance content,
+  so "play the next video automatically" has no opinion about it.
+  End-of-session is likewise not an advance: the last video's `ended` still
+  goes straight to sunset in both modes, exactly as before.
+- **Timer discipline:** the nudge uses `hold()`, not `later()` — the delay
+  *is* the nudge, not a transition, so it must not clamp to 200ms under
+  reduced motion, the same reasoning already documented above
+  `CHOICE_AUTO_MS` and `HIFIVE_AUTO_MS`.
+
+**Voice line placeholder.** There is no recorded "Tap the sun for your next
+video" line in the repo — the existing clips (`voice-follow-intro`,
+`voice-follow-done`) are follow-the-sun specific — so the nudge's audio cue
+reuses the soft sunset chime for now, with a `TODO(production)` comment in
+`kidq-desktop-app.js` next to `scheduleNudge`. Production should record a
+spoken "Tap the sun for your next video" line for pre-readers, in the same
+voice as the other clips, and wire it in via `sayLine()` the way
+`startFollow` already does for its own intro line.
+
+**Note for the parent-side settings owner:** suggested copy for the
+Autoplay setting's off-state description, to sit under the toggle:
+*"Off means Aarav continues each video himself."* Flagging it here rather
+than deciding it — it's the parent app's copy to own, not this prototype's.
+
+**Verified live in Chrome** (port 8517), instrumenting `window.setTimeout`,
+`HTMLMediaElement.prototype.play` and a `MutationObserver` on `#choice-sun`
+rather than trusting wall-clock timing, since this machine's automation
+tabs run with `document.hidden === true` throughout (confirmed), which
+throttles `setTimeout` — delays land late but the scheduled `ms` values
+and firing order are exactly what's asserted below, not an artifact:
+
+- **Autoplay ON:** the between-video dip scheduled `setTimeout(…, 700)`
+  and landed on the next video; the after-break choice screen scheduled
+  `setTimeout(…, 4000)` (`CHOICE_AUTO_MS`) and auto-advanced on schedule;
+  a full demo session driven through to all-done (both breaks, including a
+  live "breathe" break with no interaction needed) scheduled
+  `setTimeout(…, 4000)` for `HIFIVE_AUTO_MS` and the high-five auto-fired
+  (`#screen-all-done.hifived`, chime replayed).
+- **Autoplay OFF:** a synthetic `ended` dispatched on the un-final video
+  landed directly on `#screen-choice` with **no** `setTimeout(…, 4000)`
+  anywhere in the log — only `setTimeout(…, 7000)`. Confirmed for both
+  entry paths (straight from a video's `ended`, and after a break). The
+  first nudge fired at ~7s: `#choice-sun`'s class flipped to include
+  `tapped` (matching the new `#screen-choice .kq-sun.tapped svg` CSS pop
+  rule), the chime's `play()` was called, and a fresh `setTimeout(…,
+  15000)` was logged for the next beat. A tap partway through a nudge wait
+  cancelled it cleanly — waited well past when the next 15s beat would
+  have fired and the log showed nothing further for `#choice-sun` after
+  the tap. A demo-bar jump away mid-wait did the same. Toggling the flag
+  between two decision points (after a break finished, before `startChoice`
+  had run) was picked up correctly at the next decision point, with no
+  errors and no stale timers. With reduced motion on, the nudge still
+  logged `setTimeout(…, 7000)` (unclamped, confirming `hold()` is in use,
+  not `later()`), while `pop()`'s own internal cleanup timer clamped to
+  200ms as expected — the global reduced-motion CSS rule
+  (`kidq-desktop-app.css:850`) is what actually shortens the pop animation
+  itself, and needed no item-specific handling.
+- Not independently re-verified live: toggling mid-`CHOICE_AUTO_MS`-wait
+  down to the exact millisecond (an attempt was made; this machine's
+  background-tab timer throttling had, by ~10 minutes into the session,
+  degraded enough that a bounded poll loop hit a 45s CDP timeout, so the
+  attempt was redone as a toggle-between-decision-points instead, which
+  is the case that actually matters — see above). Both directions follow
+  from the same mechanism (the flag is a plain variable read once per
+  decision point, never polled), which the above does establish live.
+
+One thing worth flagging for whoever picks up "port to `web/`" (item 16):
+the nudge ladder's "forever" is correct for a design prototype with no
+session end other than the child's own choices, but a real deployment may
+want a cap — a pre-reader is never stranded now, but neither is a parent
+told anything if a child truly walks away and the nudge just keeps going.
+Not raised as a concern for this item (out of scope — nothing in the brief
+asked for one, and item 38's high-five timer already gives the session a
+hard end regardless), just noted since it wasn't obviously covered
+elsewhere.
+
+---
+
+## The parent app's break settings arrive (2026-09-15)
+
+### [x] 41. Config-driven break schedule + parent-chosen break type (PARENT-KID-CONTRADICTIONS items 2-3)
+
+The prototype hardcoded exactly two breaks, at the 1/3 and 2/3 marks of
+whatever session the child got, first always from MOVE, rest from SETTLE.
+The KidQ Parent app has two settings that made every config but the default
+render wrong: a **break interval** (every 10/15/20 min) and a **break
+type** (Movement / Quiet-calm / Let KidQ alternate). Both are now
+config-driven, per the design at
+`docs/superpowers/specs/2026-09-15-kidq-config-driven-breaks-design.md`
+(Opus-reviewed before this round started).
+
+**Built:**
+- `planBreaks(videos, intervalMinutes)` now targets `k · interval / total`
+  for every `k` with `k · interval < total`, snapping each target to the
+  nearest not-yet-used video boundary — under a **max snap distance** (a
+  target whose nearest remaining boundary is more than half an interval
+  away is dropped, not snapped) and a **min gap** (a boundary within half
+  an interval of an already-chosen break is ineligible for a later target).
+  Both guard against the same failure mode: on a lopsided queue (e.g.
+  20+1+9 min at every-10m), unconstrained snapping used to place two
+  breaks one minute apart. Ties keep the earlier boundary (unchanged,
+  now documented rather than incidental).
+- `gameForBreak(index)` now goes through `bucketForBreak(index)`, which
+  reads the live `breakType` flag: `movement`/`quiet` force a bucket
+  outright; `alternate` (default) buckets on the break's **planned**
+  fraction (`state.breaks[index]`, not `sessionProgress()` at fire time —
+  a strip-switching child can fire a break late, and the planned slot is
+  the contract you'd want an analytics event to match), `≤ 0.5` → move,
+  `> 0.5` → settle. The `≤` matters: the demo session's own default
+  (every-15m) yields exactly one break at fraction 0.5000 exactly, and it
+  has to stay the movement break for this to be a faithful generalisation
+  of "first break is always find" rather than a quiet regression.
+- `breakEveryMinutes` (default 15) and `breakType` (default `"alternate"`)
+  are now fields of the session object — but `prepSession()` *projects*
+  the session object into `state.session`, so an unlisted field is
+  silently dropped the way `pickedBy` already was. Both defaults are
+  applied on that projection line, once, rather than at every read site.
+  Interval is read once, at `prepSession()` (breaks are planned there);
+  breakType is read live, at `gameForBreak()` fire time, seeded from the
+  session's own config each time a session starts but overridable
+  mid-session without disturbing the already-planned break positions.
+- Demo bar gained two controls, both cycling buttons like the existing
+  Autoplay/Reduce-motion toggles rather than a row of one-shot buttons:
+  **Break type** is a live flag exactly like Autoplay — flips `breakType`,
+  read fresh at the next `gameForBreak()` call, no restart. **Breaks:
+  every Nm** cannot apply mid-session (positions are planned once, at
+  `prepSession`), so it restarts the session — always back into the demo
+  `aarav` queue, the one with breaks to show. Its handler runs the same
+  `[data-demo]` prologue every other jump uses (`clearTimers();
+  video.pause();`) before restarting, or a pending `autoAdvance` dip or an
+  autoplay-off nudge chain (item 40) fires into the new session holding
+  stale state.
+- The rotation comment's old claim — "the same session never serves a
+  game twice" — is now "no immediate repeat": true with two breaks, false
+  in general once a config can ask for more breaks than a bucket has
+  entries. The rotation formula itself (`bucket[(breakRotation + index) %
+  bucket.length]`) needed no change to generalise.
+
+**Contract note for the parent-side settings owner:** break count is
+capped by boundary count (`n − 1` for `n` videos) and by the two snapping
+constraints above — a config that asks for more breaks than the queue's
+boundaries and spacing allow gets fewer, silently. This matches the
+parent app's own hedged copy ("About one break every N minutes" already
+reads as approximate, not a guarantee), but is worth stating plainly:
+**the number configured is a target, not a floor.** The concrete case in
+the data: the 17-minute replay session ("yesterday's picks") loses its
+one break entirely at every-20m (`20 min > 17 min total`, zero targets
+generated) — accepted, not a bug, and downstream code already handled
+`state.breaks = []` before this round (any single-boundary or
+single-video queue could already reach it).
+
+**Explicitly not resolved by this round:** item 24's mandatory terminal
+wind-down slot. The interval math above neither implements nor precludes
+it — a future round would need to decide whether a forced last-break slot
+composes with parent-chosen intervals/type or overrides them, and that
+decision hasn't been made.
+
+**Verified:** `node --check`. Break positions were hand-computed for the
+demo queue (videos 8/7/8/7 min, boundaries at .2667/.5/.7667 of the 30-min
+total) and matched live in Chrome (`python -m http.server`, port 8531,
+killed after) at every interval: every-10m → `[.2667, .7667]` (today's
+exact positions, now reachable by config instead of hardcoded), every-15m
+→ `[.5]`, every-20m → `[.7667]`. Bucket selection was confirmed for all
+three `breakType` values, including both discriminating cases (movement
+forced at a fraction `alternate` would call settle; quiet forced at
+exactly 0.5, where `alternate` would call move) — not just the
+non-discriminating ones where `alternate` would have agreed anyway — and
+the live-flag toggle was confirmed to apply with no `prepSession()` call
+in between (no restart). The replay session at every-20m was confirmed to
+play video → video → sunset with no playtime seam and no break-selection
+call at all. Both restart-cleanliness cases in the design (mid-video,
+mid-choice-screen with autoplay off) were confirmed to leave zero live
+timers behind — the specific stale timer id was captured, shown cleared
+the instant the interval control's restart ran, and never fired even
+after many more timer-queue flushes.
+
+As with items 39-40, this machine's automation tabs are always
+`document.hidden`, which throttles real `setTimeout` timing unpredictably
+— real playback and wall-clock waits were not relied on. Unlike those
+items, the thing under test here (`state.breaks`, which bucket a break
+drew from) lives in a closure-private module scope with no existing
+external hook, so verification added temporary `console.log` calls at
+`prepSession()` and `gameForBreak()` plus a virtualised, fully-controlled
+`setTimeout`/`clearTimeout` (queue-and-flush-on-demand, so timer order
+could be driven deterministically instead of raced) and a one-line
+`location.hash`-gated test entry point for reaching the replay session
+directly. All of this was removed before committing — `git diff` against
+this section's own commit carries none of it, and `node --check` was
+re-run clean afterward.
+
+---
+
+## The parent app's Sensory-friendly setting arrives (2026-09-15)
+
+### [x] 42. Sensory-friendly mode: forced reduce-motion + softer (never silent) audio (PARENT-KID-CONTRADICTIONS item 7)
+
+The KidQ Parent app has a family-wide **Sensory-friendly mode** setting:
+"softer sounds, calmer visuals, fewer transitions." This prototype only had
+half of that — a reduced-motion toggle, visual only, with jingle/chime
+volumes untouched regardless of its state.
+
+**Decided (parent cross-check, 2026-09-15): one kid-side flag, two
+effects.** Reduce-motion already delivers "calmer visuals, fewer
+transitions" — the existing `.reduce-motion` class + `reducedMotion`
+variable needed no new mechanism, only a way to force them. The real gap
+was sound, so the second effect is: **every audio element this file plays
+drops to ~40% volume.** Softer, never silent — the audio carries meaning
+(the autoplay-off nudge chime, item 40, is how a pre-reader knows it's
+their move; the find/breathe/follow instructions are how a low-vision or
+colour-blind child gets the instruction at all, per the spoken-instructions
+block above `say()`). Silencing any of it would trade one accessibility
+gap for another.
+
+**Built**, following the same config pattern as `autoplay`/`breakType`
+(items 40/41):
+- `sensoryFriendly` is a session-config field (default `false`), added to
+  `prepSession()`'s projection alongside `breakEveryMinutes`/`breakType` —
+  an unlisted field is silently dropped, so the default is applied right
+  there, once. Like `breakType`, it seeds a live module flag every time a
+  session starts (through `setSensoryFriendly()`, mirroring
+  `setBreakType()`), and the demo bar's own Sensory control then overrides
+  the live flag between `prepSession()` calls — a plain login or restart
+  always reflects the session's own config again, same as break type.
+- **Volume.** `SENSORY_VOLUME = 0.4` (a starting point, not a tuned value —
+  wants testing against real families, same caveat the parent cross-check
+  itself raises). Applied at *play time*, not once at load, in every play
+  helper this file has: `safePlay()` (jingle, chime), `sayLine()` (the
+  recorded follow-the-sun voice clips) and its `say()` fallback (device
+  TTS — `SpeechSynthesisUtterance.volume`, so a device with no clip, or a
+  blocked clip, still gets the softer instruction rather than a full-volume
+  one). Explicit `1` when the flag is off, not just "leave it alone" — that
+  is what restores full volume the moment sensory-friendly turns off, and
+  what keeps a stale `.volume` from a prior sensory-friendly session from
+  surviving into a new one.
+  **Judgment call, one extension beyond the brief's literal "audio
+  element" wording:** the follow-the-sun break's catch sound (`plip()`) is
+  real app audio too — two soft sine tones via Web Audio, not an `<audio>`
+  element and not routed through `safePlay`/`sayLine` — so it was silently
+  exempt from every reading of "audio element." Included it anyway,
+  scaling the gain envelope's peak by the same constant (a `GainNode` has
+  no `.volume` to set directly), on the reasoning that leaving exactly one
+  sound at full volume while everything else the app plays drops to 40%
+  would read as broken, not deliberate, and directly contradicts "this
+  covers ALL audio." Flagged here rather than assumed silently.
+  **Explicitly out of scope:** `video` itself. `startWatching()` already
+  sets `video.muted = true` unconditionally — "demo clips carry no needed
+  audio; jingle/chime are the sound design" (pre-existing comment) — so
+  there is no audio there for this flag to soften either way.
+- **Reduce-motion coupling.** Turning sensory-friendly ON forces
+  `reducedMotion` on: the variable, the root `.reduce-motion` class, and
+  `#motion-toggle`'s own pressed state/label, so the demo bar never shows a
+  lying control. This reuses `setReducedMotion()`, extracted out of
+  `#motion-toggle`'s click handler for exactly this purpose (previously
+  inline, now a named function called by both the manual toggle and the
+  sensory-friendly force/release) — including the existing "never restart
+  mid-ending" follow-break guard, unchanged. Turning sensory-friendly OFF
+  releases the force but does not stomp a reduce-motion the child's own
+  household had chosen independently before the force: `preSensoryMotion`
+  remembers whatever `reducedMotion` was live the moment the force was
+  applied, and release restores exactly that value, not `false`. Both the
+  force and the release are additionally guarded to a genuine value change
+  (`reducedMotion !== target`) before calling `setReducedMotion()` at all —
+  without that guard, releasing sensory-friendly back to an *unchanged*
+  motion value (the case where motion was independently on, stays on)
+  would still re-run `setReducedMotion()`'s follow-break-restart side
+  effect for no reason. OS-level `prefers-reduced-motion` (`reducedMotion`'s
+  own startup default) still governs the baseline underneath all of this —
+  noted in-code, not just here.
+- **Demo bar.** One new toggle, `#sensory-toggle`, "Sensory: Off"/"On",
+  placed right after `#motion-toggle`, following the exact
+  `aria-pressed`/label convention of `#autoplay-toggle`/`#motion-toggle`.
+
+**Contract note for the parent-side settings owner:** this arrives as a
+plain family-wide boolean, same shape as `breakType`/`breakEveryMinutes` —
+nothing new needed from the API beyond carrying the field through.
+
+**Verified:** `node --check`. Live in Chrome
+(`python -m http.server`, port 8561, killed after), instrumenting through
+the DOM rather than the closure-private module state (`sensoryFriendly`,
+`reducedMotion`, `preSensoryMotion` have no external hook) — reading
+`#jingle`/`#chime`'s own `.volume` after triggering their real play paths,
+and the root element's `.reduce-motion` class plus both toggle buttons'
+`aria-pressed`/label:
+- **Flag ON** (toggled mid-session, after `prepSession()` had already run
+  so the toggle wasn't immediately undone by another seed): root gained
+  `.reduce-motion`, `#motion-toggle` read pressed/"Motion reduced", and
+  both `#jingle` (via the sunrise tap) and `#chime` (via the find break's
+  "I found them!") read `.volume === 0.4` on the very next play after the
+  toggle.
+- **Flag OFF after ON, both pre-force states:** motion was off before the
+  force → off again after release, jingle/chime back to `.volume === 1`.
+  Motion was turned on *manually* before the force → confirmed it stayed
+  on after release (not reset to off), matching the "never stomp an
+  independent choice" rule.
+- **Session-config path:** temporarily added `sensoryFriendly: true` to
+  the demo `aarav` session data (removed before committing — `git diff`
+  carries none of it), reloaded, and started that session through the
+  ordinary Sunrise demo button with the `#sensory-toggle` control never
+  touched by hand. The flag came up already on, the demo bar's own label
+  read "Sensory: On" with no click involved, reduce-motion was forced, and
+  the next jingle played at `.volume === 0.4` — confirms `prepSession()`'s
+  projection seeds the live flag on its own, and that the demo bar's label
+  never drifts from what the session actually configured.
+- **Regression:** with the flag left off throughout, jingle/chime stayed
+  at `.volume === 1`, and `#motion-toggle` was independently exercised
+  mid-way through a live follow-the-sun break (unchanged behaviour, now
+  reached through the extracted `setReducedMotion()`) — the break stayed
+  on screen, not re-celebrating, exactly as before this diff.
+- No console errors across any of the above.
+
+Not independently instrumented live: `plip()`'s gain scaling and
+`SpeechSynthesisUtterance.volume` on the `say()` fallback. Both are
+read-once-at-call parameters with no queryable element to inspect
+afterward (unlike `<audio>`'s persistent `.volume`), so this is a
+code-level guarantee — the same `sensoryFriendly ? SENSORY_VOLUME : 1`
+expression already verified live for `safePlay`/`sayLine` — rather than
+something observed firing softer live in this environment.
