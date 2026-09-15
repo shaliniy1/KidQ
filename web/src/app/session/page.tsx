@@ -281,7 +281,7 @@ export default function StartSessionPage() {
             ⚙️ Settings
           </button>
           <button
-            onClick={() => router.push("/inbox")}
+            onClick={() => router.push(`/inbox?childId=${selectedChild.id}`)}
             style={{ background: "none", border: "none", color: "var(--kq-text-secondary)", textDecoration: "underline", cursor: "pointer", padding: 8, fontSize: "var(--kq-text-caption)" }}
           >
             🔔 Notifications

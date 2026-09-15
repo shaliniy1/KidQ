@@ -38,7 +38,7 @@ export default function ChildPlayerStub() {
     setLogging(true);
     try {
       await endSession(session.id, outcome);
-      router.push("/inbox");
+      router.push(`/inbox?childId=${params.childId}`);
     } finally {
       setLogging(false);
     }
