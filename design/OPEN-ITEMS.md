@@ -692,3 +692,117 @@ Not raised as a concern for this item (out of scope — nothing in the brief
 asked for one, and item 38's high-five timer already gives the session a
 hard end regardless), just noted since it wasn't obviously covered
 elsewhere.
+
+---
+
+## The parent app's break settings arrive (2026-09-15)
+
+### [x] 41. Config-driven break schedule + parent-chosen break type (PARENT-KID-CONTRADICTIONS items 2-3)
+
+The prototype hardcoded exactly two breaks, at the 1/3 and 2/3 marks of
+whatever session the child got, first always from MOVE, rest from SETTLE.
+The KidQ Parent app has two settings that made every config but the default
+render wrong: a **break interval** (every 10/15/20 min) and a **break
+type** (Movement / Quiet-calm / Let KidQ alternate). Both are now
+config-driven, per the design at
+`docs/superpowers/specs/2026-09-15-kidq-config-driven-breaks-design.md`
+(Opus-reviewed before this round started).
+
+**Built:**
+- `planBreaks(videos, intervalMinutes)` now targets `k · interval / total`
+  for every `k` with `k · interval < total`, snapping each target to the
+  nearest not-yet-used video boundary — under a **max snap distance** (a
+  target whose nearest remaining boundary is more than half an interval
+  away is dropped, not snapped) and a **min gap** (a boundary within half
+  an interval of an already-chosen break is ineligible for a later target).
+  Both guard against the same failure mode: on a lopsided queue (e.g.
+  20+1+9 min at every-10m), unconstrained snapping used to place two
+  breaks one minute apart. Ties keep the earlier boundary (unchanged,
+  now documented rather than incidental).
+- `gameForBreak(index)` now goes through `bucketForBreak(index)`, which
+  reads the live `breakType` flag: `movement`/`quiet` force a bucket
+  outright; `alternate` (default) buckets on the break's **planned**
+  fraction (`state.breaks[index]`, not `sessionProgress()` at fire time —
+  a strip-switching child can fire a break late, and the planned slot is
+  the contract you'd want an analytics event to match), `≤ 0.5` → move,
+  `> 0.5` → settle. The `≤` matters: the demo session's own default
+  (every-15m) yields exactly one break at fraction 0.5000 exactly, and it
+  has to stay the movement break for this to be a faithful generalisation
+  of "first break is always find" rather than a quiet regression.
+- `breakEveryMinutes` (default 15) and `breakType` (default `"alternate"`)
+  are now fields of the session object — but `prepSession()` *projects*
+  the session object into `state.session`, so an unlisted field is
+  silently dropped the way `pickedBy` already was. Both defaults are
+  applied on that projection line, once, rather than at every read site.
+  Interval is read once, at `prepSession()` (breaks are planned there);
+  breakType is read live, at `gameForBreak()` fire time, seeded from the
+  session's own config each time a session starts but overridable
+  mid-session without disturbing the already-planned break positions.
+- Demo bar gained two controls, both cycling buttons like the existing
+  Autoplay/Reduce-motion toggles rather than a row of one-shot buttons:
+  **Break type** is a live flag exactly like Autoplay — flips `breakType`,
+  read fresh at the next `gameForBreak()` call, no restart. **Breaks:
+  every Nm** cannot apply mid-session (positions are planned once, at
+  `prepSession`), so it restarts the session — always back into the demo
+  `aarav` queue, the one with breaks to show. Its handler runs the same
+  `[data-demo]` prologue every other jump uses (`clearTimers();
+  video.pause();`) before restarting, or a pending `autoAdvance` dip or an
+  autoplay-off nudge chain (item 40) fires into the new session holding
+  stale state.
+- The rotation comment's old claim — "the same session never serves a
+  game twice" — is now "no immediate repeat": true with two breaks, false
+  in general once a config can ask for more breaks than a bucket has
+  entries. The rotation formula itself (`bucket[(breakRotation + index) %
+  bucket.length]`) needed no change to generalise.
+
+**Contract note for the parent-side settings owner:** break count is
+capped by boundary count (`n − 1` for `n` videos) and by the two snapping
+constraints above — a config that asks for more breaks than the queue's
+boundaries and spacing allow gets fewer, silently. This matches the
+parent app's own hedged copy ("About one break every N minutes" already
+reads as approximate, not a guarantee), but is worth stating plainly:
+**the number configured is a target, not a floor.** The concrete case in
+the data: the 17-minute replay session ("yesterday's picks") loses its
+one break entirely at every-20m (`20 min > 17 min total`, zero targets
+generated) — accepted, not a bug, and downstream code already handled
+`state.breaks = []` before this round (any single-boundary or
+single-video queue could already reach it).
+
+**Explicitly not resolved by this round:** item 24's mandatory terminal
+wind-down slot. The interval math above neither implements nor precludes
+it — a future round would need to decide whether a forced last-break slot
+composes with parent-chosen intervals/type or overrides them, and that
+decision hasn't been made.
+
+**Verified:** `node --check`. Break positions were hand-computed for the
+demo queue (videos 8/7/8/7 min, boundaries at .2667/.5/.7667 of the 30-min
+total) and matched live in Chrome (`python -m http.server`, port 8531,
+killed after) at every interval: every-10m → `[.2667, .7667]` (today's
+exact positions, now reachable by config instead of hardcoded), every-15m
+→ `[.5]`, every-20m → `[.7667]`. Bucket selection was confirmed for all
+three `breakType` values, including both discriminating cases (movement
+forced at a fraction `alternate` would call settle; quiet forced at
+exactly 0.5, where `alternate` would call move) — not just the
+non-discriminating ones where `alternate` would have agreed anyway — and
+the live-flag toggle was confirmed to apply with no `prepSession()` call
+in between (no restart). The replay session at every-20m was confirmed to
+play video → video → sunset with no playtime seam and no break-selection
+call at all. Both restart-cleanliness cases in the design (mid-video,
+mid-choice-screen with autoplay off) were confirmed to leave zero live
+timers behind — the specific stale timer id was captured, shown cleared
+the instant the interval control's restart ran, and never fired even
+after many more timer-queue flushes.
+
+As with items 39-40, this machine's automation tabs are always
+`document.hidden`, which throttles real `setTimeout` timing unpredictably
+— real playback and wall-clock waits were not relied on. Unlike those
+items, the thing under test here (`state.breaks`, which bucket a break
+drew from) lives in a closure-private module scope with no existing
+external hook, so verification added temporary `console.log` calls at
+`prepSession()` and `gameForBreak()` plus a virtualised, fully-controlled
+`setTimeout`/`clearTimeout` (queue-and-flush-on-demand, so timer order
+could be driven deterministically instead of raced) and a one-line
+`location.hash`-gated test entry point for reaching the replay session
+directly. All of this was removed before committing — `git diff` against
+this section's own commit carries none of it, and `node --check` was
+re-run clean afterward.
