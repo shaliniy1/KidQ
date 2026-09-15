@@ -7,19 +7,14 @@
  * target for P7a's "Start session" action, and shows the real assembled
  * queue (read from the sessionStorage bridge P7a wrote) so the full
  * Session Assembly pipeline is visibly provable end-to-end, not just a
- * blank landing page. It also calls the real session-log ingestion
- * endpoint (ticket 09) on "End session" — standing in for the real Child
- * Player, which would call it automatically when a session actually ends.
+ * blank landing page. "End session" calls the real session-end endpoint —
+ * standing in for the real Child Player, which would call it automatically
+ * when a session actually ends.
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import type { User } from "firebase/auth";
-import { onAuthChange } from "@/services/auth";
-import { logSessionOutcome } from "@/services/inbox";
-import { acknowledgeSync } from "@/services/session";
-import type { AssembledSession } from "@/types/session";
-import type { SessionOutcome } from "@/types/inbox";
+import { endSession, type AssembledSession } from "@/services/session";
 import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
 
@@ -27,50 +22,22 @@ export default function ChildPlayerStub() {
   const router = useRouter();
   const params = useParams<{ childId: string }>();
   const [session, setSession] = useState<AssembledSession | null>(null);
-  const [outsideScheduledWindow, setOutsideScheduledWindow] = useState(false);
   const [logging, setLogging] = useState(false);
-  const userRef = useRef<User | null>(null);
 
   useEffect(() => {
-    const unsubscribe = onAuthChange((user) => {
-      userRef.current = user;
-    });
-
-    // sessionStorage is only readable client-side, so this can't be
-    // computed during render/SSR — genuinely needs an effect. Deferred
-    // past a microtask (matching the async-fetch pattern the rest of this
-    // app already uses) rather than a synchronous setState in the effect
-    // body itself.
-    (async () => {
-      await Promise.resolve();
-      try {
-        const raw = sessionStorage.getItem(`kidq:last-session:${params.childId}`);
-        if (raw) {
-          const parsed = JSON.parse(raw) as AssembledSession & { outsideScheduledWindow?: boolean };
-          setSession(parsed);
-          setOutsideScheduledWindow(Boolean(parsed.outsideScheduledWindow));
-          // "The device has the queue" is implicitly true the moment this
-          // screen successfully renders it — the real Child Player would
-          // call this the moment it actually loads a queue (ticket 15).
-          if (userRef.current) {
-            acknowledgeSync(userRef.current, params.childId, parsed.sessionId).catch(() => {
-              // best-effort — a failed ack just leaves the sync record "pending"
-            });
-          }
-        }
-      } catch {
-        // no session to show — fine, this is a stub
-      }
-    })();
-
-    return unsubscribe;
+    try {
+      const raw = sessionStorage.getItem(`kidq:last-session:${params.childId}`);
+      if (raw) setSession(JSON.parse(raw) as AssembledSession);
+    } catch {
+      // no session to show — fine, this is a stub
+    }
   }, [params.childId]);
 
-  async function handleEndSession(outcome: SessionOutcome) {
-    if (!session || !userRef.current) return;
+  async function handleEndSession(outcome: "COMPLETED" | "EXITED") {
+    if (!session) return;
     setLogging(true);
     try {
-      await logSessionOutcome(userRef.current, params.childId, session, outcome);
+      await endSession(session.id, outcome);
       router.push("/inbox");
     } finally {
       setLogging(false);
@@ -94,42 +61,36 @@ export default function ChildPlayerStub() {
         {session && (
           <>
             <p style={{ fontSize: "var(--kq-text-caption)", color: "var(--kq-text-secondary)" }}>
-              {session.durationMinutes} min · every {session.breakIntervalMinutes} min ·{" "}
-              {session.totalBreaks} break{session.totalBreaks === 1 ? "" : "s"} · {session.timeBand}
+              {session.minutes} min · {session.mode} · {session.time_band ?? "—"}
+              {session.short_by_minutes > 0 && ` · ${session.short_by_minutes} min short of the library`}
             </p>
-            {outsideScheduledWindow && (
-              <p style={{ color: "var(--kq-terracotta)", fontSize: "var(--kq-text-caption)" }}>
-                This is outside the daily schedule you saved in Settings — just a reminder,
-                nothing&apos;s blocked.
-              </p>
-            )}
-            {session.usedFallback && (
-              <p style={{ color: "var(--kq-terracotta)", fontSize: "var(--kq-text-caption)" }}>
-                A couple of videos today came from a neighboring age range — content was a
-                little thin in {session.fallbackCategory} this week.
-              </p>
-            )}
             {session.slots.map((slot) => (
-              <div key={slot.index} style={{ borderTop: "1px solid var(--kq-border)", paddingTop: 10 }}>
+              <div key={slot.slot} style={{ borderTop: "1px solid var(--kq-border)", paddingTop: 10 }}>
                 <p style={{ fontWeight: 700, fontSize: "var(--kq-text-caption)", color: "var(--kq-charcoal)" }}>
-                  Slot {slot.index + 1}{slot.isFinalSlot ? " (wind-down)" : ""}
+                  Slot {slot.slot + 1}
                 </p>
-                {slot.videos.length === 0 && (
+                {slot.items.length === 0 && (
                   <p style={{ fontSize: "var(--kq-text-caption)", color: "var(--kq-terracotta)" }}>No content available</p>
                 )}
-                {slot.videos.map((video) => (
-                  <p key={video.contentId} style={{ fontSize: "var(--kq-text-caption)", color: "var(--kq-text-secondary)" }}>
-                    {video.title} · {video.category} · {Math.round(video.durationSeconds / 60)} min
+                {slot.items.map((item) => (
+                  <p key={item.id} style={{ fontSize: "var(--kq-text-caption)", color: "var(--kq-text-secondary)" }}>
+                    {item.card.title} · {item.card.category} ·{" "}
+                    {item.card.duration_seconds ? Math.round(item.card.duration_seconds / 60) : "?"} min
                   </p>
                 ))}
+                {slot.break_activity && (
+                  <p style={{ fontSize: "var(--kq-text-caption)", color: "var(--kq-teal)", fontStyle: "italic" }}>
+                    Break: {slot.break_activity.title}
+                  </p>
+                )}
               </div>
             ))}
 
             <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
-              <Button variant="primary" disabled={logging} onClick={() => handleEndSession("completed")}>
+              <Button variant="primary" disabled={logging} onClick={() => handleEndSession("COMPLETED")}>
                 {logging ? "…" : "End session (completed)"}
               </Button>
-              <Button variant="secondary" disabled={logging} onClick={() => handleEndSession("exited")}>
+              <Button variant="secondary" disabled={logging} onClick={() => handleEndSession("EXITED")}>
                 End early
               </Button>
             </div>

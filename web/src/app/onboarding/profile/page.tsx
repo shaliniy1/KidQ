@@ -1,13 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { User } from "firebase/auth";
-import { onAuthChange } from "@/services/auth";
-import { getAgeBandDefaults } from "@/services/parent-config";
-import { submitProfile } from "@/services/child-profile";
+import { useSession } from "@/hooks/useSession";
+import { getTaxonomy } from "@/services/parent-config";
+import { submitOnboarding } from "@/services/child-profile";
 import { MASCOT_COLORS, mascotColorForIndex, type MascotColorId } from "@/lib/mascot-colors";
-import type { AgeBand } from "@/types/parent-config";
 import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
 import { Pill } from "@/components/Pill";
@@ -15,9 +13,16 @@ import { Avatar } from "@/components/Avatar";
 
 const MAX_CHILDREN = 6;
 
+interface AgeBandOption {
+  key: string;
+  label: string;
+}
+
 interface DraftChild {
   nickname: string;
-  ageBand: AgeBand | null;
+  ageBand: string | null;
+  // Mascot color is a client-only convenience — there's no backend field for
+  // it yet (see INTEGRATION_NOTES.md's lavender-token gap).
   mascotColor: MascotColorId;
 }
 
@@ -33,31 +38,30 @@ function nextMascotColor(current: MascotColorId): MascotColorId {
 /** P2 Screen 1 — mandatory: parent name, and per child a nickname + age band (spec Section 1). */
 export default function ChildProfilePage() {
   const router = useRouter();
+  const status = useSession();
   const [phase, setPhase] = useState<"loading" | "ready" | "submitting" | "error">("loading");
-  const [ageBands, setAgeBands] = useState<AgeBand[]>([]);
+  const [ageBands, setAgeBands] = useState<AgeBandOption[]>([]);
   const [parentName, setParentName] = useState("");
   const [children, setChildren] = useState<DraftChild[]>([newChild(0)]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const userRef = useRef<User | null>(null);
 
   useEffect(() => {
-    const unsubscribe = onAuthChange(async (user) => {
-      if (!user) {
-        router.replace("/login");
-        return;
-      }
-      userRef.current = user;
-      try {
-        const { ageBands: bands } = await getAgeBandDefaults();
+    if (status === "anon") router.replace("/login");
+  }, [status, router]);
+
+  useEffect(() => {
+    if (status !== "authed") return;
+    getTaxonomy()
+      .then((taxonomy) => {
+        const bands = (taxonomy.age_group ?? []).map((term) => ({ key: term.key, label: term.label }));
         setAgeBands(bands);
         setPhase("ready");
-      } catch (error) {
+      })
+      .catch((error) => {
         setPhase("error");
         setErrorMessage(error instanceof Error ? error.message : "Couldn't load age bands");
-      }
-    });
-    return unsubscribe;
-  }, [router]);
+      });
+  }, [status]);
 
   function setChildCount(count: number) {
     const bounded = Math.max(1, Math.min(MAX_CHILDREN, count));
@@ -78,18 +82,13 @@ export default function ChildProfilePage() {
     children.every((child) => child.nickname.trim().length > 0 && child.ageBand !== null);
 
   async function handleContinue() {
-    if (!isValid || !userRef.current) return;
+    if (!isValid) return;
     setPhase("submitting");
     setErrorMessage(null);
     try {
-      await submitProfile(
-        userRef.current,
+      await submitOnboarding(
         parentName.trim(),
-        children.map((child) => ({
-          nickname: child.nickname.trim(),
-          ageBand: child.ageBand!,
-          mascotColor: child.mascotColor,
-        }))
+        children.map((child) => ({ nickname: child.nickname.trim(), age_band: child.ageBand! })),
       );
       router.push("/onboarding/confirm");
     } catch (error) {
@@ -188,8 +187,8 @@ export default function ChildProfilePage() {
             </div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
               {ageBands.map((band) => (
-                <Pill key={band} selected={child.ageBand === band} onClick={() => updateChild(index, { ageBand: band })}>
-                  {band}
+                <Pill key={band.key} selected={child.ageBand === band.key} onClick={() => updateChild(index, { ageBand: band.key })}>
+                  {band.label}
                 </Pill>
               ))}
             </div>

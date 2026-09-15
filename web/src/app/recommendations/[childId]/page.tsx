@@ -1,11 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import type { User } from "firebase/auth";
-import { onAuthChange } from "@/services/auth";
-import { addToLibrary, getRecommendations } from "@/services/recommendations";
-import type { RecommendationCard } from "@/types/recommendation";
+import { useSession } from "@/hooks/useSession";
+import { addToLibrary, getRecommendations, type Recommendation } from "@/services/recommendations";
 import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
 
@@ -16,36 +14,34 @@ import { Card } from "@/components/Card";
  */
 export default function RecommendationsPage() {
   const router = useRouter();
+  const status = useSession();
   const params = useParams<{ childId: string }>();
   const childId = params.childId;
 
   const [phase, setPhase] = useState<"loading" | "ready" | "submitting" | "error">("loading");
-  const [cards, setCards] = useState<RecommendationCard[]>([]);
+  const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const userRef = useRef<User | null>(null);
 
   useEffect(() => {
-    const unsubscribe = onAuthChange(async (user) => {
-      if (!user) {
-        router.replace("/login");
-        return;
-      }
-      userRef.current = user;
-      try {
-        const fetched = await getRecommendations(user, childId);
-        setCards(fetched);
+    if (status === "anon") router.replace("/login");
+  }, [status, router]);
+
+  useEffect(() => {
+    if (status !== "authed") return;
+    getRecommendations(childId)
+      .then((fetched) => {
+        setRecommendations(fetched);
         // Every card defaults to selected (spec Section 11 #24).
-        setSelected(new Set(fetched.map((card) => card.contentId)));
+        setSelected(new Set(fetched.map((rec) => rec.card.id)));
         setPhase("ready");
-      } catch (error) {
+      })
+      .catch((error) => {
         setPhase("error");
         setErrorMessage(error instanceof Error ? error.message : "Couldn't load recommendations");
-      }
-    });
-    return unsubscribe;
-  }, [router, childId]);
+      });
+  }, [status, childId]);
 
   function toggleSelected(contentId: string) {
     setSelected((current) => {
@@ -57,11 +53,11 @@ export default function RecommendationsPage() {
   }
 
   async function handleAddToLibrary() {
-    if (!userRef.current || selected.size === 0) return;
+    if (selected.size === 0) return;
     setPhase("submitting");
     setErrorMessage(null);
     try {
-      await addToLibrary(userRef.current, childId, Array.from(selected));
+      await Promise.all(Array.from(selected).map((contentId) => addToLibrary(childId, contentId)));
       router.push("/session");
     } catch (error) {
       setPhase("ready");
@@ -92,16 +88,17 @@ export default function RecommendationsPage() {
         </h1>
 
         {phase === "error" && <p style={{ color: "var(--kq-terracotta)" }}>{errorMessage}</p>}
-        {cards.length === 0 && phase === "ready" && (
+        {recommendations.length === 0 && phase === "ready" && (
           <p style={{ color: "var(--kq-text-secondary)" }}>No recommendations available yet.</p>
         )}
 
-        {cards.map((card) => {
-          const isSelected = selected.has(card.contentId);
-          const isExpanded = expandedCardId === card.contentId;
+        {recommendations.map((rec) => {
+          const { card } = rec;
+          const isSelected = selected.has(card.id);
+          const isExpanded = expandedCardId === card.id;
           return (
             <Card
-              key={card.contentId}
+              key={card.id}
               style={{
                 display: "flex",
                 flexDirection: "column",
@@ -109,13 +106,13 @@ export default function RecommendationsPage() {
                 border: isSelected ? "2px solid var(--kq-teal)" : "2px solid transparent",
                 cursor: "pointer",
               }}
-              onClick={() => toggleSelected(card.contentId)}
+              onClick={() => toggleSelected(card.id)}
             >
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
                 <div>
                   <p style={{ fontWeight: 700, color: "var(--kq-charcoal)" }}>{card.title}</p>
                   <p style={{ fontSize: "var(--kq-text-caption)", color: "var(--kq-text-secondary)" }}>
-                    {card.category} · {card.durationSeconds ? Math.round(card.durationSeconds / 60) : "?"} min
+                    {card.category} · {card.duration_seconds ? Math.round(card.duration_seconds / 60) : "?"} min
                   </p>
                 </div>
                 <span style={{ fontSize: 20 }}>{isSelected ? "✅" : "⬜"}</span>
@@ -124,7 +121,7 @@ export default function RecommendationsPage() {
               <button
                 onClick={(event) => {
                   event.stopPropagation();
-                  setExpandedCardId(isExpanded ? null : card.contentId);
+                  setExpandedCardId(isExpanded ? null : card.id);
                 }}
                 style={{
                   alignSelf: "flex-start",
@@ -138,16 +135,20 @@ export default function RecommendationsPage() {
                   cursor: "pointer",
                 }}
               >
-                ✓ {card.trustBadge}
+                ✓ {card.kidq_check.status === "REVIEWED" ? "KidQ reviewed" : "Checking…"}
               </button>
 
               {isExpanded && (
                 <div style={{ fontSize: "var(--kq-text-caption)", color: "var(--kq-text-secondary)", background: "var(--kq-cream)", borderRadius: "var(--kq-radius-control)", padding: 10 }}>
-                  <p>{card.kidqSummary}</p>
-                  <p style={{ marginTop: 6, fontStyle: "italic" }}>
-                    Detailed pacing / language / content / visual / audio breakdown isn&apos;t
-                    available yet — coming with the full scoring engine.
-                  </p>
+                  {card.kidq_summary && <p>{card.kidq_summary}</p>}
+                  {card.kidq_check.dimensions.map((dimension) => (
+                    <p key={dimension.key} style={{ marginTop: 6 }}>
+                      <strong>{dimension.label}:</strong> {dimension.summary}
+                    </p>
+                  ))}
+                  {rec.why.length > 0 && (
+                    <p style={{ marginTop: 6, fontStyle: "italic" }}>{rec.why.join(" · ")}</p>
+                  )}
                 </div>
               )}
             </Card>
@@ -158,7 +159,7 @@ export default function RecommendationsPage() {
           <p style={{ color: "var(--kq-terracotta)", fontSize: "var(--kq-text-caption)" }}>{errorMessage}</p>
         )}
 
-        {cards.length > 0 && (
+        {recommendations.length > 0 && (
           <Button variant="primary" disabled={phase === "submitting"} onClick={handleAddToLibrary}>
             {phase === "submitting" ? "Adding…" : "Looks good — Add to Library"}
           </Button>

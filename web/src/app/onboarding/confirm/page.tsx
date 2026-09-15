@@ -1,11 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { User } from "firebase/auth";
-import { onAuthChange } from "@/services/auth";
-import { getChildren } from "@/services/child-profile";
-import type { ChildProfile } from "@/types/child-profile";
+import { useSession } from "@/hooks/useSession";
+import { getChildren, type ChildProfile } from "@/services/child-profile";
+import { mascotColorForIndex } from "@/lib/mascot-colors";
 import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
 import { Avatar } from "@/components/Avatar";
@@ -17,29 +16,27 @@ import { Avatar } from "@/components/Avatar";
  */
 export default function ConfirmPage() {
   const router = useRouter();
+  const status = useSession();
   const [phase, setPhase] = useState<"loading" | "ready" | "error">("loading");
   const [children, setChildren] = useState<ChildProfile[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const userRef = useRef<User | null>(null);
 
   useEffect(() => {
-    const unsubscribe = onAuthChange(async (user) => {
-      if (!user) {
-        router.replace("/login");
-        return;
-      }
-      userRef.current = user;
-      try {
-        const fetched = await getChildren(user);
+    if (status === "anon") router.replace("/login");
+  }, [status, router]);
+
+  useEffect(() => {
+    if (status !== "authed") return;
+    getChildren()
+      .then((fetched) => {
         setChildren(fetched);
         setPhase("ready");
-      } catch (error) {
+      })
+      .catch((error) => {
         setPhase("error");
         setErrorMessage(error instanceof Error ? error.message : "Couldn't load your children's profiles");
-      }
-    });
-    return unsubscribe;
-  }, [router]);
+      });
+  }, [status]);
 
   if (phase === "loading") {
     return (
@@ -68,15 +65,15 @@ export default function ConfirmPage() {
           ← Back
         </button>
 
-        {children.map((child) => (
+        {children.map((child, index) => (
           <Card key={child.id} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <Avatar color={child.mascotColor} label={child.nickname[0]?.toUpperCase() ?? "?"} size={48} />
+              <Avatar color={mascotColorForIndex(index)} label={child.nickname[0]?.toUpperCase() ?? "?"} size={48} />
               <div>
                 <h2 className="kq-heading" style={{ fontSize: "var(--kq-text-interactive)", color: "var(--kq-charcoal)" }}>
                   {child.nickname}
                 </h2>
-                <p style={{ color: "var(--kq-text-secondary)", fontSize: "var(--kq-text-caption)" }}>Age {child.ageBand}</p>
+                <p style={{ color: "var(--kq-text-secondary)", fontSize: "var(--kq-text-caption)" }}>Age {child.age_band}</p>
               </div>
             </div>
 

@@ -1,26 +1,25 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { User } from "firebase/auth";
-import { onAuthChange } from "@/services/auth";
-import { getChildren } from "@/services/child-profile";
-import { startSession } from "@/services/session";
+import { useSession } from "@/hooks/useSession";
+import { getChildren, type ChildProfile } from "@/services/child-profile";
+import { startSession, type SessionMode } from "@/services/session";
+import { mascotColorForIndex } from "@/lib/mascot-colors";
 import { parseDurationPhrase } from "@/lib/duration-parser";
-import type { ChildProfile } from "@/types/child-profile";
-import type { TimeBandMode } from "@/types/session";
-import { DURATION_OPTIONS } from "@/types/curation-settings";
 import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
 import { Pill } from "@/components/Pill";
 import { Avatar } from "@/components/Avatar";
 
-const MODE_LABELS: { mode: TimeBandMode; label: string }[] = [
-  { mode: "auto", label: "Auto" },
-  { mode: "morning", label: "Morning" },
-  { mode: "daytime", label: "Daytime" },
-  { mode: "bedtime", label: "Bedtime" },
+const MODE_LABELS: { mode: SessionMode; label: string }[] = [
+  { mode: "AUTO", label: "Auto" },
+  { mode: "MORNING", label: "Morning" },
+  { mode: "DAYTIME", label: "Daytime" },
+  { mode: "BEDTIME", label: "Bedtime" },
 ];
+
+const DURATION_OPTIONS = [15, 30, 45, 60, 90] as const;
 
 type MicState = "idle" | "listening" | "unsupported";
 
@@ -46,44 +45,42 @@ function getSpeechRecognition(): (new () => SpeechRecognitionLike) | null {
 /** P7a — the everyday quick action (spec Section 4). */
 export default function StartSessionPage() {
   const router = useRouter();
+  const status = useSession();
   const [phase, setPhase] = useState<"loading" | "ready" | "starting" | "error">("loading");
   const [children, setChildren] = useState<ChildProfile[]>([]);
   const [selectedChildId, setSelectedChildId] = useState<string | null>(null);
   const [duration, setDuration] = useState<number>(30);
-  const [mode, setMode] = useState<TimeBandMode>("auto");
+  const [mode, setMode] = useState<SessionMode>("AUTO");
   const [micState, setMicState] = useState<MicState>("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const userRef = useRef<User | null>(null);
 
   useEffect(() => {
-    const unsubscribe = onAuthChange(async (user) => {
-      if (!user) {
-        router.replace("/login");
-        return;
-      }
-      userRef.current = user;
-      try {
-        const fetched = await getChildren(user);
+    if (status === "anon") router.replace("/login");
+  }, [status, router]);
+
+  useEffect(() => {
+    if (status !== "authed") return;
+    getChildren()
+      .then((fetched) => {
         setChildren(fetched);
         if (fetched.length === 1) {
           const only = fetched[0];
           setSelectedChildId(only.id);
-          setDuration(only.lastUsedDurationMinutes ?? 30);
-          setMode(only.lastTimeBandMode);
+          setDuration(only.session_minutes ?? 30);
+          setMode(only.session_mode ?? "AUTO");
         }
         setPhase("ready");
-      } catch (error) {
+      })
+      .catch((error) => {
         setPhase("error");
         setErrorMessage(error instanceof Error ? error.message : "Couldn't load your children");
-      }
-    });
-    return unsubscribe;
-  }, [router]);
+      });
+  }, [status]);
 
   function selectChild(child: ChildProfile) {
     setSelectedChildId(child.id);
-    setDuration(child.lastUsedDurationMinutes ?? 30);
-    setMode(child.lastTimeBandMode);
+    setDuration(child.session_minutes ?? 30);
+    setMode(child.session_mode ?? "AUTO");
   }
 
   function handleMicTap() {
@@ -108,19 +105,13 @@ export default function StartSessionPage() {
   }
 
   async function handleStart() {
-    if (!selectedChildId || !userRef.current) return;
+    if (!selectedChildId) return;
     setPhase("starting");
     setErrorMessage(null);
     try {
-      const result = await startSession(userRef.current, selectedChildId, duration, mode);
+      const session = await startSession(selectedChildId, duration, mode);
       try {
-        // Session data + the schedule-reminder flag both ride along to
-        // /play — no extra tap on this screen (spec Section 11 #27), the
-        // note just appears on the next screen the parent already sees.
-        sessionStorage.setItem(
-          `kidq:last-session:${selectedChildId}`,
-          JSON.stringify({ ...result.session, outsideScheduledWindow: result.outsideScheduledWindow })
-        );
+        sessionStorage.setItem(`kidq:last-session:${selectedChildId}`, JSON.stringify(session));
       } catch {
         // best-effort only — the player stub just has less to show if this fails
       }
@@ -140,6 +131,7 @@ export default function StartSessionPage() {
   }
 
   const selectedChild = children.find((c) => c.id === selectedChildId) ?? null;
+  const selectedIndex = children.findIndex((c) => c.id === selectedChildId);
 
   // Multi-child household with nothing picked yet: child-switcher first.
   if (children.length > 1 && !selectedChild) {
@@ -149,7 +141,7 @@ export default function StartSessionPage() {
           <h1 className="kq-heading" style={{ fontSize: "var(--kq-text-interactive)", color: "var(--kq-charcoal)" }}>
             Who&apos;s watching?
           </h1>
-          {children.map((child) => (
+          {children.map((child, index) => (
             <button
               key={child.id}
               onClick={() => selectChild(child)}
@@ -165,7 +157,7 @@ export default function StartSessionPage() {
                 textAlign: "left",
               }}
             >
-              <Avatar color={child.mascotColor} label={child.nickname[0]?.toUpperCase() ?? "?"} size={48} />
+              <Avatar color={mascotColorForIndex(index)} label={child.nickname[0]?.toUpperCase() ?? "?"} size={48} />
               <span style={{ fontWeight: 700, color: "var(--kq-charcoal)" }}>{child.nickname}</span>
             </button>
           ))}
@@ -195,7 +187,7 @@ export default function StartSessionPage() {
         )}
 
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <Avatar color={selectedChild.mascotColor} label={selectedChild.nickname[0]?.toUpperCase() ?? "?"} size={48} />
+          <Avatar color={mascotColorForIndex(Math.max(selectedIndex, 0))} label={selectedChild.nickname[0]?.toUpperCase() ?? "?"} size={48} />
           <h1 className="kq-heading" style={{ fontSize: "var(--kq-text-interactive)", color: "var(--kq-charcoal)" }}>
             {selectedChild.nickname}&apos;s session
           </h1>

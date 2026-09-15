@@ -1,9 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { User } from "firebase/auth";
-import { onAuthChange } from "@/services/auth";
+import { useSession } from "@/hooks/useSession";
 import { getConsentStatus, recordConsent } from "@/services/consent";
 import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
@@ -12,52 +11,38 @@ import { Card } from "@/components/Card";
  * P1 DPDP Consent Gate. One-time, before any child profile (spec Section 0).
  * Tap-only — no voice input here (Section 8: mandatory/compliance-critical
  * fields stay tap-only, misrecognition risk is unacceptable).
+ *
+ * NOTE: consent is recorded locally only (no real API endpoint yet for it —
+ * see web/src/services/consent.ts).
  */
 export default function ConsentGatePage() {
   const router = useRouter();
+  const status = useSession();
   const [phase, setPhase] = useState<"loading" | "ready" | "submitting" | "error">("loading");
   const [checked, setChecked] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const userRef = useRef<User | null>(null);
-  const hasRouted = useRef(false);
 
   useEffect(() => {
-    const unsubscribe = onAuthChange(async (user) => {
-      if (hasRouted.current) return;
+    if (status === "anon") router.replace("/login");
+  }, [status, router]);
 
-      if (!user) {
-        hasRouted.current = true;
-        router.replace("/login");
+  useEffect(() => {
+    if (status !== "authed") return;
+    getConsentStatus().then((consentStatus) => {
+      if (consentStatus.hasConsented) {
+        router.replace("/onboarding/profile");
         return;
       }
-      userRef.current = user;
-
-      try {
-        const status = await getConsentStatus(user);
-        if (status.hasConsented) {
-          // Already recorded (spec: consent is one-time) — never re-prompt,
-          // proceed straight to P2 as if this screen were skipped.
-          hasRouted.current = true;
-          router.replace("/onboarding/profile");
-          return;
-        }
-        setPhase("ready");
-      } catch (error) {
-        setPhase("error");
-        setErrorMessage(error instanceof Error ? error.message : "Couldn't check consent status");
-      }
+      setPhase("ready");
     });
-
-    return unsubscribe;
-  }, [router]);
+  }, [status, router]);
 
   async function handleContinue() {
-    if (!checked || !userRef.current) return;
+    if (!checked) return;
     setPhase("submitting");
     setErrorMessage(null);
     try {
-      await recordConsent(userRef.current);
-      hasRouted.current = true;
+      await recordConsent();
       router.replace("/onboarding/profile");
     } catch (error) {
       setPhase("ready");
