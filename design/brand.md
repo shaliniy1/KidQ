@@ -7,9 +7,11 @@ anti-overstimulation, so the design must never overstimulate. Visual
 references: Ploy (bold display type, motion-led) × Givingli (warm cream,
 friendly type, one accent, floating illustrated objects).
 
-Everything below is locked and already implemented in
-`kidq-mockups-v1.html` (child mode) and the proposal artifact. Exact
-values throughout — copy them into Figma styles/variables verbatim.
+Everything below is locked and already implemented in `design/prototype/`
+(child mode) — the original values were established in the pre-prototype
+`kidq-mockups-v1.html` and proposal design artifacts, both kept outside
+this repository. Exact values throughout — copy them into Figma
+styles/variables verbatim.
 
 ## 1. The world (core metaphors)
 
@@ -27,8 +29,10 @@ values throughout — copy them into Figma styles/variables verbatim.
   (same delight tier). As a night-light it toggles a warm gold glow.
 - **Heart-as-verb.** The coral beating heart marks the parent's presence:
   "♥ Mumma picked 3 videos · 25 min", "♥ Picked by Mumma · 8 min".
-- **The End is an object.** A queue card ("The End 🌙", indigo with
-  dashed dusk border) visible from the first frame of every session.
+- **The ending lives in the flow, not the queue.** The last video always
+  runs into the sunset and the all-done screen - a queue that simply
+  stops after its last real card is already visibly finite, so nothing
+  inside the queue needs to announce the end itself.
 
 ## 2. Color tokens
 
@@ -41,13 +45,13 @@ a text surface):
 | `cream-deep` | `#F2E9D8` | secondary surfaces |
 | `ink` | `#2E2A24` | primary text on cream/sky, phone frame |
 | `ink-soft` | `#6B6459` | secondary text, captions, moon face strokes |
-| `teal` | `#1F7A6D` | THE UI accent: pause button, avatar, flower stem |
+| `teal` | `#1F7A6D` | THE UI accent: pause button, avatar, flower stem, what's-next pick badge |
 | `teal-deep` | `#16594F` | teal text on light, focus rings, pressed |
 | `teal-on-dark` | `#7FD8C8` | teal on indigo (focus rings on night) |
 | `sun` | `#FFC64D` | sun disc, gold glow, knob, twinkles, Playtime pill |
 | `sun-deep` | `#F0A72E` | sun rays, flower center, filled breath dots, flame |
 | `dusk` | `#C9B8E8` | lavender: sky transitions, text on night, dashed borders |
-| `night` | `#2B2955` | indigo: night sky, The End card |
+| `night` | `#2B2955` | indigo: night sky |
 | `night-deep` | `#211F45` | deeper night |
 | `heart` | `#E2705E` | coral: hearts, flower petals |
 | `card` | `#FFFFFF` | clouds, white surfaces |
@@ -98,8 +102,8 @@ Ticklist accent/accent-hover pattern).
 ## 3. Typography
 
 - **Display: Baloo 2** — weights 700/800. Greetings, headlines, titles,
-  The End card, wordmark. Ek Type (Indian foundry), full Devanagari
-  support — the regional-language future is in the typeface.
+  wordmark. Ek Type (Indian foundry), full Devanagari support — the
+  regional-language future is in the typeface.
 - **Body: Mukta** — weights 400/500/600/700. Labels, captions, time
   text, instructions. Also Ek Type, Devanagari-ready.
 - Both on Google Fonts (self-hostable later). No Inter.
@@ -114,11 +118,11 @@ Scale in use (size / weight / face):
 | Now-playing title (cast) | 23 / 700 / Baloo |
 | Now-playing title (phone) | 21 / 700 / Baloo |
 | Session header name | 17 / 700 / Baloo |
-| Tap instruction ("Tap the sun to start your day") | 19 / 600 / Mukta, ink |
+| Touch instruction ("Touch the sun to start your day") | 19 / 600 / Mukta, ink |
 | Night hint / sub-lines | 17 / 500 / Mukta, dusk on night |
 | Heart line / break sub-line | 16.5 / 500 / Mukta |
-| Queue "The End 🌙" | 15 / 800 / Baloo, cream |
 | Pills ("12 min left", "Playtime!") | 13 / 600–700 / Mukta |
+| What's-next pick badge ("Mumma & Papa's pick") | 11 / 700 / Mukta, white on teal, letter-spacing 0.02em |
 | "UP NEXT" label | 13 / 600 / Mukta, uppercase, letter-spacing 0.06em |
 | "WHAT'S NEXT" label | 12 / 700 / Mukta, uppercase, letter-spacing 0.14em, dusk |
 
@@ -140,6 +144,20 @@ Scale in use (size / weight / face):
 - **Pause pauses time.** Pausing a video freezes the entire world —
   clouds, sun, heart, progress — not just playback.
 - Night-light glow fade: 1.2 s. Sheet/overlay fades: 700 ms.
+- What's-next reveal (all-done screen): cards float in staggered at
+  700 ms, the pick lights up at 2700 ms. On the pick: badge pops in
+  (scale 0→1, `cubic-bezier(.34,1.56,.64,1)`, 450 ms, 150 ms delay);
+  card straightens out of its resting tilt and grows (scale 1.12,
+  rotate 0), squash-popping there over 500 ms; three small hearts drift
+  up from it in a staggered loop (3.6 s each, rise + fade, started at
+  0.3/1.5/2.5 s) — pure decoration, hidden outright under reduced
+  motion rather than left to freeze mid-air.
+- **Playful placement is a static value, not a motion** — the small
+  per-card tilt on every "parent's picks" grid (what's-next, the
+  watching-screen strip, the choice-screen row) is baked into each
+  card's resting `transform`, so it persists under reduced motion
+  exactly as drawn; only the transitions/animations that move a card
+  into or out of that resting state are shortened.
 - Respect `prefers-reduced-motion`: ambient animations off, transitions
   shortened, static mid-states shown.
 
@@ -177,6 +195,203 @@ Scale in use (size / weight / face):
   **Set these in CSS, never inline on the element** — an inline width cannot be
   overridden by a container query, which is how the find and seam suns came to
   be the only things on those screens that never scaled.
+- **Stand-like-a-tree scene:** she is the hero — largest bounded element of
+  the four break screens, square stage `min(46cqw,196px)` → `228px` (tablet,
+  ≥601px) → `264px` (desktop, ≥1100px), a step above the breathing sun's own
+  caps but kept close to them: the break-count digit row below adds height
+  the other three screens' sub-lines don't carry, so the stage stays modest
+  to keep the assembled cluster within the sibling screens' vertical budget
+  (find's own cluster is the tallest of the other three, and is the
+  reference — tree runs ~20-40px past it at every width, not the 90-120px
+  the first, unconstrained pass measured). The sun perches beside her, small
+  (~1/3 her height), lower-side, existing face/halo/no limbs — the stick-limb
+  performer this scene replaces is retired. **Side-tree decor rule:** two
+  simple rounded trees (stacked circles + a trunk rect, breathing's-clouds
+  craft tier) at the screen's side edges, `top: calc(50% + 54px)` — off the
+  *viewport's* vertical centre with a downward nudge, not the raw screen
+  bottom, since `.kq-centercol` centres the whole cluster regardless of
+  viewport height and an edge anchored to the true bottom clips off-screen
+  on a short viewport. Teal foliage, ink-soft trunks, 62% opacity, gentle
+  sway (same subtle tier as the sun's own wobble), one faster rustle on
+  celebration. Mirrored hold: `scaleX(-1)` on the Lottie container only,
+  never the stage — a bounce keyframe (`translateY`) and a static mirror
+  both touch `transform`, and only different elements can carry both without
+  one clobbering the other.
+- **Break-count digit pattern** (shared: tree's two 5-counts, count-to-10
+  next): the live count for a timed counting break renders as one BIG
+  current digit with the still-to-come numbers trailing small and dimmed
+  beside it (`5` then `4 · 3 · 2 · 1`, shrinking each step) — never a plain
+  small text sub-line, which read as too quiet for a MOVE-bucket break.
+  `--cnt` (36/44/54px across the three tiers) sizes the big digit; the
+  trail sits at `--cnt * .48`, `var(--ink-soft)`, 72% opacity. The digit
+  pops on every change (the existing squash-stretch `pop()` helper,
+  retriggered — reduced motion needs no special-casing: `pop()`'s own
+  `later()` cleanup clamp only delays removing the animation class, and the
+  animation itself is already crushed to instant by the global
+  `.reduce-motion` rule). Colour was a two-round call: a sun-gold chip
+  first, then overruled — flat sun (`#FFC64D`) or sun-deep (`#F0A72E`) text
+  measures 1.2–1.9:1 against this app's cream sky gradient (`#FDF8EC` /
+  `#F7EBD2` / `#F1E2C4`), nowhere near the 3:1 AA floor for large text this
+  project holds every game element to. Plain **teal** (`var(--teal)`, the
+  app's one UI accent) measures **4.04–4.88:1** across those same three sky
+  stops — clears 3:1 everywhere with real margin — so the digit sits
+  directly on the sky, no badge. The whole count row is `aria-hidden`; the
+  break's own headline stays the sole accessible carrier, so a five-times-a-
+  break digit swap never spams a screen reader's `aria-live` region.
+- **Break-count digit BALLOON** (user request 2026-09-15, "make them like
+  coming on balloon" — superseding the flat-teal digit above, which both
+  break screens rode on until this session): the big current digit now
+  arrives riding a glossy brand-hue balloon instead of sitting bare on the
+  sky. Balloon over ball — the app already has an established balloon
+  vocabulary: the splash's own KidQ letters (§8.7's mark aside; the splash
+  screen itself, `kidq-desktop-app.css:89–141`) are glossy inflating
+  balloons, four brand hues, squash-stretch inflate. This reuses that
+  vocabulary rather than inventing a new shape — same 5-stop radial-gradient
+  **recipe** (identical hex values), same four hues in the same order the
+  splash cycles through its own letters: **teal → gold → coral → dusk →
+  repeat**, one hue step per digit change (`hue-<name>` class, swapped by a
+  shared `setBalloonHue()` helper both break screens call). Only the
+  gradient's **size** departs from the splash's own default
+  (farthest-corner-from-32%/24%) sizing: an explicit `circle calc(var(--cnt)
+  * .729)` radius instead. Reason: the splash's balloons ARE the letters,
+  filling their own glyph edge-to-edge, so their centre sits deep in the
+  gradient; a small round digit badge's own centre only reaches t≈0.3 of the
+  *default* sizing — still inside the near-white highlight band — which
+  measured as cream failing on teal and coral too, not just gold. The
+  smaller explicit radius moves the badge centre to **t≈0.55**, the
+  recipe's own literal mid-point between the 36/40% "true hue" stop and the
+  62/66% deep one, without touching a single colour value.
+  **Digit ink per hue, measured** (at t=0.55, `scratchpad/balloon-*.js` this
+  session — see `kidq-desktop-app.css`'s own copy of this table for the
+  worked geometry):
+
+  | hue   | sampled body colour | cream (`--cream`) | ink (`--ink`) | used |
+  |-------|---------------------|--------------------|-----------------|------|
+  | teal  | `#258776`           | 4.00:1             | 3.25:1          | cream |
+  | gold  | `#F6B43B`           | 1.66:1             | 7.83:1          | **ink** |
+  | coral | `#D0604C`           | 3.52:1             | 3.70:1          | cream |
+  | dusk  | `#7C67B6`           | 4.28:1             | 3.04:1          | cream |
+
+  All eight combinations clear the 3:1 AA large-text floor; gold is the one
+  hue where cream fails outright (as flat sun/sun-deep text already did
+  against this sky, two paragraphs up) — ink is used there instead, on the
+  same `hue-gold` class the body's own gradient swaps on, so the two effects
+  can never drift apart. Cream is used on teal/coral/dusk per the design
+  brief, even though coral's own ink number edges it out narrowly (3.70 vs
+  3.52) — both clear the floor with margin, and one consistent rule (ink
+  only for gold) is easier to hold correct than a per-hue coin-flip.
+  **Balloon body vs sky** (non-text, 3:1 floor — the balloon is
+  `aria-hidden` pure decoration around the digit, so this is a self-imposed
+  bar past what WCAG 1.4.11 itself requires of decorative graphics, not a
+  strict floor): measured the same t=0.55 body tone against both skies.
+  Bright sky (tree): teal 3.42:1, coral 3.01:1, dusk 3.67:1 all clear;
+  **gold 1.43:1 does not** — a structural property of the hue (this app's
+  cream sky and any sun-gold value never clear 3:1, the same finding already
+  on record two paragraphs up, not a new gap the balloon introduces).
+  Dimmed sky (count, `.kq-duskveil` @ .25 — see the count-to-ten scene
+  below): teal 3.15:1 and dusk 3.39:1 still clear; **coral drops to 2.78:1**
+  (a real but narrow miss) and **gold to 1.32:1** (fails harder). The
+  balloon's own tiny specular highlight (the same near-white `0%`/`9%`
+  recipe stops the splash's letters carry too) reads lighter still at its
+  very edge — expected for a glossy round object and not evaluated
+  separately, the same way the splash's own highlight was never held to a
+  sky-contrast floor. Left as a known, honestly-logged gap rather than
+  re-tuning the recipe's actual colour values, which the brief asked not to
+  invent past: the digit **text** — the one piece doing real work, since the
+  balloon itself is decoration — clears 3:1 on all four hues either way.
+  **Knot:** a small solid triangle in the same hue's own 100% (deepest)
+  recipe stop — the shape's own shadow colour, not a new one. **String:** a
+  short, slightly-tilted `1.5px` thread in `var(--ink-soft)`, neutral across
+  all four hues (real balloon string doesn't recolour with the balloon) and
+  deliberately short — a long one is more rigging than read at this badge
+  scale. **Entrance diverges by screen, both reusing existing vocabulary
+  rather than inventing a third:** tree's balloon bounces in with the same
+  `pop()` squash-stretch the bare digit used before (now targeting the
+  whole balloon wrapper, so body/knot/string/digit bounce as one unit) —
+  energetic, like the splash's own inflate, same hold-chain trigger, same
+  re-entrancy discipline. Count's balloon instead floats gently up into
+  place (`kq-balloonfloat`: `translateY(14px)→0`, `.4→1` opacity, no scale,
+  no squash-stretch) — replacing the flat digit's old quiet scale-pulse
+  (`kq-countpulse`, retired) with a motion that still reads as "the settle
+  game," now carried by the balloon instead of the bare glyph. Both
+  keyframes' `100%` state matches the wrapper's own unanimated rest state
+  exactly (`transform:none`, `opacity:1`), the same discipline `pop()`
+  itself already held, so reduced motion's blanket crush to `.001ms`
+  (`kidq-desktop-app.css` reduced-motion block) never leaves a balloon stuck
+  mid-bounce or mid-float — confirmed live, both screens, both motion modes.
+  **Sharing judgment call:** one shared CSS component (`.kq-digitballoon`
+  + `.kq-balloon-body/-knot/-string`, hue classes, the `setBalloonHue()` JS
+  helper) covers the balloon shape and hue-cycling identically for both
+  screens — that part clearly wanted one implementation, not two
+  copy-pasted balloons. The *entrance* animation stays two separate,
+  screen-scoped rules (`#screen-tree .kq-digitballoon.tapped` vs
+  `#screen-count .kq-digitballoon.pulse`) rather than one shared "balloon
+  entrance" abstraction: tree and count already used two different
+  triggering helpers before this session (`pop()`'s two-hardcoded-class
+  design vs count's own small remove/reflow/add re-trigger, brand.md's own
+  earlier note on this) for reasons specific to each screen's timing
+  structure, and forcing them into one shared entrance function would have
+  meant either widening `pop()` past its established two-class shape or
+  losing the "bounce vs float" distinction the design brief asked for by
+  name — judged not worth it for two three-line CSS rules.
+- **Count-to-ten scene:** eyes-closed sun as hero, sized like breathing's own
+  (`min(40cqw,190px)` → `214px` → `240px`) — the closest sibling in
+  complexity: one bounded hero, no side decor, no dots, no new assets of any
+  kind (the cheapest break in the set, deliberately). Eyes are the one new
+  mechanism this scene adds. **Donor: BREATHING's own `.bsun` dual-group
+  `eyesOpen`/`eyesClosed` markup** — the only sun with a working eye
+  *toggle* — not the sunrise sun's eyes, whose unscoped
+  `.eyes-awake{opacity:0}` only lifts under `.screen.risen`, a class
+  `#screen-count` never gets ("Open your eyes!" would render no eyes at
+  all). This is new markup + new ID-scoped CSS, not shared-component reuse —
+  no shared sun component exists yet; rays and mouth stay the fixed smile
+  every static sun already uses, no toggle needed there. A single state
+  class (`.dim`, on `#screen-count` itself) drives both the sky dim and the
+  closed eyes together, since the sequence pairs them at the same two beats
+  (entry closes both, "Open!" opens both) — reusing the existing
+  `.kq-duskveil` overlay (`kidq-desktop-app.css:66-68`) that already powers
+  the watching screen's own dusk, pinned to a NEW ~0.25 opacity of its own
+  (`.screen.setting`'s existing 0.85 is a full dusk, far too strong for
+  "dims slightly"). **Digits walk while the eyes are closed, on purpose:**
+  the child playing can't see the screen, but a peeking child (guaranteed at
+  this age), a watching parent, and the sibling-break visual-count pattern
+  all still want it, so the sub-line stays visible and `aria-hidden` (never
+  `aria-live`) exactly like every other break's count row — the headline
+  alone carries the accessible experience. **Digit entrance diverged from
+  tree's own `pop()` from the start:** count is the settle game, so each
+  digit's entrance was a quiet ~300ms scale-up pulse (`kq-countpulse`:
+  `.82→1` scale, `.55→1` opacity), not tree's springy squash-stretch bounce
+  — its own small remove/reflow/add re-trigger helper, not a widened
+  `pop()`, since that helper's two hardcoded class names (`tapped`/
+  `moontap`) weren't reusable for a third animation only this screen
+  needed. **Superseded 2026-09-15** by the balloon-float entrance in the
+  break-count digit BALLOON bullet above (`kq-balloonfloat`, on the same
+  re-trigger helper, now targeting the balloon wrapper) — the "quieter than
+  tree, no bounce" *intent* survives unchanged, just carried by the balloon
+  instead of the bare glyph now. **Trail direction is the
+  opposite of tree's:** tree counts down and its trail previews what's
+  still coming; count-to-ten counts up and its trail shows the
+  WALKED-THROUGH numbers behind the current one — at nine numbers wide (one
+  more than tree's own four-wide max) this was the width risk named and
+  measured explicitly (item 44): the shared `.kq-breakcount-trail` size and
+  `" · "` punctuation turned out to already carry real margin (180px
+  against 330px usable at the narrowest tier) with no override needed,
+  `font-variant-numeric:tabular-nums` added only to keep that measurement
+  stable as the digits themselves change width. Digit colour was the SAME
+  shared teal (`var(--teal)`) as tree's own — re-measured, not inherited
+  blindly, against THIS screen's dimmed sky specifically: `.kq-duskveil`
+  composited at 0.25 opacity over the day sky's own three gradient stops
+  shifted the contrast to **3.72–4.05:1** across the composited gradient —
+  still clearing the 3:1 AA large-text floor with real margin, closer to it
+  than tree's own 4.04–4.88:1 against the undimmed sky, but not close
+  enough to need a different colour. **Superseded 2026-09-15:** the digit
+  now sits on a balloon, not the bare dimmed sky — its colour is decided by
+  which hue balloon it's currently riding (cream, or ink on gold; table in
+  the break-count digit BALLOON bullet above), not by a single fixed teal
+  any more. The dimmed-sky number above stays true as history (it's why
+  teal was the safe default before the balloon), and the *balloon's own*
+  contrast against this same dimmed sky was re-measured fresh for the
+  balloon build (see above) rather than assumed to inherit a pass.
 - **Player card:** 16:9, radius 24, soft shadow `0 12px 28px -16px
   rgba(46,42,36,.4)`, at (20, 310) width 350. Corner pause: 44 px cream
   circle, teal-deep icon, top-right 14,14. Playing bars: 3 teal bars
@@ -186,8 +401,37 @@ Scale in use (size / weight / face):
   unplayed portion veiled `rgba(250,244,232,.78)`; knob 20 px sun-gold,
   3 px white border.
 - **Queue cards:** 124×70, radius 14; thumbnail card has 2 px
-  `rgba(46,42,36,.1)` border; **The End card**: night bg, 2 px dashed
-  dusk border, cream Baloo 15/800 "The End 🌙".
+  `rgba(46,42,36,.1)` border. A queue simply ends after its last real
+  card — there is no end-of-queue card or marker. The session's own end
+  is carried by the flow itself (last video → sunset → all-done), not
+  by anything inside the queue; a short row that visibly stops is
+  already a visibly finite one. (An earlier "The End 🌙" card existed
+  only as dead CSS, never wired to any queue render — removed outright
+  rather than given a replacement treatment.)
+- **Playful placement** (what's-next cards, the watching-screen picks
+  strip, the choice-screen "or pick one of Mumma & Papa's videos" row):
+  every card in these three "parent's picks" grids rests at a small
+  tilt, one shared repeating cycle — card 1 -2.5°, card 2 1.8°, card 3
+  -2°, repeating from card 4 on. **Straight means "this one" — tilted
+  means "available."** The what's-next pick straightens (and grows,
+  scale 1.12) when the child's day ends on it; the watching strip's
+  now-playing card stays straight the whole time it's current; every
+  other card - including watched ones, which only ever lose opacity,
+  never their tilt - stays tilted. The choice screen's cards have no
+  such "current" card, so all of them stay tilted.
+- **What's-next pick badge:** pill, radius 99, teal bg, white 11/700
+  Mukta text + a small white heart (12 px, same beating icon used
+  elsewhere), padding 4×11, soft shadow `0 3px 10px rgba(0,0,0,.35)`,
+  centered on the card's top edge (top -13px). Reads "‹household
+  label›'s pick" - "Mumma & Papa's pick" today, sourced from the same
+  session data as the picked-by credit everywhere else, never
+  hardcoded. White-on-teal here measures 5.17:1, clearing the 4.5:1
+  small-text bar with room to spare.
+- **Drifting hearts** (what's-next pick, choose stage only): three
+  small coral hearts (18/14/15 px), positioned around the card's
+  edges, each rising and fading on its own 3.6 s loop, staggered
+  0.3/1.5/2.5 s. `aria-hidden`, pure decoration - hidden outright under
+  reduced motion.
 - **Big pause (cast):** 76 px teal circle, white icon, shadow
   `0 14px 26px -14px rgba(22,89,79,.55)`.
 - **High five:** 96 px cream disc, 🖐 at 42 px, breathing pulse 2.6 s,
@@ -216,7 +460,7 @@ factual labels. Never nagging, never gamified.
   (all-done high-five, and the night-light reopen screen), regardless of
   the visual night sky those closing moments sit on — that sky is the
   app's own day-is-over motif, not a claim about the real clock.
-- Instructions are one line, verb-first: "Tap the sun to start your day",
+- Instructions are one line, verb-first: "Touch the sun to start your day",
   "Keep your head still — follow me with your eyes!"
 - The parent's presence is always credited: "Mumma picked 3 videos".
 - Affirmations, not rewards: "You did it! ✨", "Here we go! ☀️" — no
@@ -228,15 +472,23 @@ factual labels. Never nagging, never gamified.
   to pick today's videos".
 - Emoji are functional objects (🌙 ☀️ 🖐 🧱 ♥), used sparingly, one per
   line max.
+- **"Touch", not "tap" (2026-09-15).** Group feedback: family members who
+  aren't comfortable with apps don't reliably know "tap"; "touch" is
+  universal and warmer. All child-facing instruction and aria-label copy
+  uses "touch" (e.g. "Touch the sun to start your day"). Interaction/build
+  vocabulary — CSS class names like `.tapped`, code comments about tap
+  targets — is unaffected; this is copy only.
 
 ## 7. Accessibility
 
 - **WCAG 2.1 AA** on every text-bearing pair (project-wide standard).
 - Sun yellow is never a text surface; teal-deep is the text-safe teal on
-  light; dusk and cream carry text on night skies.
+  light; dusk and cream carry text on night skies; white on the raw
+  `teal` token (the what's-next pick badge) measures 5.17:1, clearing
+  the 4.5:1 small-text bar directly - no darker substitute needed here.
 - All interactive elements are real buttons with aria-labels that
   describe the outcome ("Start today's watching session", "Night light —
-  tap to turn on or off" with `aria-pressed`).
+  touch to turn on or off" with `aria-pressed`).
 - Live-changing captions (break phase lines) use `aria-live="polite"`.
 - Full `prefers-reduced-motion` support.
 
