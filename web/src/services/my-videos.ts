@@ -1,55 +1,35 @@
-import type { User } from "firebase/auth";
-import { apiFetch } from "./api";
-import type { DetectedVideo, LibraryEntry, LibraryVisibility } from "@/types/library";
+import { api, unwrap } from "@/lib/api";
+import type { paths } from "@/lib/api-types";
 
-async function authHeaders(user: User): Promise<HeadersInit> {
-  return { Authorization: `Bearer ${await user.getIdToken()}`, "Content-Type": "application/json" };
+export type LibraryEntry = paths["/children/{id}/library"]["get"]["responses"][200]["content"]["application/json"]["items"][number];
+export type SubmissionPreview = paths["/children/{id}/submissions/preview"]["post"]["responses"][200]["content"]["application/json"];
+export type Submission = paths["/children/{id}/submissions"]["post"]["responses"][202]["content"]["application/json"];
+
+/** Add a Video, step 1 — fetches KidQ's check for a URL. Saves nothing. */
+export async function previewVideo(childId: string, url: string): Promise<SubmissionPreview> {
+  return unwrap(await api.POST("/children/{id}/submissions/preview", { params: { path: { id: childId } }, body: { url } }));
 }
 
-export async function detectVideo(user: User, url: string): Promise<DetectedVideo> {
-  return apiFetch<DetectedVideo>("/videos/detect", {
-    method: "POST",
-    headers: await authHeaders(user),
-    body: JSON.stringify({ url }),
-  });
+/** Submits the URL for real: KidQ scores it with AI and an admin reviews it before it's playable. */
+export async function submitVideo(childId: string, url: string): Promise<Submission> {
+  return unwrap(await api.POST("/children/{id}/submissions", { params: { path: { id: childId } }, body: { url } }));
 }
 
-export async function getMyVideos(user: User): Promise<LibraryEntry[]> {
-  const { entries } = await apiFetch<{ entries: LibraryEntry[] }>("/library", { headers: await authHeaders(user) });
-  return entries;
+export async function listSubmissions(childId: string): Promise<Submission[]> {
+  return unwrap(await api.GET("/children/{id}/submissions", { params: { path: { id: childId } } })).items;
 }
 
-export async function addVideo(
-  user: User,
-  video: DetectedVideo,
-  category: string,
-  visibility: LibraryVisibility
-): Promise<LibraryEntry> {
-  const { entry } = await apiFetch<{ entry: LibraryEntry }>("/library", {
-    method: "POST",
-    headers: await authHeaders(user),
-    body: JSON.stringify({
-      contentId: video.contentId,
-      title: video.title,
-      category,
-      durationSeconds: video.durationSeconds,
-      thumbnailUrl: video.thumbnailUrl,
-      embedUrl: video.embedUrl,
-      visibility,
-    }),
-  });
-  return entry;
+export async function getLibrary(childId: string): Promise<LibraryEntry[]> {
+  return unwrap(await api.GET("/children/{id}/library", { params: { path: { id: childId } } })).items;
 }
 
-export async function removeVideo(user: User, entryId: string): Promise<void> {
-  await apiFetch(`/library/${entryId}`, { method: "DELETE", headers: await authHeaders(user) });
+export async function removeFromLibrary(childId: string, contentItemId: string): Promise<void> {
+  await unwrap(
+    await api.DELETE("/children/{id}/library/{contentItemId}", { params: { path: { id: childId, contentItemId } } }),
+  );
 }
 
-/** Dev/QA-only — see INTEGRATION_NOTES.md #6. Simulates the Admin review queue's decision. */
-export async function simulateAdminDecision(user: User, entryId: string, decision: "approved" | "rejected"): Promise<void> {
-  await apiFetch(`/library/${entryId}/simulate-admin-decision`, {
-    method: "POST",
-    headers: await authHeaders(user),
-    body: JSON.stringify({ decision }),
-  });
-}
+// NOTE: there is no real per-child "exclude from just this child while keeping it in the family
+// library" concept on the API today — the library already is per-child. INTEGRATION_NOTES.md's
+// simulateAdminDecision (a fake Admin-approval callback) is intentionally not carried over here:
+// approval only ever comes from the real admin app.

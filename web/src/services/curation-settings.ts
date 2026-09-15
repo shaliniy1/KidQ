@@ -1,27 +1,37 @@
-import type { User } from "firebase/auth";
-import { apiFetch } from "./api";
-import type { CurationSettings } from "@/types/curation-settings";
+import { api, unwrap } from "@/lib/api";
+import type { paths } from "@/lib/api-types";
 
-async function authHeaders(user: User): Promise<HeadersInit> {
-  return { Authorization: `Bearer ${await user.getIdToken()}`, "Content-Type": "application/json" };
+// The "Customize Hub" fields aren't a separate curation resource on the real API —
+// they're part of the Child resource itself (GET/PATCH /children/:id).
+export type CurationSettings = Pick<
+  paths["/children/{id}"]["patch"]["requestBody"]["content"]["application/json"],
+  | "interests"
+  | "content_mix"
+  | "preferred_categories"
+  | "regulation_goals"
+  | "session_minutes"
+  | "break_type"
+  | "break_interval_minutes"
+  | "session_mode"
+  | "languages"
+>;
+
+export async function getCurationSettings(childId: string): Promise<CurationSettings> {
+  const child = unwrap(await api.GET("/children/{id}", { params: { path: { id: childId } } }));
+  const {
+    interests,
+    content_mix,
+    preferred_categories,
+    regulation_goals,
+    session_minutes,
+    break_type,
+    break_interval_minutes,
+    session_mode,
+    languages,
+  } = child;
+  return { interests, content_mix, preferred_categories, regulation_goals, session_minutes, break_type, break_interval_minutes, session_mode, languages };
 }
 
-export async function getCurationSettings(user: User, childId: string): Promise<CurationSettings> {
-  const { settings } = await apiFetch<{ settings: CurationSettings }>(`/children/${childId}/curation`, {
-    headers: await authHeaders(user),
-  });
-  return settings;
-}
-
-export async function saveCurationSettings(
-  user: User,
-  childId: string,
-  settings: Omit<CurationSettings, "childId" | "updatedAt">
-): Promise<CurationSettings> {
-  const { settings: saved } = await apiFetch<{ settings: CurationSettings }>(`/children/${childId}/curation`, {
-    method: "PUT",
-    headers: await authHeaders(user),
-    body: JSON.stringify(settings),
-  });
-  return saved;
+export async function saveCurationSettings(childId: string, settings: Partial<CurationSettings>) {
+  return unwrap(await api.PATCH("/children/{id}", { params: { path: { id: childId } }, body: settings }));
 }

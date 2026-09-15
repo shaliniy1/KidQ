@@ -1,38 +1,35 @@
-import type { User } from "firebase/auth";
-import { apiFetch } from "./api";
-import type { AssembledSession, TimeBandMode } from "@/types/session";
+import { api, unwrap } from "@/lib/api";
+import type { paths } from "@/lib/api-types";
 
-export interface StartSessionResult {
-  session: AssembledSession;
-  /** Reminder-only (spec Section 11 #27) — never blocks the session, just flags the soft note. */
-  outsideScheduledWindow: boolean;
+export type AssembledSession = paths["/children/{id}/sessions"]["post"]["responses"][201]["content"]["application/json"];
+export type SessionMode = NonNullable<paths["/children/{id}/sessions"]["post"]["requestBody"]["content"]["application/json"]["mode"]>;
+
+export async function startSession(childId: string, minutes: number, mode?: SessionMode): Promise<AssembledSession> {
+  return unwrap(await api.POST("/children/{id}/sessions", { params: { path: { id: childId } }, body: { minutes, mode } }));
 }
 
-export async function startSession(
-  user: User,
-  childId: string,
-  durationMinutes: number,
-  timeBandMode: TimeBandMode
-): Promise<StartSessionResult> {
-  const idToken = await user.getIdToken();
-  return apiFetch<StartSessionResult>(`/children/${childId}/session`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${idToken}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ durationMinutes, timeBandMode }),
-  });
+export async function getCurrentSession(childId: string): Promise<AssembledSession | null> {
+  return unwrap(await api.GET("/children/{id}/sessions/current", { params: { path: { id: childId } } })).session;
 }
 
-/**
- * The real Child Player would call this the moment it actually receives/
- * loads a queue (ticket 15) — the /play stub calls it on mount, since
- * "the device has the queue" is implicitly true the moment that screen
- * successfully renders the session data.
- */
-export async function acknowledgeSync(user: User, childId: string, sessionId: string): Promise<void> {
-  const idToken = await user.getIdToken();
-  await apiFetch(`/children/${childId}/sync-ack`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${idToken}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ sessionId }),
-  });
+export async function replaySession(sessionId: string): Promise<AssembledSession> {
+  return unwrap(await api.POST("/sessions/{id}/replay", { params: { path: { id: sessionId } } }));
+}
+
+export async function recordItemOutcome(
+  sessionId: string,
+  itemId: string,
+  update: { outcome?: "COMPLETED" | "SKIPPED" | "EXITED"; watched_seconds?: number; position_seconds?: number },
+): Promise<AssembledSession> {
+  return unwrap(
+    await api.PATCH("/sessions/{id}/items/{itemId}", { params: { path: { id: sessionId, itemId } }, body: update }),
+  );
+}
+
+export async function endSession(sessionId: string, outcome: "COMPLETED" | "EXITED"): Promise<AssembledSession> {
+  return unwrap(await api.POST("/sessions/{id}/end", { params: { path: { id: sessionId } }, body: { outcome } }));
+}
+
+export async function listSessions(childId: string): Promise<AssembledSession[]> {
+  return unwrap(await api.GET("/children/{id}/sessions", { params: { path: { id: childId } } })).items;
 }

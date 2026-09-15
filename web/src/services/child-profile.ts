@@ -1,27 +1,31 @@
-import type { User } from "firebase/auth";
-import { apiFetch } from "./api";
-import type { ChildProfile, CreateChildInput } from "@/types/child-profile";
+import { api, unwrap } from "@/lib/api";
+import type { paths } from "@/lib/api-types";
 
-async function authHeaders(user: User): Promise<HeadersInit> {
-  return { Authorization: `Bearer ${await user.getIdToken()}`, "Content-Type": "application/json" };
-}
+export type ChildProfile = paths["/children"]["get"]["responses"][200]["content"]["application/json"]["items"][number];
+export type OnboardingChild = paths["/onboarding"]["post"]["requestBody"]["content"]["application/json"]["children"][number];
+export type ChildPatch = paths["/children/{id}"]["patch"]["requestBody"]["content"]["application/json"];
+export type Me = paths["/me"]["get"]["responses"][200]["content"]["application/json"];
 
-export async function submitProfile(
-  user: User,
+export async function submitOnboarding(
   parentName: string,
-  children: CreateChildInput[]
-): Promise<ChildProfile[]> {
-  const { children: created } = await apiFetch<{ children: ChildProfile[] }>("/onboarding/profile", {
-    method: "POST",
-    headers: await authHeaders(user),
-    body: JSON.stringify({ parentName, children }),
-  });
-  return created;
+  children: OnboardingChild[],
+  language = "en",
+): Promise<Me> {
+  return unwrap(await api.POST("/onboarding", { body: { parent_name: parentName, language, children } }));
 }
 
-export async function getChildren(user: User): Promise<ChildProfile[]> {
-  const { children } = await apiFetch<{ children: ChildProfile[] }>("/children", {
-    headers: await authHeaders(user),
-  });
-  return children;
+export async function getMe(): Promise<Me> {
+  return unwrap(await api.GET("/me"));
+}
+
+export async function getChildren(): Promise<ChildProfile[]> {
+  return unwrap(await api.GET("/children")).items;
+}
+
+export async function createChild(child: OnboardingChild): Promise<ChildProfile> {
+  return unwrap(await api.POST("/children", { body: child }));
+}
+
+export async function updateChild(childId: string, patch: ChildPatch): Promise<ChildProfile> {
+  return unwrap(await api.PATCH("/children/{id}", { params: { path: { id: childId } }, body: patch }));
 }

@@ -1,35 +1,31 @@
-import type { User } from "firebase/auth";
-import { apiFetch } from "./api";
-import type { FeedbackEntry, Sentiment, SessionLogRecord } from "@/types/watched-log";
+import { api, unwrap } from "@/lib/api";
+import type { AssembledSession } from "./session";
 
-async function authHeaders(user: User): Promise<HeadersInit> {
-  return { Authorization: `Bearer ${await user.getIdToken()}`, "Content-Type": "application/json" };
+/** The handoff log: recent sessions, what was watched and how each ended. */
+export async function getWatchedLog(childId: string): Promise<AssembledSession[]> {
+  return unwrap(await api.GET("/children/{id}/sessions", { params: { path: { id: childId } } })).items;
 }
 
-export async function getWatchedLog(user: User, childId: string): Promise<SessionLogRecord[]> {
-  const { logs } = await apiFetch<{ logs: SessionLogRecord[] }>(`/children/${childId}/watched-log`, {
-    headers: await authHeaders(user),
-  });
-  return logs;
+export class NotYetAvailableError extends Error {
+  constructor(feature: string) {
+    super(`${feature} isn't available yet — there's no real API for it (see INTEGRATION_NOTES.md).`);
+    this.name = "NotYetAvailableError";
+  }
 }
 
-export async function getFeedback(user: User): Promise<FeedbackEntry[]> {
-  const { feedback } = await apiFetch<{ feedback: FeedbackEntry[] }>("/feedback", { headers: await authHeaders(user) });
-  return feedback;
+/**
+ * Per-video thumbs up/down has no real endpoint yet — the API records an
+ * item's watch OUTCOME (COMPLETED/SKIPPED/EXITED), not a parent sentiment.
+ * Left as an explicit gap rather than a fabricated success.
+ */
+export async function setFeedback(): Promise<never> {
+  throw new NotYetAvailableError("Per-video feedback");
 }
 
-export async function setFeedback(user: User, contentId: string, sentiment: Sentiment): Promise<void> {
-  await apiFetch("/feedback", {
-    method: "POST",
-    headers: await authHeaders(user),
-    body: JSON.stringify({ contentId, sentiment }),
-  });
-}
-
-export async function excludeFromChild(user: User, childId: string, contentId: string): Promise<void> {
-  await apiFetch(`/children/${childId}/exclude`, {
-    method: "POST",
-    headers: await authHeaders(user),
-    body: JSON.stringify({ contentId }),
-  });
+/**
+ * "Exclude from this child while keeping it in the family library" has no
+ * real endpoint — the library is already per-child on the real API.
+ */
+export async function excludeFromChild(): Promise<never> {
+  throw new NotYetAvailableError("Per-child exclude");
 }

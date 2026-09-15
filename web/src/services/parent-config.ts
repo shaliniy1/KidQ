@@ -1,16 +1,14 @@
-import { apiFetch } from "./api";
-import type { AgeBandDefaultsResponse, CategoriesResponse } from "@/types/parent-config";
+import { api, unwrap } from "@/lib/api";
+import type { paths } from "@/lib/api-types";
+
+export type Taxonomy = paths["/taxonomy"]["get"]["responses"][200]["content"]["application/json"];
 
 /**
- * The category list and age-band defaults are backend-owned config, not
- * client constants (spec Section 9/12 Table B #4, grill decision "backend
- * config = source of truth"). No screen should hardcode a category list or
- * a development-goal mapping — fetch it from here instead.
+ * Categories, interests, regulation goals, languages and age bands — the
+ * real backend-owned config (GET /taxonomy), keyed by taxonomy kind. There
+ * is no separate age-band-defaults endpoint: defaults are already applied
+ * server-side to a child created with only a nickname + age band.
  */
-export async function getCategories(): Promise<CategoriesResponse> {
-  return apiFetch<CategoriesResponse>("/config/categories");
-}
-
-export async function getAgeBandDefaults(): Promise<AgeBandDefaultsResponse> {
-  return apiFetch<AgeBandDefaultsResponse>("/config/age-band-defaults");
+export async function getTaxonomy(): Promise<Taxonomy> {
+  return unwrap(await api.GET("/taxonomy"));
 }
