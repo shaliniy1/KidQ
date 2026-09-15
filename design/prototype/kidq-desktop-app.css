@@ -933,7 +933,21 @@ button{font-family:inherit; -webkit-tap-highlight-color:transparent}
 #screen-flower-candle.ph-blow .bsun .mouthSmile{opacity:0}
 
 /* Petals (re-authored) - same 3.15s transition as the sun above, so the
-   whole "inhale" reads as one gesture, not two independently-timed parts. */
+   whole "inhale" reads as one gesture, not two independently-timed parts.
+   The centre disc + face (index.html) moved to live as SIBLINGS after this
+   group, not children of it (Opus diff review, 2026-09-16) - .petalsB
+   carries scale(.55) at rest (shared unscoped rule, above), which rendered
+   the disc/face sub-pixel through the intro and every blow phase; the
+   spec's face is static, not part of the bloom. The shared rule's own
+   transform-origin:43px 38px resolves against the SVG's viewBox (the
+   initial/default transform-box is view-box, not this group's own
+   bounding box), so it is an absolute point in the 86x104 viewBox - the
+   flower-head centre - regardless of what is or isn't nested inside the
+   group. Verified live (forced scale(.55) vs scale(1) via inline style,
+   bypassing this machine's hidden-tab transition-tick limitation):
+   the disc's own bounding-box centre never moves, and the petals' own
+   bounding-box centre stays within ~0.3px of it at both scales - no
+   corrected transform-origin was needed. */
 #screen-flower-candle .petalsB{transition:transform 3.15s ease-in-out}
 #screen-flower-candle.ph-smell .petalsB{transform:scale(1)}
 
