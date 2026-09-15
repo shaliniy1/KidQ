@@ -40,6 +40,7 @@ screen time rather than extend it.
 | Playtime | Seam into a break |
 | Break: breathe | Three slow breaths with the sun |
 | Break: find 3 | Find three things of one colour in the room |
+| Break: follow the sun | Track the sun with your eyes and catch it, three times |
 | After-break choice | Tap the sun for next, or pick any remaining video |
 | Sunset → All done | High five, then what's next |
 | No session | "The sun is still asleep" — deliberately no child CTA |
@@ -53,8 +54,15 @@ Behaviour worth knowing before porting:
   interrupts a video. Two videos gets one break, one video gets none.
 - **The sun tracks allotted time, not videos finished.** Switching videos never
   rewinds it; rewatching something finished never pushes it forward.
-- **Autoplay runs between videos, but never out of a break.** A break exists to
-  interrupt screen time, so coming back from one always takes a tap.
+- **Autoplay runs between videos.** Out of a break is different: the choice
+  screen waits indefinitely for a tap today. Auto-advancing there too, after a
+  pause, is **decided but not yet built** — see `OPEN-ITEMS.md` item 25 (it
+  lives unreconciled on `design/autoplay-item25`). The reasoning: a break
+  exists to interrupt screen time, and the interruption is the activity itself
+  plus the choice screen that follows it, not an indefinite wait — the old rule
+  left a young child with no way forward if they did not realise the tap was
+  theirs to make, and on a cast TV the device that can tap may be in another
+  room.
 
 ## The seam: `KidQData`
 

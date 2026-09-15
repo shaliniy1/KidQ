@@ -224,10 +224,15 @@ under the App Router. Layout is driven by container queries on `#app` at three
 tiers, with one element inventory at every size.
 
 ### [~] 17. Three more activity breaks
-**Backend done:** the break library serves find 3 things, stand like a tree, breathe with the sun, count to 10 and follow me with your eyes. Each slot's `break_activity` says which one and what to say. The screens for the three new ones are still to build.
-Designed but not built: stand like a tree, count to 10 with eyes closed, follow
-me with your eyes. The cadence and rotation already support more entries with no
-other change.
+**Backend done:** the break library serves find 3 things, stand like a tree, breathe with the sun, count to 10 and follow me with your eyes. Each slot's `break_activity` says which one and what to say.
+**"Follow me with your eyes" screens are done too — shipped as follow the sun**, built on
+`design/follow-the-ball-break` (Tasks 1–10 plus the closing verification
+sweep) per `docs/superpowers/specs/2026-09-14-kidq-follow-the-ball-break-design.md`.
+Still designed but not built: stand like a tree, count to 10 with eyes closed.
+The cadence and rotation already support more entries with no other change.
+
+Building it surfaced follow-ups that were logged in the spec (sections 11 and
+13.7) — now items 26–35 below.
 
 ### [ ] 18. Decide: resume or restart a half-watched video
 Returning to a partly watched video currently restarts it at 0:00. Resuming
@@ -241,3 +246,266 @@ earlier "no switching before completion". Already flagged, and easy to revert.
 `kidq-mockups-v1.html` still shows the pre-round-3 design — "The End" card, "Up
 next" instead of the session strip, the old arc colour. Only worth doing if
 those frames are still referenced.
+
+### [~] 25. Can a small child actually get out of a break?
+A break ends on "Tap the sun for your next video", and nothing continues until
+that tap lands. Raised as a doubt that a child at the younger end of 0–6 will
+reliably manage it, and that they are then stuck with no way forward.
+
+The tap is not arbitrary — it is the thing that makes a break a break.
+`concept.md` ends its loop with "Nothing plays without the tap"; `README.md`
+draws the line as "autoplay runs between videos, but never **out of a break**",
+because sliding straight from an activity back into video undoes the
+interruption the activity existed to create. So autoplaying out of a break is
+not a small change: it removes the mechanism, and the break becomes an interlude
+between videos rather than a stop.
+
+Against that, three things make the worry real rather than theoretical:
+
+- **The child has done this before, but only once.** The same gesture starts the
+  day on the sunrise screen. Mid-session, after an activity, there is no
+  equivalent teaching moment and no prompt if they simply do not act.
+- **On a television it may not be their tap to make.** Item 9 is unresolved, and
+  on the Cast path the tap arrives from the sender — the parent's phone, which
+  in the flow `concept.md` calls natural is in another room. A remote (the
+  wrapper path) a grandparent can use; a parent's phone they cannot.
+- **There is no nudge and no timeout.** The sun waits indefinitely and says
+  nothing more. `concept.md` treats waiting as a designed state, not an error,
+  which is right for a child who wandered off — and wrong for one who is sitting
+  there not realising it is their move.
+
+Directions, not yet chosen:
+
+1. **Keep the tap, make it easier to find.** A gentle repeat of the spoken line
+   after a few seconds, or the sun's existing breathing animation growing more
+   pronounced. Cheapest, keeps the principle intact. Bounded by `brand.md`'s rule
+   against nagging, and by open item 21 — there is still no way to turn the voice
+   off.
+2. **Keep the tap, add a quiet timeout.** After a long wait with no tap, end the
+   session gently into the all-done screen rather than advancing into a video.
+   Honours "nothing plays without the tap" literally, since nothing plays.
+3. **Autoplay out of the break.** What was proposed. Solves it outright and costs
+   the principle; would need `concept.md` and `README.md` amended rather than
+   worked around.
+4. **Make it a parent-side setting.** Defers the judgement to the family. Adds a
+   preference where `break_type` and `session_minutes` already live, so it is
+   cheap on the API — but a setting is also a way of not deciding.
+
+**Decided (user, 2026-09-14): direction 1+3 combined — the choice screen stays
+and auto-advances.** The break still ends on the choice screen, showing the
+session strip, the time left and what is next. A tap still wins: the sun plays
+the next video, a card plays that one instead. If neither comes within a few
+seconds, the next video starts on its own.
+
+This reverses "nothing plays without the tap", and the reversal was raised as a
+conflict and confirmed rather than assumed. `concept.md`, `design/README.md` and
+the comment above `autoAdvance` have all been amended, so no document still
+asserts the old rule. The principle that survives is narrower and, on reflection,
+the one that was actually load-bearing: **the interruption is the activity plus
+the choice screen** — not an indefinite wait that a three-year-old has no way out
+of.
+
+**Not yet built.** It is a change to `startChoice`, affecting all three breaks,
+and it is deliberately not being folded into the follow-the-ball plan mid-flight.
+Implementation notes for whoever picks it up:
+- the timer must use `hold()`, not `later()` — `later` clamps to 200ms under
+  reduced motion and would make the choice screen flash past;
+- it must be cancelled by any tap, and by `showScreen`/`clearTimers` like every
+  other timer on that screen;
+- the wait wants tuning against a real child, not a number chosen at a desk;
+  ~4s was the starting point discussed.
+
+---
+
+## Surfaced by follow the sun (item 17), not yet tracked elsewhere
+
+Logged in the follow-the-ball-break spec (sections 11 and 13.7) while building
+the break; none are fixed there, and none are fixed by this sweep.
+
+### [ ] 26. `brand.md:160` no longer matches what break screens render
+Documents an empty seat as a dashed circle (`r11`) during breaks. No break
+screen implements that — they are full-bleed sky. Correct the line to say so.
+
+### [ ] 27. `brand.md:214`'s instruction-voice example is stale
+Uses *"Keep your head still — follow me with your eyes!"* as the canonical
+instruction-voice example — this break's round-1 copy, before the §13
+redesign. The break now says "Follow the sun! / Keep your head still — just
+your eyes" (and "Where's the sun? / Find it each time it hops" under reduced
+motion). Update the example.
+
+### [ ] 28. The lean-back multiplier (~1.7×) is still missing
+**Measured (task-7-report.md, Step 2): no hierarchy inversion at any of the 8
+tested `far` widths.** Far hero diameter = `clientWidth/13.4` (2° × ppd, ppd =
+`clientWidth/26.8`) — 143px at a 1920px container, still under the find sun's
+176px cap at every tested width. The hero would only exceed that cap above
+**~2358px** container width (`176 × 13.4`) — a width this sweep did not test
+and that no realistic device hits today, so the inversion the spec originally
+predicted is not currently present.
+
+The multiplier stays open anyway, but on the spec's real ground: **angular
+size**, not a present pixel-overflow inversion. At a fixed 2° visual angle,
+the far-context sun subtends the same angle on a 43" TV at 2m regardless of
+container pixel width — pixel size vs. the find sun's cap is a proxy that
+just doesn't happen to trip yet at realistic container widths. The actual
+problem the multiplier fixes is that, without it, the far-context sun still
+reads *smaller in visual angle* than the near-context breathing/find suns do
+on their own devices (spec §11 item 3: ~2.9° on a 55" TV at 3m vs. ~4.9° on a
+phone, where `40cqw` binds under the 190px cap) — a real hierarchy problem
+independent of whether any single element's pixel size happens to cross
+another element's cap at today's tested widths.
+
+Belongs in `brand.md` section 5 beside the tier table, scaling hero suns, the
+big pause and headlines for `far` context — not just this ball. Must land as
+one `--lean` custom property folded into existing formulas (`--lean: 1`,
+`[data-context=far] { --lean: 1.7 }`), never a parallel far-context table.
+
+### [ ] 29. Item 9 (casting) should be reframed
+Not "Cast vs. wrapper" but "which shim first, and who holds the tap": a custom
+Cast receiver is one HTML page on our HTTPS origin plus Google's framework
+script; Shalini's TV wrapper (`docs/api/README.md:101`) loads that same HTTPS
+URL. Both put our HTML on the television. Gated on one spike: does a YouTube
+embed play inside a Cast receiver.
+
+### [ ] 30. Item 15 (TV remote focus) has two concrete child-mode rules now
+Focus lands on the sun on entry wherever the sun is the action (Enter/Space
+fires the button's click — already implemented for follow the sun's landings);
+the after-break choice screen is the only child screen with several
+focusables. Blocking for the wrapper path only, not for Cast.
+
+### [ ] 31. Breathing's reduced-motion collapse
+Pre-existing, not introduced by this break: 19.2s of breathing becomes ~1.2s
+because its phase timers use `later()`, which clamps to 200ms under reduced
+motion. `hold()` (added for follow the sun, spec 9.2) is the fix; breathing
+itself is untouched.
+
+### [ ] 32. Breaks cannot be paused
+`.paused` reaches only watching (`js:414`) and cast (`js:676`); `css:22-23`
+freezes a six-selector allow-list a break element would not be in; no break
+screen has a pause control. Pre-existing, matters more on a television where a
+parent may want to interrupt.
+
+### [ ] 33. Item 13's device-voice premise weakens on television
+The device voice (item 13) was accepted for the MVP partly because it speaks
+whatever copy a break carries at runtime. Cast Web Receivers and the
+webOS/Tizen web engines generally ship no speech-synthesis voice, so on the
+device `concept.md:29` calls dominant, the app may speak nothing — nothing
+breaks (`sayLine`'s fallback chain degrades silently), but "spoken
+instructions" should not be counted on when designing any future break.
+
+### [ ] 34. Production licensing for the generated neural voice clips
+`proposal-src/voice-follow-intro.mp3` and `voice-follow-done.mp3` are
+generated (edge-tts) neural-voice output, prototype-only until licensing for
+production use is cleared.
+
+### [ ] 35. `brand.md`'s game-content-colours reasoning needs an outlined-gold-hero note
+The find-game colours section reasons about contrast from ink-on-fill. The
+SETTLE hero (follow the sun) is gold with no ink ring — contrast against the
+day sky is carried entirely by the amber rim outline (measured 3.9–4.7:1
+across the three day-sky stops, task-7-report.md). `brand.md` should note this
+second contrast mechanism exists alongside the ink-on-fill one.
+
+## Surfaced by the splash redesign ("Constellation Seeds"), not yet tracked elsewhere
+
+### [ ] 36. Screen-cut crossfade briefly shows ~25% raw cream — affects every screen cut in the app, not just this one
+Measured, not assumed: sampling `#screen-splash`/`#screen-login`'s computed
+`opacity` every animation frame through the `.5s` crossfade
+(`kidq-desktop-app.css:19-21`) shows the two curves sum to ≈1 throughout (both
+screens share the same `.5s ease-out`, triggered in the same tick). With
+`login_op + splash_op ≈ 1`, the raw-cream fraction reduces to `s×(1-s)` for
+`s` = either curve — algebraically maxed at exactly **25%** (not an estimate;
+`s=0.5` is the peak by construction), reached where the shared ease-out
+curve crosses its own 50% progress point, around 170ms into the .5s
+transition. Both screens hold a full-bleed opaque `.kq-sky` at `inset:0`,
+so this isn't confined to gaps between content — at the 170ms peak, 25%
+of `#app`'s flat `background:var(--cream)` (`:17`) shows through the
+*entire* viewport, composited under whatever fraction of each screen's
+own sky is currently opaque.
+
+**This is a structural property of every screen cut in the app**, not
+something specific to the splash→login pair — any two `.screen`s crossfading
+via this shared mechanism hit the same 25% cream ceiling at their own
+midpoint. The old cream→indigo splash→login cut never exposed it visually
+(cream-on-cream is invisible); predawn→predawn is the first pair dark enough
+on both sides that a warm/light pulse would actually read. Flagged as
+measured-but-not-eyeballed — a reliable screenshot of this exact ~150ms
+window kept losing the race against browser-automation round-trip timing,
+though the frame-by-frame opacity data itself is solid.
+
+**Fix, if a human eye check confirms it's visible:** not a per-transition
+patch (giving `#app` a dark ground would just move the pulse to the
+cream-sky cuts instead). The general fix is structural — hold the outgoing
+screen at opacity 1 and only fade the incoming screen in on top of it,
+which needs a `z-index` bump on `.screen.active` (currently DOM order alone
+decides stacking, so "Restart full flow" — which re-shows splash after
+login — would stack backwards without one).
+
+## Surfaced by making the watching screen's wide mode the default, not yet tracked elsewhere
+
+### [x] 37. `#screen-watching.wide`'s tablet-only rules now also apply at the 1100px+ tier, by accident
+`#screen-watching.wide`'s overrides (`kidq-desktop-app.css:725-733`) were
+written inside the `@container (min-width:601px)` block, meaning they were
+only ever exercised at the 601-1099px tablet tier while `wide` was an
+opt-in toggle — nobody had reason to click "make it bigger" and then
+resize past 1100px in the same sitting. Now that `wide` is the default
+state (item added 2026-09-14, commit `791e4d7`), those rules are live at
+*every* width ≥601px, including the 1100px+ tier, and because they're
+scoped `#screen-watching.wide .selector` (ID+2 classes), they beat that
+tier's own plain-class rules on specificity regardless of source order —
+confirmed by measurement: `.kq-arcwrap` reports **110px** tall at the wide
+tier, not the 150px `kidq-desktop-app.css:763` says it should be.
+
+**Resolved (2026-09-14, same day).** Left unfixed at first — a naive reset
+of the leaked `.kq-arcwrap`/`.kq-content` properties back to this tier's
+intended values also reverted the player from 640px to 498px, undoing the
+wide-default improvement, since the leaked `--playerw` formula
+(`min(94cqw,1100px,max(340px,(100vh-305)*16/9))`) was the same leak giving
+the bigger player. A design review then found the leak had a worse
+consequence than "smaller arc" — the leaked `content:top:92px` pushed the
+player's own box into the arc's territory, visibly slicing the sun's rays
+on the player card's top edge. Real fix: gave `#screen-watching.wide` its
+own *deliberate* wide-tier values (`kidq-desktop-app.css`, wide-tier
+block) — `.kq-arcwrap{height:150px}`, `.kq-content{top:148px}`, and a
+freshly-budgeted `--playerw:min(88cqw,1040px,max(440px,(100vh-361px)*16/9))`
+(361, not 305, since content now correctly starts 56px lower) — instead
+of inheriting the tablet tier's values by accident. Player is ~440-540px
+depending on window height (down from the leaked 640px, but not
+overlapping the arc); `positionSun()` retuned to match (see commit
+history, same day).
+
+**Real fix, when someone has time to do it properly:** decide on purpose
+whether the wide tier should use its own formula or the tablet one, name
+it once, and stop relying on an accidental specificity collision to get
+there — right now two different `--playerw` formulas exist for this tier
+and only one of them is reachable, silently.
+
+## Surfaced while reconciling item 25, not yet tracked elsewhere
+
+### [x] 38. The high-five had the same "stuck waiting for a tap" risk as item 25
+Item 25 (above) settled the general rule for this app: a screen that waits
+indefinitely for a young child's tap, with no nudge and no timeout, risks
+stranding a child who cannot land it. The all-done screen's high-five button
+had exactly that shape — `startAllDone()` shows two open palms and waits, with
+nothing to end that wait but a tap on a small moving target.
+
+**Decided and built (2026-09-15), user-directed, same resolution as item
+25's direction 1+3:** the tap still wins immediately when it lands; if it
+doesn't land within `HIFIVE_AUTO_MS` (~4s, same starting point as item 25's
+`CHOICE_AUTO_MS`, tunable against a real child), the celebration (clap
+animation, chime, moon pop) fires on its own. The tap handler was extracted
+into `fiveUp()`, reused by both the click listener and the new `hold(fiveUp,
+HIFIVE_AUTO_MS)` scheduled after `showScreen("screen-all-done")` in
+`startAllDone()`. Unlike item 25, the reward sound is NOT silenced on the
+auto path — item 25's jingle was muted specifically because it marks a
+child's *own* choice, but the high-five chime already plays on other
+non-tap moments elsewhere in the app (e.g. `startSunset`), so it stays on
+here too. No separate cancellation wiring was needed: `fiveUp()`'s existing
+`hifived`-class guard (unchanged from the original tap handler) already
+makes a late auto-fire a no-op if the child already tapped.
+
+Verified live in Chrome by playing a full demo session through to the
+all-done screen without tapping: the celebration fired on its own, on
+schedule. Tap-wins and reduced-motion-isn't-clamped were not independently
+re-verified live for this item — both follow directly from unchanged code
+(`fiveUp()`'s pre-existing guard; `hold()`'s unconditional, unclamped
+`setTimeout`), the same guarantees item 25 already established for the
+identical mechanism.
