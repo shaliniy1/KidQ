@@ -43,7 +43,6 @@ interface RankingRow {
     max_per_creator_in_top: number;
     top_window: number;
     dismiss_cooldown_days: number;
-    expert_neutral: number;
   };
 }
 
@@ -62,7 +61,6 @@ function toRankingConfig(row: RankingRow): RankingConfig {
       maxPerCreatorInTop: params.max_per_creator_in_top,
       topWindow: params.top_window,
       dismissCooldownDays: params.dismiss_cooldown_days,
-      expertNeutral: params.expert_neutral,
     },
   };
 }
@@ -85,7 +83,6 @@ export async function saveRankingConfig(db: Db, input: Omit<RankingConfig, "vers
     max_per_creator_in_top: input.params.maxPerCreatorInTop,
     top_window: input.params.topWindow,
     dismiss_cooldown_days: input.params.dismissCooldownDays,
-    expert_neutral: input.params.expertNeutral,
   };
   await db.query("UPDATE ranking_configs SET active = false WHERE active");
   await db.query("INSERT INTO ranking_configs (version, weights, params, active, created_by) VALUES ($1, $2, $3, true, $4)", [

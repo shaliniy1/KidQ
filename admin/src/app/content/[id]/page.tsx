@@ -14,7 +14,6 @@ interface Detail {
   assessments: Array<{ id: string; assessor_type: string; assessor_name: string; model_name: string | null; summary: string; result: string; created_at: string }>;
   decisions: Array<{ decision: string; reason: string; decided_by: string; decision_source: string; overrode_critical_flag: boolean; decided_at: string }>;
   revisions: Array<{ changes: Record<string, unknown>; edited_by: string; created_at: string }>;
-  expert_reviews: Array<{ id: string; reviewer_name: string; reviewer_type: string; recommendation: string; source_url: string; verified: boolean }>;
   rights: Record<string, unknown>;
   transcript_status: string | null;
   story: { pages: Array<{ page: number; text: string; image_url: string | null; image_small_url: string | null }>; credits: string | null } | null;
@@ -29,9 +28,12 @@ export default function ContentDetailPage() {
   const { id } = useParams<{ id: string }>();
   const taxonomy = useTaxonomy();
   const player = useRef<KidQPlayerHandle>(null);
+  const additionalReviewButton = useRef<HTMLButtonElement>(null);
+  const closeAdditionalReviewButton = useRef<HTMLButtonElement>(null);
   const [detail, setDetail] = useState<Detail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [showAdditionalReview, setShowAdditionalReview] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -44,6 +46,38 @@ export default function ContentDetailPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    if (!showAdditionalReview) return;
+    const previouslyFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    closeAdditionalReviewButton.current?.focus();
+    const handleDialogKeyboard = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setShowAdditionalReview(false);
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const dialog = closeAdditionalReviewButton.current?.closest('[role="dialog"]');
+      const focusable = dialog
+        ? Array.from(dialog.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), a[href], [tabindex]:not([tabindex="-1"])'))
+        : [];
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    window.addEventListener("keydown", handleDialogKeyboard);
+    return () => {
+      window.removeEventListener("keydown", handleDialogKeyboard);
+      (previouslyFocused ?? additionalReviewButton.current)?.focus();
+    };
+  }, [showAdditionalReview]);
 
   /** Runs an admin action, then shows the refreshed detail the API returns. */
   const act = async (label: string, run: () => Promise<unknown>) => {
@@ -69,15 +103,22 @@ export default function ContentDetailPage() {
 
   return (
     <div className="stack">
-      <div className="detail-topline">
-        <Link href="/content">← Content</Link>
-        <span className={`status status-${status.key}`}>{status.label}</span>
-        {content.parent_requests > 0 && <span className="badge warn">{content.parent_requests} parent request(s)</span>}
+      <div className="detail-heading">
+        <div className="stack detail-heading-copy">
+          <div className="detail-topline">
+            <Link href="/content">← Content</Link>
+            <span className={`status status-${status.key}`}>{status.label}</span>
+            {content.parent_requests > 0 && <span className="badge warn">{content.parent_requests} parent request(s)</span>}
+          </div>
+          <h1>{content.title}</h1>
+          <p className="muted">
+            {content.creator ?? "Unknown creator"} · <a href={detail.record.source_url} target="_blank" rel="noreferrer">View original</a>
+          </p>
+        </div>
+        <button ref={additionalReviewButton} type="button" className="btn additional-review-button" onClick={() => setShowAdditionalReview(true)}>
+          Additional review
+        </button>
       </div>
-      <h1 style={{ marginBottom: 0 }}>{content.title}</h1>
-      <p className="muted" style={{ marginTop: 0 }}>
-        {content.creator ?? "Unknown creator"} · {content.content_type === "STORYBOOK" ? "Storybook" : "Video"} · <a href={detail.record.source_url} target="_blank" rel="noreferrer">View original</a>
-      </p>
       {notice && <p className="muted">✓ {notice}</p>}
       {error && <p className="error">{error}</p>}
 
@@ -100,28 +141,39 @@ export default function ContentDetailPage() {
         </div>
 
         <div className="stack">
-          <Publish content={content} act={act} id={id} />
-          <Tags content={content} taxonomy={taxonomy} act={act} id={id} />
           <TextEdit content={content} act={act} id={id} />
+          <Tags content={content} taxonomy={taxonomy} act={act} id={id} />
         </div>
       </div>
 
-      <details className="advanced-review">
-        <summary>Additional review checks</summary>
-        <p className="muted">Open this only when you need to inspect or adjust scoring and safety checks.</p>
-        <div className="two-col">
-          <div className="stack">
-            <ScoreCard content={content} onSeek={seek} />
-            <Sliders content={content} act={act} id={id} />
-            <Rubric detail={detail} act={act} id={id} />
-          </div>
-          <div className="stack">
-            <ParentPreview content={content} taxonomy={taxonomy} />
-            <Experts detail={detail} act={act} id={id} />
-            <History detail={detail} />
-          </div>
+      <Publish content={content} act={act} id={id} />
+
+      {showAdditionalReview && (
+        <div className="review-modal-backdrop" role="presentation" onMouseDown={(event) => event.currentTarget === event.target && setShowAdditionalReview(false)}>
+          <section className="review-modal" role="dialog" aria-modal="true" aria-labelledby="additional-review-title" aria-describedby="additional-review-description">
+            <div className="review-modal-heading">
+              <div>
+                <h2 id="additional-review-title">Additional review</h2>
+                <p id="additional-review-description" className="muted">Inspect scoring, safety checks, parent preview, and review history.</p>
+              </div>
+              <button ref={closeAdditionalReviewButton} type="button" className="modal-close" aria-label="Close additional review" onClick={() => setShowAdditionalReview(false)}>
+                ×
+              </button>
+            </div>
+            <div className="two-col">
+              <div className="stack">
+                <ScoreCard content={content} onSeek={seek} />
+                <Sliders content={content} act={act} id={id} />
+                <Rubric detail={detail} act={act} id={id} />
+              </div>
+              <div className="stack">
+                <ParentPreview content={content} taxonomy={taxonomy} />
+                <History detail={detail} />
+              </div>
+            </div>
+          </section>
         </div>
-      </details>
+      )}
     </div>
   );
 }
@@ -296,12 +348,15 @@ function Publish({ content, act, id }: { content: AdminContent; act: Act; id: st
   const [reason, setReason] = useState("");
   const [override, setOverride] = useState(false);
   const [needsOverride, setNeedsOverride] = useState(false);
-  const decide = (decision: "APPROVED" | "REJECTED" | "MANUAL_REVIEW_REQUIRED", label: string) =>
-    act(label, async () =>
+  const [busy, setBusy] = useState(false);
+  const decide = (decision: "APPROVED" | "REJECTED" | "MANUAL_REVIEW_REQUIRED", label: string) => {
+    const decisionReason = decision === "APPROVED" && !reason.trim() ? "Reviewed and approved in KidQ Admin." : reason.trim();
+    setBusy(true);
+    return act(label, async () =>
       unwrap(
         await api.POST("/content-items/{id}/publication-decisions", {
           params: { path: { id } },
-          body: { decision, reason, override_critical_flag: decision === "APPROVED" && override },
+          body: { decision, reason: decisionReason, override_critical_flag: decision === "APPROVED" && override },
         }),
       ),
     )
@@ -310,47 +365,68 @@ function Publish({ content, act, id }: { content: AdminContent; act: Act; id: st
         setOverride(false);
         setNeedsOverride(false);
       })
-      .catch((failure) => setNeedsOverride(failure instanceof ApiFailure && failure.code === "CRITICAL_FLAG"));
+      .catch((failure) => setNeedsOverride(failure instanceof ApiFailure && failure.code === "CRITICAL_FLAG"))
+      .finally(() => setBusy(false));
+  };
 
   const approved = content.current_status === "APPROVED";
+  const judgementBlockers = content.publish_blockers.filter((blocker) => ["CRITICAL_FLAG", "EXCLUDED", "LOW_SCORE", "BORDERLINE_SCORE", "LOW_AI_CONFIDENCE"].includes(blocker));
+  const requiredWork = content.publish_blockers.filter((blocker) => !judgementBlockers.includes(blocker));
+  const overrideRequired = (needsOverride || judgementBlockers.length > 0 || content.has_critical_flag) && !approved;
+  const publishDisabled = busy || requiredWork.length > 0 || (overrideRequired && (!override || reason.trim().length < 15));
   return (
-    <div className="card stack">
-      <h2 style={{ margin: 0 }}>Review decision</h2>
-      <p style={{ margin: 0 }}>
-        {approved ? "Published — families can see this." : content.current_status === "REJECTED" ? "Marked as needing changes." : "Not visible to families yet."}
-      </p>
-      {content.publish_blockers.length > 0 && (
-        <div className="chips">
-          {content.publish_blockers.map((blocker) => (
-            <span key={blocker} className="chip">
-              {BLOCKER_LABELS[blocker] ?? blocker}
-            </span>
-          ))}
+    <div className="publish-bar">
+      <div className="stack publish-copy">
+        <h2>{approved ? "Published" : "Ready for your decision?"}</h2>
+        <p className="muted">
+          {approved
+            ? "Families can see this content."
+            : requiredWork.length
+              ? "Complete the required checks below before publishing."
+              : content.current_status === "REJECTED"
+                ? "This content currently needs changes."
+                : "Publish it now, or send it back with a clear note."}
+        </p>
+        {content.publish_blockers.length > 0 && (
+          <div className="chips">
+            {content.publish_blockers.map((blocker) => (
+              <span key={blocker} className="chip">
+                {BLOCKER_LABELS[blocker] ?? blocker}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+      <div className="stack publish-controls">
+        <textarea
+          aria-label="Decision note"
+          placeholder={approved ? "Add a note before unpublishing" : "Add a note (optional when publishing)"}
+          value={reason}
+          onChange={(event) => setReason(event.target.value)}
+        />
+        {overrideRequired && (
+          <label className="row" style={{ fontWeight: 500 }}>
+            <input type="checkbox" checked={override} onChange={(event) => setOverride(event.target.checked)} />
+            Publish despite KidQ&apos;s review warning (explain why above, at least 15 characters)
+          </label>
+        )}
+        <div className="row publish-actions">
+          {content.current_status !== "REJECTED" && (
+            <button className="btn" disabled={busy || reason.trim().length < 3} onClick={() => void decide("REJECTED", "Needs changes") }>
+              Needs changes
+            </button>
+          )}
+          {approved && (
+            <button className="btn" disabled={busy || reason.trim().length < 3} onClick={() => void decide("MANUAL_REVIEW_REQUIRED", "Unpublished") }>
+              Unpublish
+            </button>
+          )}
+          {!approved && (
+            <button className="btn good" disabled={publishDisabled} onClick={() => void decide("APPROVED", "Published") }>
+              {busy ? "Publishing…" : requiredWork.length ? "Complete review to publish" : "Publish"}
+            </button>
+          )}
         </div>
-      )}
-      <textarea aria-label="Reason" placeholder="Reason (saved with the decision)" value={reason} onChange={(event) => setReason(event.target.value)} />
-      {(needsOverride || content.has_critical_flag) && !approved && (
-        <label className="row" style={{ fontWeight: 500 }}>
-          <input type="checkbox" checked={override} onChange={(event) => setOverride(event.target.checked)} />
-          Override the safety flag (explain why above, at least 15 characters)
-        </label>
-      )}
-      <div className="row">
-        {!approved && (
-          <button className="btn good" disabled={reason.trim().length < 3} onClick={() => void decide("APPROVED", "Published")}>
-            Publish
-          </button>
-        )}
-        {approved && (
-          <button className="btn" disabled={reason.trim().length < 3} onClick={() => void decide("MANUAL_REVIEW_REQUIRED", "Unpublished")}>
-            Unpublish
-          </button>
-        )}
-        {content.current_status !== "REJECTED" && (
-          <button className="btn" disabled={reason.trim().length < 3} onClick={() => void decide("REJECTED", "Rejected")}>
-            Needs changes
-          </button>
-        )}
       </div>
     </div>
   );
@@ -379,21 +455,11 @@ function Tags({ content, taxonomy, act, id }: { content: AdminContent; taxonomy:
   const [development, setDevelopment] = useState(content.development_goals);
   const [regulation, setRegulation] = useState(content.regulation_goals);
   const [language, setLanguage] = useState(content.language ?? "");
-  const [contentType, setContentType] = useState(content.content_type);
   if (!taxonomy) return null;
   const groupKey = taxonomy.age_group.find((term) => term.meta.min === ageMin && term.meta.max === ageMax)?.key ?? "";
   return (
     <div className="card stack">
       <h2 style={{ margin: 0 }}>Content details</h2>
-      <label>
-        Content type
-        <select value={contentType} onChange={(event) => setContentType(event.target.value as typeof contentType)}>
-          <option value="VIDEO">Video</option>
-          <option value="STORYBOOK">Storybook</option>
-          <option value="ACTIVITY">Activity</option>
-          <option value="INTERACTIVE_CONTENT">Interactive content</option>
-        </select>
-      </label>
       <label>
         Age group
         <select
@@ -447,7 +513,6 @@ function Tags({ content, taxonomy, act, id }: { content: AdminContent; taxonomy:
                   development_goals: development,
                   regulation_goals: regulation,
                   language: language || null,
-                  content_type: contentType,
                 },
               }),
             ),
@@ -463,9 +528,16 @@ function Tags({ content, taxonomy, act, id }: { content: AdminContent; taxonomy:
 function TextEdit({ content, act, id }: { content: AdminContent; act: Act; id: string }) {
   const [title, setTitle] = useState(content.title);
   const [summary, setSummary] = useState(content.kidq_summary ?? "");
+  useEffect(() => {
+    setTitle(content.title);
+    setSummary(content.kidq_summary ?? "");
+  }, [content.id, content.title, content.kidq_summary]);
   return (
     <div className="card stack">
       <h2 style={{ margin: 0 }}>Title and summary</h2>
+      <p className="muted" style={{ margin: 0 }}>
+        Auto-filled from the source. Review and edit only if needed.
+      </p>
       <label>
         Title
         <input value={title} onChange={(event) => setTitle(event.target.value)} maxLength={200} />
@@ -533,63 +605,6 @@ function ParentPreview({ content, taxonomy }: { content: AdminContent; taxonomy:
             Not now
           </button>
         </div>
-      </div>
-    </div>
-  );
-}
-
-function Experts({ detail, act, id }: { detail: Detail; act: Act; id: string }) {
-  const [name, setName] = useState("");
-  const [type, setType] = useState("Early-years educator");
-  const [recommendation, setRecommendation] = useState<"RECOMMEND" | "NOT_RECOMMEND">("RECOMMEND");
-  const [source, setSource] = useState("");
-  return (
-    <div className="card stack">
-      <h2 style={{ margin: 0 }}>Expert reviews</h2>
-      {detail.expert_reviews.length === 0 ? (
-        <p className="muted" style={{ margin: 0 }}>None yet.</p>
-      ) : (
-        <ul style={{ margin: 0 }}>
-          {detail.expert_reviews.map((review) => (
-            <li key={review.id}>
-              {review.reviewer_name} ({review.reviewer_type}): {review.recommendation === "RECOMMEND" ? "recommends" : "does not recommend"} ·{" "}
-              {review.verified ? "verified" : "per public sources"} ·{" "}
-              <a href={review.source_url} target="_blank" rel="noreferrer">
-                source
-              </a>
-            </li>
-          ))}
-        </ul>
-      )}
-      <div className="row">
-        <input aria-label="Reviewer name" placeholder="Reviewer name" value={name} onChange={(event) => setName(event.target.value)} />
-        <input aria-label="Reviewer type" value={type} onChange={(event) => setType(event.target.value)} />
-        <select aria-label="Recommendation" value={recommendation} onChange={(event) => setRecommendation(event.target.value as typeof recommendation)}>
-          <option value="RECOMMEND">Recommends</option>
-          <option value="NOT_RECOMMEND">Does not recommend</option>
-        </select>
-        <input aria-label="Source URL" placeholder="https://… (where they said it)" value={source} onChange={(event) => setSource(event.target.value)} />
-        <button
-          className="btn small"
-          disabled={!name || !source.startsWith("http")}
-          onClick={() =>
-            void act("Expert review added", async () =>
-              unwrap(
-                await api.POST("/content-items/{id}/expert-reviews", {
-                  params: { path: { id } },
-                  body: { reviewer_name: name, reviewer_type: type, recommendation, source_url: source, verified: false },
-                }),
-              ),
-            )
-              .then(() => {
-                setName("");
-                setSource("");
-              })
-              .catch(() => undefined)
-          }
-        >
-          Add
-        </button>
       </div>
     </div>
   );

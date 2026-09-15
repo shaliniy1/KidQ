@@ -15,6 +15,8 @@ export interface SuggestedClassification {
   interests: string[];
   developmentGoals: string[];
   regulationGoals: string[];
+  /** Session modes (MORNING, DAYTIME, BEDTIME); only the AI suggests them, the rules leave them alone. */
+  sessionModes?: string[];
   language: string | null;
   learningObjective: string | null;
   kidqSummary: string | null;

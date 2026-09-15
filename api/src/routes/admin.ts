@@ -8,16 +8,18 @@ import { actorName } from "../http/auth";
 import { notFound } from "../http/errors";
 import { defineRoute } from "../http/route";
 import {
+  adminAnalyticsQuery,
+  adminAnalyticsSchema,
   adminContentSchema,
   bulkClassificationBody,
   bulkDecisionBody,
   bulkReanalyzeBody,
   bulkResultSchema,
   classificationBody,
+  contentPoolSchema,
   dashboardSchema,
   decisionBody,
   editorialBody,
-  expertReviewBody,
   humanAssessmentBody,
   idParams,
   ingestionRunBody,
@@ -37,6 +39,7 @@ import { getActiveRankingConfig, getActiveScoringConfig, saveRankingConfig, save
 import { getAdminDetail, getStory, listAdminContent, listReviewQueue } from "../repositories/content";
 import { upsertTaxonomyTerm } from "../repositories/taxonomy";
 import * as admin from "../services/admin";
+import { getPlatformAnalytics } from "../services/analytics";
 import { createIngestionRun, getIngestionRun } from "../services/ingestion";
 import { previewRecommendations } from "../services/parents";
 
@@ -50,7 +53,6 @@ const adminDetailSchema = z.object({
   assessments: z.array(z.record(z.string(), z.unknown())),
   decisions: z.array(z.record(z.string(), z.unknown())),
   revisions: z.array(z.record(z.string(), z.unknown())),
-  expert_reviews: z.array(z.record(z.string(), z.unknown())),
   rights: z.record(z.string(), z.unknown()),
   transcript_status: z.string().nullable(),
   raw_metadata: z.unknown(),
@@ -158,12 +160,6 @@ defineRoute(
 
 defineRoute(
   adminRouter,
-  { method: "post", path: "/content-items/:id/expert-reviews", summary: "Add an expert review (shown as 'per public sources' unless verified)", tag: "Scoring", roles, params: idParams, body: expertReviewBody, response: adminDetailSchema, status: 201 },
-  async ({ params, body, user }) => admin.addExpertReview(user, params.id, body),
-);
-
-defineRoute(
-  adminRouter,
   { method: "post", path: "/content-items/:id/reanalyze", summary: "Queue AI scoring again, ignoring the AI cache (rule checks re-run only if the source metadata changed)", tag: "Scoring", roles, params: idParams, response: queued, status: 202 },
   async ({ params }) => admin.reanalyze(params.id),
 );
@@ -249,12 +245,31 @@ defineRoute(
             maxPerCreatorInTop: body.max_per_creator_in_top,
             topWindow: body.top_window,
             dismissCooldownDays: body.dismiss_cooldown_days,
-            expertNeutral: body.expert_neutral,
           },
         },
         actorName(user),
       ),
     ),
+);
+
+defineRoute(
+  adminRouter,
+  {
+    method: "get",
+    path: "/analytics",
+    summary: "What families are watching, platform-wide (or one child, with child_id): the same sections as the parent Analytics page",
+    tag: "Analytics",
+    roles,
+    query: adminAnalyticsQuery,
+    response: adminAnalyticsSchema,
+  },
+  async ({ query }) => getPlatformAnalytics(query.period, { childId: query.child_id }),
+);
+
+defineRoute(
+  adminRouter,
+  { method: "get", path: "/content-pool", summary: "What parents can be shown: published items per age band and category, thin spots, and published items that can't be recommended", tag: "Content", roles, response: contentPoolSchema },
+  async () => admin.contentPool(),
 );
 
 defineRoute(

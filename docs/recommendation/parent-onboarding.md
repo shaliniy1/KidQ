@@ -48,7 +48,7 @@ Block C defaults:
 | 5–6 | Cognitive, Problem solving, Learning |
 
 - **As the child grows**: `age_years` is the band's midpoint plus the time since the parent set it, and `age_band` follows. A child entered as 3–4 shows as 4–5 a year later. Setting a new band resets the clock.
-- **Recommendations** filter by age (against each item's age range), language, and the chosen categories when the mix is CHOSEN. They rank by interests, development goals, regulation goals, the KidQ score, expert reviews and whether an item fits in one session ([recommendation README](./README.md)).
+- **Recommendations** filter by age (against each item's age range), language, and the chosen categories when the mix is CHOSEN. They rank by interests, development goals, regulation goals, the KidQ score, and whether an item fits in one session ([recommendation README](./README.md)).
 - **Not built yet**: the session and break runtime — timer, break screens, wind-down. The settings and the derived plan are stored now.
 
 ---

@@ -1,0 +1,116 @@
+.page {
+  min-height: 100vh;
+  background: #f1eae0;
+  color: #2e2a24;
+  font-family: "Mukta", "Segoe UI", system-ui, sans-serif;
+  padding: 40px 20px 80px;
+}
+.productBar { max-width: 1280px; margin: 0 auto 20px; display: flex; align-items: center; justify-content: space-between; gap: 18px; }
+.brand { color: #2e2a24; font: 800 25px/1 "Baloo 2", system-ui; text-decoration: none; }
+.brand span { color: #1f7a6d; font-size: 16px; margin-left: 4px; }
+.modeLabel { color: #6b6459; font-size: 14px; }
+.headerActions { display: flex; align-items: center; justify-content: flex-end; gap: 10px; margin-left: auto; }
+.navButton { display: inline-flex; align-items: center; justify-content: center; min-height: 38px; border: 1px solid #ddd3c2; border-radius: 999px; background: #faf4e8; color: #16594f; padding: 8px 14px; font: 700 13px Mukta; text-decoration: none; white-space: nowrap; }
+.navButton:hover, .navButton:focus-visible { background: #1f7a6d; color: #fff; border-color: #1f7a6d; outline: none; }
+.navButtonPrimary { background: #1f7a6d; color: #fff; border-color: #1f7a6d; }
+.navButtonPrimary:hover, .navButtonPrimary:focus-visible { background: #16594f; border-color: #16594f; }
+.parentLink, .footer a { color: #16594f; font-weight: 700; text-decoration: none; }
+.parentLink:hover, .footer a:hover { text-decoration: underline; }
+.pageHeader { max-width: 1560px; margin: 0 auto 42px; display: flex; align-items: flex-end; justify-content: space-between; gap: 30px; }
+.kicker { font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #16594f; }
+.pageHeader h1 { font: 800 30px/1.15 "Baloo 2", system-ui; margin: 5px 0; }
+.pageHeader p { margin: 8px 0 0; color: #6b6459; font-size: 15.5px; }
+.controls { display: flex; align-items: center; gap: 8px; color: #6b6459; font-size: 13px; }
+.controls button, .footer button { border: 1px solid #ddd3c2; background: #faf4e8; border-radius: 999px; color: #16594f; padding: 8px 14px; font: 600 13px Mukta; cursor: pointer; }
+.controls button:hover, .controls .active, .footer button:hover { background: #1f7a6d; color: #fff; border-color: #1f7a6d; }
+.world { position: relative; overflow: hidden; container-type: inline-size; width: 100%; max-width: 1280px; height: 820px; margin: auto; border-radius: 12px; background: linear-gradient(180deg, #fdf8ec 0%, #f7ebd2 58%, #f1e2c4 100%); box-shadow: 0 0 0 1px #ddd3c2, 0 36px 70px -30px #2e2a2466; }
+.world.end::before { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, #9f8ccb 0%, #c9b8e8 40%, #f3b583 100%); opacity: .85; pointer-events: none; }
+.cloudOne, .cloudTwo { position: absolute; background: #fff; border-radius: 50%; opacity: .8; }
+.cloudOne { top: 36px; left: 7%; width: 100px; height: 24px; box-shadow: 28px -6px 0 -4px #fff; }
+.cloudTwo { top: 90px; right: 10%; width: 70px; height: 20px; box-shadow: 20px -5px 0 -4px #fff; }
+.arc { position: absolute; inset: 0 0 auto; height: 220px; top: 0; }
+.arc svg { width: 100%; height: 100%; }
+.sun { position: absolute; width: 92px; height: 92px; transform: translate(-50%, -50%); z-index: 1; transition: left 1.25s cubic-bezier(.3,.7,.3,1), top 1.25s cubic-bezier(.3,.7,.3,1); }
+.sun svg { position: relative; width: 100%; height: 100%; display: block; }
+.sun line { stroke: #f0a72e; stroke-width: 3.4; stroke-linecap: round; opacity: .7; }
+.halo { position: absolute; inset: -26px; border-radius: 50%; background: radial-gradient(circle, rgba(255,198,77,.4), transparent 70%); animation: pulse 3s ease-in-out infinite; }
+.timeLeft { position: absolute; top: 150px; right: 48px; color: #6b6459; background: #faf4e8d9; padding: 5px 16px; border-radius: 99px; font-size: 14px; font-weight: 600; z-index: 1; }
+.childHeader { position: absolute; top: 26px; left: 36px; display: flex; align-items: center; gap: 11px; z-index: 1; }
+.avatar { width: 46px; height: 46px; border-radius: 50%; background: #1f7a6d; color: #fff; display: grid; place-items: center; font: 800 19px "Baloo 2"; }
+.childHeader h2 { font: 700 19px/1.15 "Baloo 2"; margin: 0; }
+.childHeader p { margin: 2px 0 0; font-size: 14px; color: #6b6459; }
+.content { position: absolute; left: 0; right: 0; top: 224px; bottom: 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 16px; overflow-y: auto; padding: 18px 30px 28px; }
+.player { position: relative; width: 100%; max-width: 480px; aspect-ratio: 16 / 9; border-radius: 24px; overflow: hidden; background: linear-gradient(135deg, #d8c89c, #b9a574); box-shadow: 0 12px 28px -16px #2e2a2466; display: grid; place-items: center; }
+.storyFrame { position: relative; width: 100%; max-width: 480px; aspect-ratio: unset; overflow: visible; background: none; box-shadow: none; display: block; }
+.playerArt { display: flex; flex-direction: column; align-items: center; color: #faf4e8; text-shadow: 0 2px 5px #2e2a2488; }
+.playerArt span { font: 700 27px "Baloo 2"; }
+.playerArt small { font-size: 16px; }
+.pause { position: absolute; right: 14px; top: 14px; width: 44px; height: 44px; border: 0; border-radius: 50%; background: #faf4e8eb; color: #16594f; display: grid; place-items: center; cursor: pointer; font-weight: 800; }
+.eq { position: absolute; left: 16px; bottom: 12px; display: flex; gap: 3px; align-items: flex-end; height: 16px; }
+.eq i { width: 4px; border-radius: 2px; background: #16594f; display: block; }
+.eq i:nth-child(1) { height: 15px; } .eq i:nth-child(2) { height: 8px; } .eq i:nth-child(3) { height: 12px; }
+.dayBar { position: relative; width: 100%; max-width: 480px; height: 12px; border-radius: 99px; background: linear-gradient(90deg, #f7ebd2 0%, #ffc64d 34%, #c9b8e8 68%, #2b2955 100%); }
+.dayBar span { position: absolute; top: 0; right: 0; bottom: 0; border-radius: 0 99px 99px 0; background: #faf4e8c7; }
+.dayBar b { position: absolute; top: 50%; width: 20px; height: 20px; transform: translate(-50%, -50%); border-radius: 50%; background: #ffc64d; border: 3px solid #fff; box-shadow: 0 2px 6px #2e2a244d; }
+.now { width: 100%; text-align: center; }.now h3 { font: 700 23px/1.2 "Baloo 2"; margin: 0; }.now p { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 6px 0 0; color: #6b6459; font-size: 15px; }.now strong { color: #2e2a24; }.heart { width: 19px; height: 19px; }
+.upNext { margin: 0; color: #6b6459; font-size: 13px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
+.queue { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; width: min(760px, 100%); }.queueCard, .endCard { width: 100%; min-width: 0; min-height: 86px; height: auto; padding: 12px 10px; border-radius: 14px; border: 2px solid #2e2a241a; background: linear-gradient(135deg, #d8c89c, #b9a574); display: grid; place-items: center; text-align: center; overflow-wrap: anywhere; color: #faf4e8; font: 700 16px/1.15 "Baloo 2"; cursor: pointer; }.queueCard:hover { outline: 3px solid #ffc64d; }.endCard { background: #2b2955; border: 2px dashed #c9b8e8; cursor: default; }
+.footer { max-width: 1280px; margin: 18px auto 0; display: flex; justify-content: space-between; align-items: center; color: #6b6459; font-size: 13px; }.footer button { padding: 5px 12px; }
+@keyframes pulse { 0%, 100% { transform: scale(1); opacity: .85; } 50% { transform: scale(1.08); opacity: 1; } }
+@media (max-width: 900px) { .page { padding: 24px 14px 50px; }.productBar { flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }.headerActions { width: 100%; justify-content: flex-end; margin-left: 0; }.navButton { min-height: 36px; padding: 7px 12px; }.pageHeader { align-items: flex-start; flex-direction: column; margin-bottom: 24px; }.controls { flex-wrap: wrap; }.world { height: 700px; border-radius: 10px; }.timeLeft { top: 95px; right: 24px; }.childHeader { top: 18px; left: 26px; }.content { top: 156px; padding: 18px 24px 20px; }.player, .dayBar { max-width: 420px; }.sun { width: 70px; height: 70px; }.footer { font-size: 12px; } }
+@media (prefers-reduced-motion: reduce) { .sun, .halo { transition: none; animation: none; } }
+
+/* React child-flow states. The progress sun intentionally lives inside the
+   dashed day bar so the child has one clear, tactile progress signal. */
+.rays line { stroke: #f0a72e; stroke-width: 3.4; stroke-linecap: round; opacity: .7; }
+.dayBar { overflow: visible; }
+.progressSun { position: absolute; top: 50%; width: 30px; height: 30px; transform: translate(-50%, -50%); border: 0; background: transparent; padding: 0; z-index: 2; }
+.progressSun svg { width: 100%; height: 100%; display: block; filter: drop-shadow(0 2px 4px #2e2a244d); }
+.queueCurrent { outline: 3px solid #ffc64d; outline-offset: 2px; }
+.sessionActions { display: flex; gap: 10px; }
+.sessionActions button, .demoLink { border: 0; border-radius: 999px; background: #1f7a6d; color: #fff; padding: 9px 14px; font: 700 13px Mukta; cursor: pointer; }
+.sessionActions button + button, .demoLink { background: transparent; color: #16594f; text-decoration: underline; }
+.headerActions .navButton { margin: 0; }
+.sunriseScreen, .choiceScreen, .castScreen { position: relative; min-height: 740px; overflow: hidden; border-radius: 12px; }
+.sunriseSky, .castSky { min-height: 740px; position: relative; display: grid; place-items: center; background: linear-gradient(180deg, #9f8ccb 0%, #c9b8e8 34%, #edd9c4 50%, #f7cba0 62%, #f3b583 100%); }
+.sunriseStars { position: absolute; inset: 0; background: radial-gradient(circle at 16% 15%, #fff 0 2px, transparent 3px), radial-gradient(circle at 82% 20%, #fff 0 2px, transparent 3px), radial-gradient(circle at 61% 10%, #fff 0 1px, transparent 2px); opacity: .75; }
+.sunriseCenter { position: relative; z-index: 1; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 18px; }
+.sunriseCenter h1, .choiceScreen h1 { font: 800 44px/1.05 "Baloo 2", system-ui; margin: 0; color: #2e2a24; }
+.sunriseCenter p, .choiceScreen p { margin: 0; color: #2e2a24; font-size: 18px; }
+.heartLine { font-size: 15px !important; }
+.sunButton { border: 0; background: transparent; width: 150px; height: 150px; cursor: pointer; filter: drop-shadow(0 0 25px #ffc64d99); }
+.sunButton svg { width: 100%; height: 100%; }
+.choiceScreen, .castSky { padding: 40px 24px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; text-align: center; background: linear-gradient(180deg, #fdf8ec, #f1e2c4); }
+.choiceScreen > button, .noSession button, .nightLight button, .castSky button, .kidComplete button { border: 0; border-radius: 15px; background: #ff8c00; color: #fff; padding: 14px 22px; font: 700 17px "Baloo 2"; cursor: pointer; }
+.choiceList { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; max-width: 640px; }
+.choiceList button { display: flex; align-items: center; gap: 9px; border: 0; border-radius: 14px; background: #fff; padding: 12px 16px; color: #2e2a24; font: 700 15px "Baloo 2"; cursor: pointer; box-shadow: 0 7px 16px #2e2a241c; }
+.choiceList span { width: 54px; height: 40px; border-radius: 9px; }
+.noSession, .nightLight { min-height: 740px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; text-align: center; padding: 30px; background: linear-gradient(180deg, #3a3768, #211f45); color: #faf4e8; }
+.noSession h1, .nightLight h1 { font: 800 44px/1.05 "Baloo 2"; margin: 0; }
+.noSession p, .nightLight p { color: #c9b8e8; font-size: 18px; }
+.secondaryAction { background: transparent !important; color: #ffc64d !important; }
+.sleepSun { font-size: 92px; filter: drop-shadow(0 0 28px #ffc64d88); }
+.nightLight { background: linear-gradient(180deg, #2b2955, #171530); }
+.castSky { background: linear-gradient(180deg, #fdf8ec, #c9b8e8 70%, #9f8ccb); }
+.castSky .sun { position: absolute; width: 92px; height: 92px; transform: translate(-50%, -50%); }
+.castSky h1 { margin-top: 180px; font: 800 34px "Baloo 2"; }
+.castSky p { font-size: 18px; }
+.breakSun { width: 124px; height: 124px; filter: drop-shadow(0 0 28px #ffc64d88); }
+.breakSun svg { width: 100%; height: 100%; }
+.profileScreen{min-height:calc(100vh - 72px);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px 20px;background:linear-gradient(180deg,#252652,#5665a0);color:#fff;position:relative;overflow:hidden}.profileScreen h1{font:800 clamp(36px,6vw,66px)/.98 'Baloo 2',sans-serif;margin:0 0 34px;position:relative}.profileChoices{display:flex;gap:20px;position:relative}.profileChoices button{width:190px;border:1px solid #ffffff33;border-radius:24px;background:#ffffff18;color:#fff;padding:22px 18px;display:flex;flex-direction:column;align-items:center;gap:7px;cursor:pointer;transition:transform .15s,background .15s}.profileChoices button:hover{transform:translateY(-4px);background:#ffffff2b}.profileChoices span{width:72px;height:72px;border-radius:50%;display:grid;place-items:center;font:800 30px 'Baloo 2'}.profileChoices b{font:700 22px 'Baloo 2'}.profileChoices small{color:#d9d8ed}.noLogin{color:#d9d8ed;font-size:13px;margin-top:28px;position:relative}.profileStars{position:absolute;inset:0;background:radial-gradient(circle at 15% 20%,#fff 0 2px,transparent 3px),radial-gradient(circle at 80% 24%,#fff 0 2px,transparent 3px),radial-gradient(circle at 66% 10%,#fff 0 1px,transparent 2px);opacity:.7}
+.breakScreen{min-height:calc(100vh - 130px);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:30px;background:linear-gradient(180deg,#e9f5f5,#fff8f0)}.breakScreen h1,.kidComplete h1{font:800 clamp(32px,5vw,60px) 'Baloo 2';margin:18px 0 6px;color:#2e2a24}.breakScreen p,.kidComplete p{max-width:430px;color:#6b6355;line-height:1.6}.breakScreen button{border:0;border-radius:15px;background:#ff8c00;color:#fff;padding:15px 22px;font:700 17px 'Baloo 2';cursor:pointer;margin-top:20px}.breakSun{width:138px;height:138px;border-radius:50%;display:grid;place-items:center;background:#ffc64d;box-shadow:0 0 42px #ffc64d99;font-size:65px}.kidComplete{min-height:calc(100vh - 130px);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:28px;background:#2e2a5c;color:#fff}.kidComplete h1{color:#fff}.kidComplete p{color:#c9c6e8}.kidComplete a{color:#ffc64d;font-weight:800}.endMoon{font-size:68px}
+@media (max-width: 600px) {
+  .productBar { flex-wrap: wrap; gap: 8px 14px; margin-bottom: 16px; }
+  .modeLabel { order: 3; flex-basis: 100%; font-size: 13px; }
+  .parentLink { margin-left: auto; }
+  .profileScreen { padding: 34px 16px; }
+  .profileScreen h1 { margin-bottom: 24px; }
+  .profileChoices { flex-direction: column; gap: 12px; width: min(260px, 100%); }
+  .profileChoices button { width: 100%; padding: 18px 16px; }
+  .noLogin { margin-top: 22px; }
+  .queue { grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; gap: 10px; }
+  .queueCard, .endCard { min-height: 76px; padding: 10px 8px; font-size: 14px; }
+  .sunriseScreen, .choiceScreen, .castScreen, .noSession, .nightLight { min-height: 600px; }
+  .sunriseCenter h1, .choiceScreen h1, .noSession h1, .nightLight h1 { font-size: clamp(32px, 10vw, 44px); }
+  .sunButton { width: 124px; height: 124px; }
+}

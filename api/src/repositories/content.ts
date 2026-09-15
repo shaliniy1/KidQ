@@ -2,7 +2,6 @@
 // player), the admin list/queue, and the admin detail with the README canonical record.
 import type { Db } from "../db/pool";
 import { AGE_GROUPS, ageBandsFor } from "../domain/age";
-import { expertLabel } from "../domain/experts";
 import { LEARNING_AREA_LABELS, RUBRIC, type LearningArea } from "../domain/rubric";
 import { resolvedCriteria, type AssessorType, type ComponentResult, type SafetyFlag } from "../domain/scoring";
 import type { ListContentQuery } from "../http/schemas";
@@ -13,16 +12,11 @@ export const YOUTUBE_PLAYER_PARAMS = { controls: 0, disablekb: 1, fs: 0, iv_load
 
 const CARD_SELECT = `
   SELECT v.*, ks.components AS score_detail, ks.reason AS score_reason, ks.missing AS score_missing,
-    er.recommend AS expert_recommend, er.total AS expert_total, er.verified AS expert_verified, er.verified_recommend AS expert_verified_recommend,
     (SELECT count(*)::int FROM library_items li WHERE li.content_item_id = v.id AND li.state = 'REQUESTED') AS parent_requests,
     (SELECT jsonb_array_length(s.story->'pages') FROM source_records s WHERE s.id = v.source_record_id) AS story_page_count
   FROM content_records_v v
   LEFT JOIN LATERAL (SELECT components, reason, missing FROM kidq_scores
-                     WHERE content_item_id = v.id ORDER BY created_at DESC LIMIT 1) ks ON true
-  LEFT JOIN LATERAL (SELECT count(*) FILTER (WHERE recommendation = 'RECOMMEND')::int AS recommend, count(*)::int AS total,
-                            count(*) FILTER (WHERE verified)::int AS verified,
-                            count(*) FILTER (WHERE verified AND recommendation = 'RECOMMEND')::int AS verified_recommend
-                     FROM expert_reviews WHERE content_item_id = v.id) er ON true`;
+                     WHERE content_item_id = v.id ORDER BY created_at DESC LIMIT 1) ks ON true`;
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Row = Record<string, any>;
@@ -68,6 +62,31 @@ function toContentScore(row: Row) {
   };
 }
 
+// Parent-facing words for each dimension's band: the trust badge never shows a number (spec §7, §11 #19).
+const DIMENSION_WORDS: Record<ComponentResult["component"], [string, string, string, string]> = {
+  CONTENT_LANGUAGE: ["Kind, suitable content", "Suitable, with small notes", "Some concerns", "Not suitable"],
+  PACING: ["Slow and calm", "Gently paced", "Some fast moments", "Fast-paced"],
+  VISUAL_COMFORT: ["Soft and easy on the eyes", "Bright but balanced", "Bright, busy visuals", "Harsh or intense visuals"],
+  AUDIO_COMFORT: ["Quiet and even", "Upbeat but steady", "Some loud moments", "Loud or jarring"],
+};
+const bandWords = (component: ComponentResult["component"], value: number) => {
+  const words = DIMENSION_WORDS[component];
+  return value >= 90 ? words[0] : value >= 75 ? words[1] : value >= 60 ? words[2] : words[3];
+};
+
+/** The KidQ check badge: REVIEWED once the AI or an admin judged it, CHECKING while that's under way. */
+export function toKidqCheck(row: Row) {
+  const judged = ((row.score_detail?.components ?? []) as ComponentResult[]).filter(
+    (component) => component.value !== null && (component.source === "MODEL" || component.source === "HUMAN"),
+  );
+  const checking = row.analysis_status === "QUEUED" || row.analysis_status === "ANALYSING";
+  const status: "REVIEWED" | "CHECKING" | "NOT_CHECKED" = judged.length > 0 ? "REVIEWED" : checking ? "CHECKING" : "NOT_CHECKED";
+  return {
+    status,
+    dimensions: judged.map((component) => ({ key: component.component, label: component.label, summary: bandWords(component.component, component.value as number) })),
+  };
+}
+
 function toPlayer(row: Row) {
   // Picture books open in the KidQ story reader (GET /content-items/:id/story).
   if (row.content_type === "STORYBOOK") return row.story_page_count ? { provider: "story" as const, page_count: row.story_page_count as number } : null;
@@ -86,12 +105,6 @@ function toPlayer(row: Row) {
 function toLearning(row: Row) {
   const areas = ((row.score_detail?.learning?.areas ?? []) as LearningArea[]).map((area) => LEARNING_AREA_LABELS[area] ?? area);
   return { value: toNumber(row.learning_value), areas };
-}
-
-function toExpertReview(row: Row) {
-  if (!(row.expert_total > 0)) return null;
-  const counts = { recommend: row.expert_recommend, total: row.expert_total, verified: row.expert_verified, verifiedRecommend: row.expert_verified_recommend ?? 0 };
-  return { recommend: counts.recommend, total: counts.total, verified: counts.verified, verified_recommend: counts.verifiedRecommend, label: expertLabel(counts) };
 }
 
 export function toCard(row: Row) {
@@ -114,9 +127,12 @@ export function toCard(row: Row) {
     interests: row.interests ?? [],
     development_goals: row.development_goals ?? [],
     regulation_goals: row.regulation_goals ?? [],
+    parent_category: (row.parent_categories?.[0] ?? null) as string | null,
+    parent_categories: (row.parent_categories ?? []) as string[],
+    session_modes: (row.session_modes ?? []) as Array<"MORNING" | "DAYTIME" | "BEDTIME">,
+    kidq_check: toKidqCheck(row),
     content_score: toContentScore(row),
     learning: toLearning(row),
-    expert_review: toExpertReview(row),
     player: toPlayer(row),
     attribution: {
       text: row.attribution_text ?? null,
@@ -219,7 +235,7 @@ export async function listAdminContent(db: Db, filters: ListContentQuery, extraW
 
 /** Items an admin should act on; parent requests first. */
 export async function listReviewQueue(db: Db, limit: number, offset: number) {
-  const whereSql = "WHERE v.studio_state IN ('READY_TO_APPROVE', 'NEEDS_ATTENTION', 'ANALYSIS_INCOMPLETE', 'FAILED')";
+  const whereSql = "WHERE v.studio_state IN ('READY_TO_APPROVE', 'NEEDS_ATTENTION')";
   const total = (await db.query(`SELECT count(*)::int AS n FROM content_records_v v ${whereSql}`)).rows[0].n as number;
   const rows = (
     await db.query(`SELECT * FROM (${CARD_SELECT} ${whereSql}) q ORDER BY q.parent_requests DESC, q.created_at, q.id LIMIT $1 OFFSET $2`, [limit, offset])
@@ -243,7 +259,7 @@ export async function getCardRows(db: Db, ids: string[], options: { approvedOnly
 export async function getAdminDetail(db: Db, id: string) {
   const row = (await db.query(`${CARD_SELECT} WHERE v.id = $1`, [id])).rows[0];
   if (!row) return null;
-  const [assessments, meta, decisions, revisions, experts, source] = await Promise.all([
+  const [assessments, meta, decisions, revisions, source] = await Promise.all([
     loadAssessments(db, id),
     db.query(
       `SELECT id, assessor_type, assessor_name, model_name, model_snapshot, prompt_version, rubric_version, result, summary,
@@ -257,7 +273,6 @@ export async function getAdminDetail(db: Db, id: string) {
       [id],
     ),
     db.query("SELECT changes, edited_by, created_at FROM editorial_revisions WHERE content_item_id = $1 ORDER BY created_at DESC", [id]),
-    db.query("SELECT * FROM expert_reviews WHERE content_item_id = $1 ORDER BY created_at DESC", [id]),
     db.query(
       `SELECT sr.connector_version, sr.raw_metadata, sr.story FROM (
          SELECT s.*, ss.connector_version FROM source_records s JOIN source_systems ss ON ss.id = s.source_system_id
@@ -364,12 +379,6 @@ export async function getAdminDetail(db: Db, id: string) {
     })),
     decisions: decisions.rows.map((d) => ({ ...d, decided_at: toIso(d.decided_at) })),
     revisions: revisions.rows.map((r) => ({ ...r, created_at: toIso(r.created_at) })),
-    expert_reviews: experts.rows.map((e) => ({
-      ...e,
-      recommended_age_min: toNumber(e.recommended_age_min),
-      recommended_age_max: toNumber(e.recommended_age_max),
-      created_at: toIso(e.created_at),
-    })),
     rights: {
       license_name: row.license_name,
       license_url: row.license_url,

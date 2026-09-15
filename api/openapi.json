@@ -467,6 +467,78 @@
               "type": "string"
             }
           },
+          "parent_category": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The parent category (one of the seven) the primary category rolls up to; show this to parents"
+          },
+          "parent_categories": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Every parent category the item falls under, primary first"
+          },
+          "session_modes": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "MORNING",
+                "DAYTIME",
+                "BEDTIME"
+              ]
+            },
+            "description": "Times of day the item suits (MORNING, DAYTIME, BEDTIME); empty fits any"
+          },
+          "kidq_check": {
+            "type": "object",
+            "properties": {
+              "status": {
+                "type": "string",
+                "enum": [
+                  "REVIEWED",
+                  "CHECKING",
+                  "NOT_CHECKED"
+                ]
+              },
+              "dimensions": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "key": {
+                      "type": "string",
+                      "enum": [
+                        "CONTENT_LANGUAGE",
+                        "PACING",
+                        "VISUAL_COMFORT",
+                        "AUDIO_COMFORT"
+                      ]
+                    },
+                    "label": {
+                      "type": "string"
+                    },
+                    "summary": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "key",
+                    "label",
+                    "summary"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "status",
+              "dimensions"
+            ],
+            "description": "The parent-facing trust badge: plain words per dimension, never a number. Parent screens show this, not content_score"
+          },
           "content_score": {
             "anyOf": [
               {
@@ -498,38 +570,6 @@
               "areas"
             ],
             "description": "What the child can learn or do, kept separate from the KidQ score: 25 points per area (Thinking, Language, Feelings & friends, Doing)"
-          },
-          "expert_review": {
-            "type": [
-              "object",
-              "null"
-            ],
-            "properties": {
-              "recommend": {
-                "type": "number"
-              },
-              "total": {
-                "type": "number"
-              },
-              "verified": {
-                "type": "number",
-                "description": "Reviews from reviewers KidQ has verified"
-              },
-              "verified_recommend": {
-                "type": "number"
-              },
-              "label": {
-                "type": "string",
-                "description": "Ready to show, e.g. \"Recommended by 3 KidQ experts\"; unverified reviews are called public reviews"
-              }
-            },
-            "required": [
-              "recommend",
-              "total",
-              "verified",
-              "verified_recommend",
-              "label"
-            ]
           },
           "player": {
             "$ref": "#/components/schemas/Player"
@@ -587,9 +627,12 @@
           "interests",
           "development_goals",
           "regulation_goals",
+          "parent_category",
+          "parent_categories",
+          "session_modes",
+          "kidq_check",
           "content_score",
           "learning",
-          "expert_review",
           "player",
           "attribution"
         ]
@@ -606,11 +649,8 @@
                 "type": "string",
                 "enum": [
                   "PENDING_ANALYSIS",
-                  "ANALYSING",
                   "READY_TO_APPROVE",
                   "NEEDS_ATTENTION",
-                  "ANALYSIS_INCOMPLETE",
-                  "FAILED",
                   "APPROVED",
                   "REJECTED"
                 ]
@@ -699,7 +739,7 @@
               "maxLength": 60
             },
             "maxItems": 12,
-            "description": "Block B categories; sending some without content_mix means CHOSEN"
+            "description": "Block B: parent category keys (GET /taxonomy → parent_category); sending some without content_mix means CHOSEN"
           },
           "development_goals": {
             "type": "array",
@@ -763,6 +803,39 @@
             ],
             "description": "Block E: MOVEMENT, QUIET or ALTERNATE"
           },
+          "break_interval_minutes": {
+            "anyOf": [
+              {
+                "type": "number",
+                "enum": [
+                  10
+                ]
+              },
+              {
+                "type": "number",
+                "enum": [
+                  15
+                ]
+              },
+              {
+                "type": "number",
+                "enum": [
+                  20
+                ]
+              }
+            ],
+            "description": "Block E: minutes between breaks (10, 15 or 20); breaks = duration ÷ interval, rounded"
+          },
+          "session_mode": {
+            "type": "string",
+            "enum": [
+              "AUTO",
+              "MORNING",
+              "DAYTIME",
+              "BEDTIME"
+            ],
+            "description": "§12: AUTO follows the clock; MORNING, DAYTIME or BEDTIME is remembered until changed"
+          },
           "id": {
             "type": "string",
             "format": "uuid"
@@ -810,7 +883,7 @@
               "mid_session_breaks",
               "wind_down"
             ],
-            "description": "One break per 15 minutes; the last is always the wind-down"
+            "description": "One break per break interval; the last is always the wind-down"
           },
           "created_at": {
             "type": "string"
@@ -828,6 +901,8 @@
           "regulation_goals",
           "session_minutes",
           "break_type",
+          "break_interval_minutes",
+          "session_mode",
           "id",
           "nickname",
           "age_band",
@@ -870,6 +945,909 @@
           "cold_start",
           "why",
           "card"
+        ]
+      },
+      "ParentActivity": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "key": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "MOVING",
+              "CALMER"
+            ]
+          },
+          "instruction": {
+            "type": "string"
+          },
+          "duration_seconds": {
+            "type": "integer",
+            "exclusiveMinimum": 0
+          }
+        },
+        "required": [
+          "id",
+          "key",
+          "title",
+          "category",
+          "instruction",
+          "duration_seconds"
+        ]
+      },
+      "Session": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "child_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "minutes": {
+            "type": "number"
+          },
+          "started_at": {
+            "type": "string"
+          },
+          "ended_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "outcome": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "COMPLETED",
+              "EXITED",
+              null
+            ]
+          },
+          "short_by_minutes": {
+            "type": "number",
+            "description": "How far the child's library fell short of the chosen time; 0 when it filled it"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "AUTO",
+              "MORNING",
+              "DAYTIME",
+              "BEDTIME"
+            ]
+          },
+          "time_band": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "MORNING",
+              "DAYTIME",
+              "EVENING",
+              "NIGHT",
+              null
+            ],
+            "description": "The band India's clock was in when the session started"
+          },
+          "opener": {
+            "type": "object",
+            "properties": {
+              "band": {
+                "type": "string",
+                "enum": [
+                  "MORNING",
+                  "DAYTIME",
+                  "EVENING",
+                  "NIGHT"
+                ]
+              }
+            },
+            "required": [
+              "band"
+            ],
+            "description": "The KidQ Agent's opener, played before slot 1 and outside the chosen minutes"
+          },
+          "wind_down": {
+            "type": "string",
+            "enum": [
+              "STANDARD",
+              "CALM",
+              "SLEEP"
+            ],
+            "description": "How the last slot closes: SLEEP is the full sleep wind-down"
+          },
+          "lean_toward": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "planned_seconds": {
+            "type": "number",
+            "description": "The chosen time: the sun's whole arc"
+          },
+          "filled_seconds": {
+            "type": "number",
+            "description": "The queued videos' total length"
+          },
+          "progress_seconds": {
+            "type": "number",
+            "description": "Watched so far, each video counted up to its length: rewatching never moves the sun on"
+          },
+          "slots": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "slot": {
+                  "type": "number"
+                },
+                "break_after": {
+                  "type": "string",
+                  "enum": [
+                    "MOVEMENT",
+                    "QUIET",
+                    "WIND_DOWN"
+                  ],
+                  "description": "The break after this slot; the last is always WIND_DOWN, shown in child mode as the sunset"
+                },
+                "break_activity": {
+                  "type": [
+                    "object",
+                    "null"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "description": "The activity id, for activity_started / activity_completed events"
+                    },
+                    "key": {
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "instruction": {
+                      "type": "string"
+                    },
+                    "spoken_instruction": {
+                      "type": "string",
+                      "description": "Read aloud by the device voice (en-IN)"
+                    },
+                    "variant": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "e.g. the colour for Find 3 things; for the sunset, the session's wind_down"
+                    },
+                    "duration_seconds": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "key",
+                    "title",
+                    "instruction",
+                    "spoken_instruction",
+                    "variant",
+                    "duration_seconds"
+                  ]
+                },
+                "items": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "position": {
+                        "type": "number"
+                      },
+                      "outcome": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "enum": [
+                          "COMPLETED",
+                          "SKIPPED",
+                          "EXITED",
+                          null
+                        ]
+                      },
+                      "watched_seconds": {
+                        "type": [
+                          "number",
+                          "null"
+                        ]
+                      },
+                      "position_seconds": {
+                        "type": [
+                          "number",
+                          "null"
+                        ],
+                        "description": "Where the video last stopped"
+                      },
+                      "activity_breakpoints": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "timestamp_seconds": {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            "activity_id": {
+                              "type": "string",
+                              "format": "uuid"
+                            }
+                          },
+                          "required": [
+                            "timestamp_seconds",
+                            "activity_id"
+                          ]
+                        }
+                      },
+                      "card": {
+                        "$ref": "#/components/schemas/ContentCard"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "position",
+                      "outcome",
+                      "watched_seconds",
+                      "position_seconds",
+                      "activity_breakpoints",
+                      "card"
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "slot",
+                "break_after",
+                "break_activity",
+                "items"
+              ]
+            }
+          }
+        },
+        "required": [
+          "id",
+          "child_id",
+          "minutes",
+          "started_at",
+          "ended_at",
+          "outcome",
+          "short_by_minutes",
+          "mode",
+          "time_band",
+          "opener",
+          "wind_down",
+          "lean_toward",
+          "planned_seconds",
+          "filled_seconds",
+          "progress_seconds",
+          "slots"
+        ]
+      },
+      "ParentAnalytics": {
+        "type": "object",
+        "properties": {
+          "child_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "period": {
+            "type": "string",
+            "enum": [
+              "today",
+              "7d",
+              "30d"
+            ]
+          },
+          "timezone": {
+            "type": "string"
+          },
+          "range": {
+            "type": "object",
+            "properties": {
+              "start": {
+                "type": "string"
+              },
+              "end": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "start",
+              "end"
+            ],
+            "description": "Local days, inclusive"
+          },
+          "has_data": {
+            "type": "boolean"
+          },
+          "overview": {
+            "type": "object",
+            "properties": {
+              "screen_minutes": {
+                "type": "integer",
+                "description": "Videos actually playing on screen"
+              },
+              "videos_watched": {
+                "type": "integer"
+              },
+              "activities_completed": {
+                "type": "integer"
+              },
+              "vs_previous": {
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "properties": {
+                  "minutes_diff": {
+                    "type": "integer",
+                    "description": "Negative is less"
+                  },
+                  "compared_with": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "minutes_diff",
+                  "compared_with"
+                ],
+                "description": "Only when both periods have screen time"
+              }
+            },
+            "required": [
+              "screen_minutes",
+              "videos_watched",
+              "activities_completed",
+              "vs_previous"
+            ]
+          },
+          "daily": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "date": {
+                  "type": "string"
+                },
+                "minutes": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "date",
+                "minutes"
+              ]
+            }
+          },
+          "categories": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "key": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "minutes": {
+                  "type": "integer"
+                },
+                "percent": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "key",
+                "label",
+                "minutes",
+                "percent"
+              ]
+            },
+            "description": "Videos and activities; past the top five is \"other\""
+          },
+          "engaged": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "key": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "minutes": {
+                  "type": "integer"
+                },
+                "videos": {
+                  "type": "integer"
+                },
+                "activities": {
+                  "type": "integer"
+                },
+                "average_completion": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "key",
+                "label",
+                "minutes",
+                "videos",
+                "activities",
+                "average_completion"
+              ]
+            },
+            "description": "Up to three, from watch time, completion, repeats and variety; a category needs two plays"
+          },
+          "top_content": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "card": {
+                  "$ref": "#/components/schemas/ContentCard"
+                },
+                "minutes": {
+                  "type": "integer"
+                },
+                "completion": {
+                  "type": "integer"
+                },
+                "times_watched": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "card",
+                "minutes",
+                "completion",
+                "times_watched"
+              ]
+            }
+          },
+          "completion": {
+            "type": "object",
+            "properties": {
+              "started": {
+                "type": "integer"
+              },
+              "completed": {
+                "type": "integer",
+                "description": "90% or more"
+              },
+              "partly_watched": {
+                "type": "integer",
+                "description": "25–90%"
+              },
+              "stopped_early": {
+                "type": "integer",
+                "description": "Under 25%"
+              }
+            },
+            "required": [
+              "started",
+              "completed",
+              "partly_watched",
+              "stopped_early"
+            ]
+          },
+          "pattern": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "part": {
+                  "type": "string",
+                  "enum": [
+                    "MORNING",
+                    "AFTERNOON",
+                    "EVENING",
+                    "OTHER"
+                  ]
+                },
+                "label": {
+                  "type": "string"
+                },
+                "hours": {
+                  "type": "string"
+                },
+                "minutes": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "part",
+                "label",
+                "hours",
+                "minutes"
+              ]
+            }
+          },
+          "split": {
+            "type": "object",
+            "properties": {
+              "video_minutes": {
+                "type": "integer"
+              },
+              "activity_minutes": {
+                "type": "integer"
+              },
+              "video_percent": {
+                "type": "integer"
+              },
+              "activity_percent": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "video_minutes",
+              "activity_minutes",
+              "video_percent",
+              "activity_percent"
+            ]
+          },
+          "insights": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "At most two factual sentences, only once there's enough to go on"
+          }
+        },
+        "required": [
+          "child_id",
+          "period",
+          "timezone",
+          "range",
+          "has_data",
+          "overview",
+          "daily",
+          "categories",
+          "engaged",
+          "top_content",
+          "completion",
+          "pattern",
+          "split",
+          "insights"
+        ]
+      },
+      "AdminAnalytics": {
+        "type": "object",
+        "properties": {
+          "period": {
+            "type": "string",
+            "enum": [
+              "today",
+              "7d",
+              "30d"
+            ]
+          },
+          "timezone": {
+            "type": "string"
+          },
+          "child_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "children_active": {
+            "type": "integer",
+            "description": "Children with any viewing in this period"
+          },
+          "children_total": {
+            "type": "integer",
+            "description": "Every child profile on KidQ"
+          },
+          "range": {
+            "type": "object",
+            "properties": {
+              "start": {
+                "type": "string"
+              },
+              "end": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "start",
+              "end"
+            ],
+            "description": "Local days, inclusive"
+          },
+          "has_data": {
+            "type": "boolean"
+          },
+          "overview": {
+            "type": "object",
+            "properties": {
+              "screen_minutes": {
+                "type": "integer",
+                "description": "Videos actually playing on screen"
+              },
+              "videos_watched": {
+                "type": "integer"
+              },
+              "activities_completed": {
+                "type": "integer"
+              },
+              "vs_previous": {
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "properties": {
+                  "minutes_diff": {
+                    "type": "integer",
+                    "description": "Negative is less"
+                  },
+                  "compared_with": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "minutes_diff",
+                  "compared_with"
+                ],
+                "description": "Only when both periods have screen time"
+              }
+            },
+            "required": [
+              "screen_minutes",
+              "videos_watched",
+              "activities_completed",
+              "vs_previous"
+            ]
+          },
+          "daily": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "date": {
+                  "type": "string"
+                },
+                "minutes": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "date",
+                "minutes"
+              ]
+            }
+          },
+          "categories": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "key": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "minutes": {
+                  "type": "integer"
+                },
+                "percent": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "key",
+                "label",
+                "minutes",
+                "percent"
+              ]
+            },
+            "description": "Videos and activities; past the top five is \"other\""
+          },
+          "engaged": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "key": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "minutes": {
+                  "type": "integer"
+                },
+                "videos": {
+                  "type": "integer"
+                },
+                "activities": {
+                  "type": "integer"
+                },
+                "average_completion": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "key",
+                "label",
+                "minutes",
+                "videos",
+                "activities",
+                "average_completion"
+              ]
+            },
+            "description": "Up to three, from watch time, completion, repeats and variety; a category needs two plays"
+          },
+          "top_content": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "card": {
+                  "$ref": "#/components/schemas/ContentCard"
+                },
+                "minutes": {
+                  "type": "integer"
+                },
+                "completion": {
+                  "type": "integer"
+                },
+                "times_watched": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "card",
+                "minutes",
+                "completion",
+                "times_watched"
+              ]
+            }
+          },
+          "completion": {
+            "type": "object",
+            "properties": {
+              "started": {
+                "type": "integer"
+              },
+              "completed": {
+                "type": "integer",
+                "description": "90% or more"
+              },
+              "partly_watched": {
+                "type": "integer",
+                "description": "25–90%"
+              },
+              "stopped_early": {
+                "type": "integer",
+                "description": "Under 25%"
+              }
+            },
+            "required": [
+              "started",
+              "completed",
+              "partly_watched",
+              "stopped_early"
+            ]
+          },
+          "pattern": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "part": {
+                  "type": "string",
+                  "enum": [
+                    "MORNING",
+                    "AFTERNOON",
+                    "EVENING",
+                    "OTHER"
+                  ]
+                },
+                "label": {
+                  "type": "string"
+                },
+                "hours": {
+                  "type": "string"
+                },
+                "minutes": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "part",
+                "label",
+                "hours",
+                "minutes"
+              ]
+            }
+          },
+          "split": {
+            "type": "object",
+            "properties": {
+              "video_minutes": {
+                "type": "integer"
+              },
+              "activity_minutes": {
+                "type": "integer"
+              },
+              "video_percent": {
+                "type": "integer"
+              },
+              "activity_percent": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "video_minutes",
+              "activity_minutes",
+              "video_percent",
+              "activity_percent"
+            ]
+          },
+          "insights": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "At most two factual sentences, only once there's enough to go on"
+          }
+        },
+        "required": [
+          "period",
+          "timezone",
+          "child_id",
+          "children_active",
+          "children_total",
+          "range",
+          "has_data",
+          "overview",
+          "daily",
+          "categories",
+          "engaged",
+          "top_content",
+          "completion",
+          "pattern",
+          "split",
+          "insights"
         ]
       }
     },
@@ -1473,11 +2451,8 @@
               "type": "string",
               "enum": [
                 "PENDING_ANALYSIS",
-                "ANALYSING",
                 "READY_TO_APPROVE",
                 "NEEDS_ATTENTION",
-                "ANALYSIS_INCOMPLETE",
-                "FAILED",
                 "APPROVED",
                 "REJECTED"
               ]
@@ -1847,13 +2822,6 @@
                         "additionalProperties": {}
                       }
                     },
-                    "expert_reviews": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "additionalProperties": {}
-                      }
-                    },
                     "rights": {
                       "type": "object",
                       "additionalProperties": {}
@@ -1882,7 +2850,6 @@
                     "assessments",
                     "decisions",
                     "revisions",
-                    "expert_reviews",
                     "rights",
                     "transcript_status",
                     "story"
@@ -2028,13 +2995,6 @@
                         "additionalProperties": {}
                       }
                     },
-                    "expert_reviews": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "additionalProperties": {}
-                      }
-                    },
                     "rights": {
                       "type": "object",
                       "additionalProperties": {}
@@ -2063,7 +3023,6 @@
                     "assessments",
                     "decisions",
                     "revisions",
-                    "expert_reviews",
                     "rights",
                     "transcript_status",
                     "story"
@@ -2343,13 +3302,6 @@
                         "additionalProperties": {}
                       }
                     },
-                    "expert_reviews": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "additionalProperties": {}
-                      }
-                    },
                     "rights": {
                       "type": "object",
                       "additionalProperties": {}
@@ -2378,7 +3330,6 @@
                     "assessments",
                     "decisions",
                     "revisions",
-                    "expert_reviews",
                     "rights",
                     "transcript_status",
                     "story"
@@ -2522,6 +3473,19 @@
                     },
                     "maxItems": 10
                   },
+                  "session_modes": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "MORNING",
+                        "DAYTIME",
+                        "BEDTIME"
+                      ]
+                    },
+                    "maxItems": 3,
+                    "description": "Times of day the item suits; the AI sets them once, an admin can change them"
+                  },
                   "language": {
                     "type": [
                       "string",
@@ -2580,13 +3544,6 @@
                         "additionalProperties": {}
                       }
                     },
-                    "expert_reviews": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "additionalProperties": {}
-                      }
-                    },
                     "rights": {
                       "type": "object",
                       "additionalProperties": {}
@@ -2615,7 +3572,6 @@
                     "assessments",
                     "decisions",
                     "revisions",
-                    "expert_reviews",
                     "rights",
                     "transcript_status",
                     "story"
@@ -2759,6 +3715,19 @@
                           "maxLength": 60
                         },
                         "maxItems": 10
+                      },
+                      "session_modes": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "enum": [
+                            "MORNING",
+                            "DAYTIME",
+                            "BEDTIME"
+                          ]
+                        },
+                        "maxItems": 3,
+                        "description": "Times of day the item suits; the AI sets them once, an admin can change them"
                       },
                       "language": {
                         "type": [
@@ -2971,13 +3940,6 @@
                         "additionalProperties": {}
                       }
                     },
-                    "expert_reviews": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "additionalProperties": {}
-                      }
-                    },
                     "rights": {
                       "type": "object",
                       "additionalProperties": {}
@@ -3006,7 +3968,6 @@
                     "assessments",
                     "decisions",
                     "revisions",
-                    "expert_reviews",
                     "rights",
                     "transcript_status",
                     "story"
@@ -3151,228 +4112,6 @@
                   },
                   "required": [
                     "results"
-                  ]
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Validation failed",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Not signed in",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Wrong role",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/content-items/{id}/expert-reviews": {
-      "post": {
-        "summary": "Add an expert review (shown as 'per public sources' unless verified)",
-        "tags": [
-          "Scoring"
-        ],
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            },
-            "required": true,
-            "name": "id",
-            "in": "path"
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "reviewer_name": {
-                    "type": "string",
-                    "minLength": 1,
-                    "maxLength": 120
-                  },
-                  "reviewer_type": {
-                    "type": "string",
-                    "minLength": 1,
-                    "maxLength": 80
-                  },
-                  "credentials": {
-                    "type": [
-                      "string",
-                      "null"
-                    ],
-                    "maxLength": 200
-                  },
-                  "recommendation": {
-                    "type": "string",
-                    "enum": [
-                      "RECOMMEND",
-                      "NOT_RECOMMEND"
-                    ]
-                  },
-                  "recommended_age_min": {
-                    "type": [
-                      "number",
-                      "null"
-                    ],
-                    "minimum": 0,
-                    "maximum": 6
-                  },
-                  "recommended_age_max": {
-                    "type": [
-                      "number",
-                      "null"
-                    ],
-                    "minimum": 0,
-                    "maximum": 6
-                  },
-                  "comments": {
-                    "type": [
-                      "string",
-                      "null"
-                    ],
-                    "maxLength": 2000
-                  },
-                  "source_url": {
-                    "type": [
-                      "string",
-                      "null"
-                    ],
-                    "format": "uri",
-                    "description": "Where the review was published; leave out for a KidQ panel review"
-                  },
-                  "verified": {
-                    "type": "boolean",
-                    "default": false,
-                    "description": "KidQ has checked the reviewer's credentials; only verified reviews count as KidQ experts"
-                  }
-                },
-                "required": [
-                  "reviewer_name",
-                  "reviewer_type",
-                  "recommendation"
-                ]
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Success",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "content": {
-                      "$ref": "#/components/schemas/AdminContent"
-                    },
-                    "record": {
-                      "type": "object",
-                      "additionalProperties": {},
-                      "description": "README canonical content record (all required keys)"
-                    },
-                    "assessments": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "additionalProperties": {}
-                      }
-                    },
-                    "decisions": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "additionalProperties": {}
-                      }
-                    },
-                    "revisions": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "additionalProperties": {}
-                      }
-                    },
-                    "expert_reviews": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "additionalProperties": {}
-                      }
-                    },
-                    "rights": {
-                      "type": "object",
-                      "additionalProperties": {}
-                    },
-                    "transcript_status": {
-                      "type": [
-                        "string",
-                        "null"
-                      ]
-                    },
-                    "raw_metadata": {},
-                    "story": {
-                      "anyOf": [
-                        {
-                          "$ref": "#/components/schemas/Story"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ]
-                    }
-                  },
-                  "required": [
-                    "content",
-                    "record",
-                    "assessments",
-                    "decisions",
-                    "revisions",
-                    "expert_reviews",
-                    "rights",
-                    "transcript_status",
-                    "story"
                   ]
                 }
               }
@@ -4035,7 +4774,7 @@
                       "maxLength": 60
                     },
                     "maxItems": 12,
-                    "description": "Block B categories; sending some without content_mix means CHOSEN"
+                    "description": "Block B: parent category keys (GET /taxonomy → parent_category); sending some without content_mix means CHOSEN"
                   },
                   "development_goals": {
                     "type": "array",
@@ -4098,6 +4837,39 @@
                       "ALTERNATE"
                     ],
                     "description": "Block E: MOVEMENT, QUIET or ALTERNATE"
+                  },
+                  "break_interval_minutes": {
+                    "anyOf": [
+                      {
+                        "type": "number",
+                        "enum": [
+                          10
+                        ]
+                      },
+                      {
+                        "type": "number",
+                        "enum": [
+                          15
+                        ]
+                      },
+                      {
+                        "type": "number",
+                        "enum": [
+                          20
+                        ]
+                      }
+                    ],
+                    "description": "Block E: minutes between breaks (10, 15 or 20); breaks = duration ÷ interval, rounded"
+                  },
+                  "session_mode": {
+                    "type": "string",
+                    "enum": [
+                      "AUTO",
+                      "MORNING",
+                      "DAYTIME",
+                      "BEDTIME"
+                    ],
+                    "description": "§12: AUTO follows the clock; MORNING, DAYTIME or BEDTIME is remembered until changed"
                   },
                   "age_band": {
                     "type": "string",
@@ -4577,11 +5349,6 @@
                         "maximum": 1,
                         "default": 0
                       },
-                      "expert": {
-                        "type": "number",
-                        "minimum": 0,
-                        "maximum": 1
-                      },
                       "preference": {
                         "type": "number",
                         "minimum": 0,
@@ -4592,7 +5359,6 @@
                     "required": [
                       "relevance",
                       "score",
-                      "expert",
                       "preference"
                     ]
                   },
@@ -4641,11 +5407,6 @@
                     "type": "integer",
                     "minimum": 0,
                     "maximum": 365
-                  },
-                  "expert_neutral": {
-                    "type": "number",
-                    "minimum": 0,
-                    "maximum": 1
                   }
                 },
                 "required": [
@@ -4653,8 +5414,7 @@
                   "relevance_weights",
                   "max_per_creator_in_top",
                   "top_window",
-                  "dismiss_cooldown_days",
-                  "expert_neutral"
+                  "dismiss_cooldown_days"
                 ]
               }
             }
@@ -4734,6 +5494,250 @@
         }
       }
     },
+    "/analytics": {
+      "get": {
+        "summary": "What families are watching, platform-wide (or one child, with child_id): the same sections as the parent Analytics page",
+        "tags": [
+          "Analytics"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "today",
+                "7d",
+                "30d"
+              ],
+              "default": "7d"
+            },
+            "required": false,
+            "name": "period",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Look at one child's viewing instead of the whole platform"
+            },
+            "required": false,
+            "description": "Look at one child's viewing instead of the whole platform",
+            "name": "child_id",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminAnalytics"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/content-pool": {
+      "get": {
+        "summary": "What parents can be shown: published items per age band and category, thin spots, and published items that can't be recommended",
+        "tags": [
+          "Content"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "published": {
+                      "type": "number"
+                    },
+                    "eligible": {
+                      "type": "number",
+                      "description": "Published items that pass every check and can be recommended"
+                    },
+                    "thin_below": {
+                      "type": "number"
+                    },
+                    "bands": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "age_band": {
+                            "type": "string"
+                          },
+                          "total": {
+                            "type": "number"
+                          },
+                          "categories": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "category": {
+                                  "type": "string"
+                                },
+                                "count": {
+                                  "type": "number"
+                                },
+                                "thin": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "category",
+                                "count",
+                                "thin"
+                              ]
+                            }
+                          }
+                        },
+                        "required": [
+                          "age_band",
+                          "total",
+                          "categories"
+                        ]
+                      }
+                    },
+                    "not_reaching_parents": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "title": {
+                            "type": "string"
+                          },
+                          "problems": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "title",
+                          "problems"
+                        ]
+                      },
+                      "description": "Published but never recommended: NOT_PLAYABLE, SAFETY_FLAG, NOT_SCORED, NO_AGE, NO_CATEGORY or NO_GOAL"
+                    }
+                  },
+                  "required": [
+                    "published",
+                    "eligible",
+                    "thin_below",
+                    "bands",
+                    "not_reaching_parents"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/taxonomy": {
       "post": {
         "summary": "Add or update a vocabulary term (e.g. a new category)",
@@ -4759,7 +5763,8 @@
                       "development_goal",
                       "regulation_goal",
                       "language",
-                      "age_group"
+                      "age_group",
+                      "parent_category"
                     ]
                   },
                   "key": {
@@ -4941,6 +5946,89 @@
         }
       }
     },
+    "/activities": {
+      "get": {
+        "summary": "Live activities available for parent-authored video breaks",
+        "tags": [
+          "Library"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "moving": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ParentActivity"
+                      }
+                    },
+                    "calmer": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ParentActivity"
+                      }
+                    }
+                  },
+                  "required": [
+                    "moving",
+                    "calmer"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/onboarding": {
       "post": {
         "summary": "Screen 1 in one call: the parent's name and language, and each child's nickname and age band (1–6); the rest starts from age-based defaults",
@@ -4962,6 +6050,11 @@
                     "type": "string",
                     "minLength": 1,
                     "maxLength": 80
+                  },
+                  "timezone": {
+                    "type": "string",
+                    "maxLength": 64,
+                    "description": "IANA time zone from the browser, e.g. Asia/Kolkata: it decides the child's \"today\" in analytics"
                   },
                   "language": {
                     "type": "string",
@@ -5027,6 +6120,9 @@
                         "language": {
                           "type": "string"
                         },
+                        "timezone": {
+                          "type": "string"
+                        },
                         "created_at": {
                           "type": "string"
                         },
@@ -5037,6 +6133,7 @@
                       "required": [
                         "name",
                         "language",
+                        "timezone",
                         "created_at",
                         "updated_at"
                       ]
@@ -5127,6 +6224,9 @@
                         "language": {
                           "type": "string"
                         },
+                        "timezone": {
+                          "type": "string"
+                        },
                         "created_at": {
                           "type": "string"
                         },
@@ -5137,6 +6237,7 @@
                       "required": [
                         "name",
                         "language",
+                        "timezone",
                         "created_at",
                         "updated_at"
                       ]
@@ -5223,6 +6324,11 @@
                     "type": "string",
                     "minLength": 2,
                     "maxLength": 10
+                  },
+                  "timezone": {
+                    "type": "string",
+                    "maxLength": 64,
+                    "description": "IANA time zone from the browser, e.g. Asia/Kolkata: it decides the child's \"today\" in analytics"
                   }
                 }
               }
@@ -5246,6 +6352,9 @@
                         "language": {
                           "type": "string"
                         },
+                        "timezone": {
+                          "type": "string"
+                        },
                         "created_at": {
                           "type": "string"
                         },
@@ -5256,6 +6365,7 @@
                       "required": [
                         "name",
                         "language",
+                        "timezone",
                         "created_at",
                         "updated_at"
                       ]
@@ -5444,7 +6554,7 @@
                       "maxLength": 60
                     },
                     "maxItems": 12,
-                    "description": "Block B categories; sending some without content_mix means CHOSEN"
+                    "description": "Block B: parent category keys (GET /taxonomy → parent_category); sending some without content_mix means CHOSEN"
                   },
                   "development_goals": {
                     "type": "array",
@@ -5507,6 +6617,39 @@
                       "ALTERNATE"
                     ],
                     "description": "Block E: MOVEMENT, QUIET or ALTERNATE"
+                  },
+                  "break_interval_minutes": {
+                    "anyOf": [
+                      {
+                        "type": "number",
+                        "enum": [
+                          10
+                        ]
+                      },
+                      {
+                        "type": "number",
+                        "enum": [
+                          15
+                        ]
+                      },
+                      {
+                        "type": "number",
+                        "enum": [
+                          20
+                        ]
+                      }
+                    ],
+                    "description": "Block E: minutes between breaks (10, 15 or 20); breaks = duration ÷ interval, rounded"
+                  },
+                  "session_mode": {
+                    "type": "string",
+                    "enum": [
+                      "AUTO",
+                      "MORNING",
+                      "DAYTIME",
+                      "BEDTIME"
+                    ],
+                    "description": "§12: AUTO follows the clock; MORNING, DAYTIME or BEDTIME is remembered until changed"
                   },
                   "nickname": {
                     "type": "string",
@@ -5725,7 +6868,7 @@
                       "maxLength": 60
                     },
                     "maxItems": 12,
-                    "description": "Block B categories; sending some without content_mix means CHOSEN"
+                    "description": "Block B: parent category keys (GET /taxonomy → parent_category); sending some without content_mix means CHOSEN"
                   },
                   "development_goals": {
                     "type": "array",
@@ -5788,6 +6931,39 @@
                       "ALTERNATE"
                     ],
                     "description": "Block E: MOVEMENT, QUIET or ALTERNATE"
+                  },
+                  "break_interval_minutes": {
+                    "anyOf": [
+                      {
+                        "type": "number",
+                        "enum": [
+                          10
+                        ]
+                      },
+                      {
+                        "type": "number",
+                        "enum": [
+                          15
+                        ]
+                      },
+                      {
+                        "type": "number",
+                        "enum": [
+                          20
+                        ]
+                      }
+                    ],
+                    "description": "Block E: minutes between breaks (10, 15 or 20); breaks = duration ÷ interval, rounded"
+                  },
+                  "session_mode": {
+                    "type": "string",
+                    "enum": [
+                      "AUTO",
+                      "MORNING",
+                      "DAYTIME",
+                      "BEDTIME"
+                    ],
+                    "description": "§12: AUTO follows the clock; MORNING, DAYTIME or BEDTIME is remembered until changed"
                   },
                   "nickname": {
                     "type": "string",
@@ -6037,15 +7213,43 @@
                           "updated_at": {
                             "type": "string"
                           },
+                          "position": {
+                            "type": [
+                              "number",
+                              "null"
+                            ]
+                          },
                           "card": {
                             "$ref": "#/components/schemas/ContentCard"
+                          },
+                          "activity_breakpoints": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "timestamp_seconds": {
+                                  "type": "integer",
+                                  "minimum": 0
+                                },
+                                "activity_id": {
+                                  "type": "string",
+                                  "format": "uuid"
+                                }
+                              },
+                              "required": [
+                                "timestamp_seconds",
+                                "activity_id"
+                              ]
+                            }
                           }
                         },
                         "required": [
                           "state",
                           "awaiting_review",
                           "updated_at",
-                          "card"
+                          "position",
+                          "card",
+                          "activity_breakpoints"
                         ]
                       }
                     }
@@ -6137,6 +7341,10 @@
                       "DISMISSED"
                     ],
                     "default": "ADDED"
+                  },
+                  "position": {
+                    "type": "integer",
+                    "minimum": 0
                   }
                 },
                 "required": [
@@ -6169,6 +7377,156 @@
                     "content_item_id",
                     "state",
                     "awaiting_review"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/children/{id}/library/{contentItemId}/breakpoints": {
+      "put": {
+        "summary": "Replace the optional activity breaks for one library content item",
+        "tags": [
+          "Library"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "contentItemId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "breakpoints": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "timestamp_seconds": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "activity_id": {
+                          "type": "string",
+                          "format": "uuid"
+                        }
+                      },
+                      "required": [
+                        "timestamp_seconds",
+                        "activity_id"
+                      ]
+                    },
+                    "maxItems": 30
+                  }
+                },
+                "required": [
+                  "breakpoints"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "content_item_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "activity_breakpoints": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "timestamp_seconds": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "activity_id": {
+                            "type": "string",
+                            "format": "uuid"
+                          }
+                        },
+                        "required": [
+                          "timestamp_seconds",
+                          "activity_id"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "content_item_id",
+                    "activity_breakpoints"
                   ]
                 }
               }
@@ -6347,6 +7705,14 @@
                     "type": "string",
                     "minLength": 5,
                     "maxLength": 500
+                  },
+                  "visibility": {
+                    "type": "string",
+                    "enum": [
+                      "PRIVATE",
+                      "PUBLIC_CANDIDATE"
+                    ],
+                    "default": "PUBLIC_CANDIDATE"
                   }
                 },
                 "required": [
@@ -6401,6 +7767,13 @@
                         null
                       ]
                     },
+                    "visibility": {
+                      "type": "string",
+                      "enum": [
+                        "PRIVATE",
+                        "PUBLIC_CANDIDATE"
+                      ]
+                    },
                     "card": {
                       "anyOf": [
                         {
@@ -6419,6 +7792,7 @@
                     "error",
                     "created_at",
                     "assessment",
+                    "visibility",
                     "card"
                   ]
                 }
@@ -6538,6 +7912,13 @@
                               null
                             ]
                           },
+                          "visibility": {
+                            "type": "string",
+                            "enum": [
+                              "PRIVATE",
+                              "PUBLIC_CANDIDATE"
+                            ]
+                          },
                           "card": {
                             "anyOf": [
                               {
@@ -6556,6 +7937,7 @@
                           "error",
                           "created_at",
                           "assessment",
+                          "visibility",
                           "card"
                         ]
                       }
@@ -6564,6 +7946,1651 @@
                   "required": [
                     "items"
                   ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/children/{id}/sessions": {
+      "post": {
+        "summary": "Start a Session: builds the slot-by-slot queue from the child's library for the chosen minutes and starts it at once",
+        "tags": [
+          "Sessions"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "minutes": {
+                    "type": "integer",
+                    "minimum": 15,
+                    "maximum": 180,
+                    "description": "15, 30, 45, 60 or 90; any other length snaps to 30-minute blocks"
+                  },
+                  "mode": {
+                    "type": "string",
+                    "enum": [
+                      "AUTO",
+                      "MORNING",
+                      "DAYTIME",
+                      "BEDTIME"
+                    ],
+                    "description": "Session mode; remembered as this child's default. Omit to use the remembered one"
+                  },
+                  "lean_toward": {
+                    "type": "string",
+                    "maxLength": 60,
+                    "description": "\"Today, lean toward…\": a parent category key for this session only; never saved"
+                  }
+                },
+                "required": [
+                  "minutes"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Session"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "summary": "The handoff log: this child's recent sessions, what was watched and how each ended",
+        "tags": [
+          "Sessions"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Session"
+                      }
+                    }
+                  },
+                  "required": [
+                    "items"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sessions/{id}/items/{itemId}": {
+      "patch": {
+        "summary": "Record how one video went (COMPLETED, SKIPPED or EXITED) and where it stopped",
+        "tags": [
+          "Sessions"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "itemId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "outcome": {
+                    "type": "string",
+                    "enum": [
+                      "COMPLETED",
+                      "SKIPPED",
+                      "EXITED"
+                    ]
+                  },
+                  "watched_seconds": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 86400,
+                    "description": "Only ever grows: a smaller value is ignored"
+                  },
+                  "position_seconds": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 86400,
+                    "description": "Where the video stopped, for resuming it"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Session"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sessions/{id}/end": {
+      "post": {
+        "summary": "End the session: COMPLETED after the wind-down, or EXITED early",
+        "tags": [
+          "Sessions"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "outcome": {
+                    "type": "string",
+                    "enum": [
+                      "COMPLETED",
+                      "EXITED"
+                    ],
+                    "description": "COMPLETED: the wind-down finished. EXITED: the child left early; there's no resume"
+                  }
+                },
+                "required": [
+                  "outcome"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Session"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/children/{id}/events": {
+      "post": {
+        "summary": "Record viewing events (up to 50 per batch); a resent event is not counted twice",
+        "tags": [
+          "Analytics"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "events": {
+                    "type": "array",
+                    "items": {
+                      "oneOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "event_name": {
+                              "type": "string",
+                              "enum": [
+                                "video_started"
+                              ]
+                            },
+                            "client_event_id": {
+                              "type": "string",
+                              "format": "uuid",
+                              "description": "Made by the app; resending the same event is a no-op"
+                            },
+                            "occurred_at": {
+                              "type": "string",
+                              "format": "date-time"
+                            },
+                            "session_id": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "content_id": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "play_id": {
+                              "type": "string",
+                              "format": "uuid",
+                              "description": "One playback, from start to exit; a replay is a new play"
+                            },
+                            "recommendation_source": {
+                              "type": "string",
+                              "enum": [
+                                "PARENT_PLAYLIST",
+                                "KIDQ_RECOMMENDATION",
+                                "CATEGORY_BROWSE",
+                                "CONTINUE_WATCHING",
+                                "RECENTLY_WATCHED"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "event_name",
+                            "client_event_id",
+                            "occurred_at",
+                            "content_id",
+                            "play_id"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "event_name": {
+                              "type": "string",
+                              "enum": [
+                                "video_progress"
+                              ]
+                            },
+                            "client_event_id": {
+                              "type": "string",
+                              "format": "uuid",
+                              "description": "Made by the app; resending the same event is a no-op"
+                            },
+                            "occurred_at": {
+                              "type": "string",
+                              "format": "date-time"
+                            },
+                            "session_id": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "content_id": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "play_id": {
+                              "type": "string",
+                              "format": "uuid",
+                              "description": "One playback, from start to exit; a replay is a new play"
+                            },
+                            "position_seconds": {
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 86400
+                            },
+                            "progress_percent": {
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 100
+                            },
+                            "active_seconds": {
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 86400,
+                              "description": "Time actually playing and on screen since this play's previous event: never paused, buffering or a hidden tab"
+                            }
+                          },
+                          "required": [
+                            "event_name",
+                            "client_event_id",
+                            "occurred_at",
+                            "content_id",
+                            "play_id",
+                            "position_seconds",
+                            "progress_percent",
+                            "active_seconds"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Sent at 25, 50, 75 and 90%"
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "event_name": {
+                              "type": "string",
+                              "enum": [
+                                "video_paused"
+                              ]
+                            },
+                            "client_event_id": {
+                              "type": "string",
+                              "format": "uuid",
+                              "description": "Made by the app; resending the same event is a no-op"
+                            },
+                            "occurred_at": {
+                              "type": "string",
+                              "format": "date-time"
+                            },
+                            "session_id": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "content_id": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "play_id": {
+                              "type": "string",
+                              "format": "uuid",
+                              "description": "One playback, from start to exit; a replay is a new play"
+                            },
+                            "position_seconds": {
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 86400
+                            },
+                            "progress_percent": {
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 100
+                            },
+                            "active_seconds": {
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 86400,
+                              "description": "Time actually playing and on screen since this play's previous event: never paused, buffering or a hidden tab"
+                            }
+                          },
+                          "required": [
+                            "event_name",
+                            "client_event_id",
+                            "occurred_at",
+                            "content_id",
+                            "play_id",
+                            "position_seconds",
+                            "progress_percent",
+                            "active_seconds"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "event_name": {
+                              "type": "string",
+                              "enum": [
+                                "video_resumed"
+                              ]
+                            },
+                            "client_event_id": {
+                              "type": "string",
+                              "format": "uuid",
+                              "description": "Made by the app; resending the same event is a no-op"
+                            },
+                            "occurred_at": {
+                              "type": "string",
+                              "format": "date-time"
+                            },
+                            "session_id": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "content_id": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "play_id": {
+                              "type": "string",
+                              "format": "uuid",
+                              "description": "One playback, from start to exit; a replay is a new play"
+                            },
+                            "position_seconds": {
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 86400
+                            },
+                            "pause_duration_seconds": {
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 86400
+                            }
+                          },
+                          "required": [
+                            "event_name",
+                            "client_event_id",
+                            "occurred_at",
+                            "content_id",
+                            "play_id",
+                            "position_seconds",
+                            "pause_duration_seconds"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "event_name": {
+                              "type": "string",
+                              "enum": [
+                                "video_completed"
+                              ]
+                            },
+                            "client_event_id": {
+                              "type": "string",
+                              "format": "uuid",
+                              "description": "Made by the app; resending the same event is a no-op"
+                            },
+                            "occurred_at": {
+                              "type": "string",
+                              "format": "date-time"
+                            },
+                            "session_id": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "content_id": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "play_id": {
+                              "type": "string",
+                              "format": "uuid",
+                              "description": "One playback, from start to exit; a replay is a new play"
+                            },
+                            "position_seconds": {
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 86400
+                            },
+                            "progress_percent": {
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 100
+                            },
+                            "active_seconds": {
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 86400,
+                              "description": "Time actually playing and on screen since this play's previous event: never paused, buffering or a hidden tab"
+                            }
+                          },
+                          "required": [
+                            "event_name",
+                            "client_event_id",
+                            "occurred_at",
+                            "content_id",
+                            "play_id",
+                            "position_seconds",
+                            "progress_percent",
+                            "active_seconds"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Once per play, at 90% or more"
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "event_name": {
+                              "type": "string",
+                              "enum": [
+                                "video_exited"
+                              ]
+                            },
+                            "client_event_id": {
+                              "type": "string",
+                              "format": "uuid",
+                              "description": "Made by the app; resending the same event is a no-op"
+                            },
+                            "occurred_at": {
+                              "type": "string",
+                              "format": "date-time"
+                            },
+                            "session_id": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "content_id": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "play_id": {
+                              "type": "string",
+                              "format": "uuid",
+                              "description": "One playback, from start to exit; a replay is a new play"
+                            },
+                            "position_seconds": {
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 86400
+                            },
+                            "progress_percent": {
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 100
+                            },
+                            "active_seconds": {
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 86400,
+                              "description": "Time actually playing and on screen since this play's previous event: never paused, buffering or a hidden tab"
+                            }
+                          },
+                          "required": [
+                            "event_name",
+                            "client_event_id",
+                            "occurred_at",
+                            "content_id",
+                            "play_id",
+                            "position_seconds",
+                            "progress_percent",
+                            "active_seconds"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "event_name": {
+                              "type": "string",
+                              "enum": [
+                                "video_replayed"
+                              ]
+                            },
+                            "client_event_id": {
+                              "type": "string",
+                              "format": "uuid",
+                              "description": "Made by the app; resending the same event is a no-op"
+                            },
+                            "occurred_at": {
+                              "type": "string",
+                              "format": "date-time"
+                            },
+                            "session_id": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "content_id": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "play_id": {
+                              "type": "string",
+                              "format": "uuid",
+                              "description": "One playback, from start to exit; a replay is a new play"
+                            }
+                          },
+                          "required": [
+                            "event_name",
+                            "client_event_id",
+                            "occurred_at",
+                            "content_id",
+                            "play_id"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Sent with the new play's video_started; times watched is counted by the API"
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "event_name": {
+                              "type": "string",
+                              "enum": [
+                                "content_clicked"
+                              ]
+                            },
+                            "client_event_id": {
+                              "type": "string",
+                              "format": "uuid",
+                              "description": "Made by the app; resending the same event is a no-op"
+                            },
+                            "occurred_at": {
+                              "type": "string",
+                              "format": "date-time"
+                            },
+                            "session_id": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "content_id": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "position": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 1000
+                            },
+                            "recommendation_source": {
+                              "type": "string",
+                              "enum": [
+                                "PARENT_PLAYLIST",
+                                "KIDQ_RECOMMENDATION",
+                                "CATEGORY_BROWSE",
+                                "CONTINUE_WATCHING",
+                                "RECENTLY_WATCHED"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "event_name",
+                            "client_event_id",
+                            "occurred_at",
+                            "content_id",
+                            "position",
+                            "recommendation_source"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "event_name": {
+                              "type": "string",
+                              "enum": [
+                                "recommendation_clicked"
+                              ]
+                            },
+                            "client_event_id": {
+                              "type": "string",
+                              "format": "uuid",
+                              "description": "Made by the app; resending the same event is a no-op"
+                            },
+                            "occurred_at": {
+                              "type": "string",
+                              "format": "date-time"
+                            },
+                            "session_id": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "content_id": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "position": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 1000
+                            },
+                            "recommendation_reason": {
+                              "type": "string",
+                              "maxLength": 160
+                            }
+                          },
+                          "required": [
+                            "event_name",
+                            "client_event_id",
+                            "occurred_at",
+                            "content_id",
+                            "position",
+                            "recommendation_reason"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "event_name": {
+                              "type": "string",
+                              "enum": [
+                                "session_started"
+                              ]
+                            },
+                            "client_event_id": {
+                              "type": "string",
+                              "format": "uuid",
+                              "description": "Made by the app; resending the same event is a no-op"
+                            },
+                            "occurred_at": {
+                              "type": "string",
+                              "format": "date-time"
+                            },
+                            "session_id": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "device_type": {
+                              "type": "string",
+                              "enum": [
+                                "PHONE",
+                                "TABLET",
+                                "TV",
+                                "DESKTOP"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "event_name",
+                            "client_event_id",
+                            "occurred_at",
+                            "session_id",
+                            "device_type"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "event_name": {
+                              "type": "string",
+                              "enum": [
+                                "session_ended"
+                              ]
+                            },
+                            "client_event_id": {
+                              "type": "string",
+                              "format": "uuid",
+                              "description": "Made by the app; resending the same event is a no-op"
+                            },
+                            "occurred_at": {
+                              "type": "string",
+                              "format": "date-time"
+                            },
+                            "session_id": {
+                              "type": "string",
+                              "format": "uuid"
+                            }
+                          },
+                          "required": [
+                            "event_name",
+                            "client_event_id",
+                            "occurred_at",
+                            "session_id"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "event_name": {
+                              "type": "string",
+                              "enum": [
+                                "activity_started"
+                              ]
+                            },
+                            "client_event_id": {
+                              "type": "string",
+                              "format": "uuid",
+                              "description": "Made by the app; resending the same event is a no-op"
+                            },
+                            "occurred_at": {
+                              "type": "string",
+                              "format": "date-time"
+                            },
+                            "session_id": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "activity_id": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "play_id": {
+                              "type": "string",
+                              "format": "uuid",
+                              "description": "One playback, from start to exit; a replay is a new play"
+                            }
+                          },
+                          "required": [
+                            "event_name",
+                            "client_event_id",
+                            "occurred_at",
+                            "activity_id",
+                            "play_id"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "event_name": {
+                              "type": "string",
+                              "enum": [
+                                "activity_completed"
+                              ]
+                            },
+                            "client_event_id": {
+                              "type": "string",
+                              "format": "uuid",
+                              "description": "Made by the app; resending the same event is a no-op"
+                            },
+                            "occurred_at": {
+                              "type": "string",
+                              "format": "date-time"
+                            },
+                            "session_id": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "activity_id": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "play_id": {
+                              "type": "string",
+                              "format": "uuid",
+                              "description": "One playback, from start to exit; a replay is a new play"
+                            },
+                            "active_seconds": {
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 86400,
+                              "description": "Time actually playing and on screen since this play's previous event: never paused, buffering or a hidden tab"
+                            }
+                          },
+                          "required": [
+                            "event_name",
+                            "client_event_id",
+                            "occurred_at",
+                            "activity_id",
+                            "play_id",
+                            "active_seconds"
+                          ],
+                          "additionalProperties": false
+                        }
+                      ]
+                    },
+                    "minItems": 1,
+                    "maxItems": 50
+                  }
+                },
+                "required": [
+                  "events"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "accepted": {
+                      "type": "number"
+                    },
+                    "duplicates": {
+                      "type": "number",
+                      "description": "Already recorded; not counted again"
+                    },
+                    "ignored": {
+                      "type": "number",
+                      "description": "Unknown item, another child's play, or older than 7 days"
+                    }
+                  },
+                  "required": [
+                    "accepted",
+                    "duplicates",
+                    "ignored"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/children/{id}/analytics": {
+      "get": {
+        "summary": "The Parent Analytics page: screen time, categories, most watched, completion and a few factual insights",
+        "tags": [
+          "Analytics"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "today",
+                "7d",
+                "30d"
+              ],
+              "default": "7d"
+            },
+            "required": false,
+            "name": "period",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParentAnalytics"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/children/{id}/submissions/preview": {
+      "post": {
+        "summary": "Add a Video, step 1: a YouTube link's details and KidQ check, before adding it. Saves nothing",
+        "tags": [
+          "Submissions"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "url": {
+                    "type": "string",
+                    "minLength": 5,
+                    "maxLength": 500
+                  }
+                },
+                "required": [
+                  "url"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "video_id": {
+                      "type": "string"
+                    },
+                    "already_in_kidq": {
+                      "type": "boolean"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "thumbnail_url": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "duration_seconds": {
+                      "type": [
+                        "number",
+                        "null"
+                      ]
+                    },
+                    "channel": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "category": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "The admin category KidQ would suggest"
+                    },
+                    "parent_category": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "score": {
+                      "type": [
+                        "number",
+                        "null"
+                      ]
+                    },
+                    "reason": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "kidq_check": {
+                      "type": "object",
+                      "properties": {
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "REVIEWED",
+                            "CHECKING",
+                            "NOT_CHECKED"
+                          ]
+                        },
+                        "dimensions": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "key": {
+                                "type": "string",
+                                "enum": [
+                                  "CONTENT_LANGUAGE",
+                                  "PACING",
+                                  "VISUAL_COMFORT",
+                                  "AUDIO_COMFORT"
+                                ]
+                              },
+                              "label": {
+                                "type": "string"
+                              },
+                              "summary": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "key",
+                              "label",
+                              "summary"
+                            ]
+                          }
+                        },
+                        "note": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "status",
+                        "dimensions",
+                        "note"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "video_id",
+                    "already_in_kidq",
+                    "title",
+                    "thumbnail_url",
+                    "duration_seconds",
+                    "channel",
+                    "category",
+                    "parent_category",
+                    "score",
+                    "reason",
+                    "kidq_check"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/children/{id}/sessions/current": {
+      "get": {
+        "summary": "Child mode opens on this: today's live session, or null when the sun is still asleep",
+        "tags": [
+          "Sessions"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "session": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/Session"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "session"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sessions/{id}/replay": {
+      "post": {
+        "summary": "Play an earlier session again as a new one: same videos and order, minus any no longer in the library",
+        "tags": [
+          "Sessions"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Session"
                 }
               }
             }

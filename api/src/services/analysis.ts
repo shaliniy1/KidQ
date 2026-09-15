@@ -7,7 +7,7 @@ import { ageBandsFor } from "../domain/age";
 import { analyzeWithRules, type SuggestedClassification } from "../domain/analysis/rules";
 import { RUBRIC_VERSION } from "../domain/rubric";
 import { COMPONENTS } from "../domain/scoring";
-import { hasModelAssessment, insertAssessment, recordedRuleResult } from "../repositories/assessments";
+import { hasKeptAiScore, hasModelAssessment, insertAssessment, recordedRuleResult } from "../repositories/assessments";
 import { listTaxonomy } from "../repositories/taxonomy";
 import { applyKidqChecks, rescoreItem } from "./scoring";
 
@@ -61,7 +61,7 @@ export async function applySuggestedClassification(
        language = COALESCE($9, language),
        learning_objective = CASE WHEN ${editedField("learning_objective")} THEN learning_objective ELSE COALESCE($10, learning_objective) END,
        kidq_summary = CASE WHEN ${editedField("kidq_summary")} THEN kidq_summary ELSE COALESCE($11, kidq_summary) END,
-       classification_source = $12, categories = $13, updated_at = now()
+       classification_source = $12, categories = $13, session_modes = COALESCE($14::text[], session_modes), updated_at = now()
      WHERE id = $1 AND (classification_source IS NULL OR classification_source = 'RULE' OR (classification_source = 'MODEL' AND $12 = 'MODEL'))`,
     [
       contentItemId,
@@ -77,6 +77,7 @@ export async function applySuggestedClassification(
       suggestion.kidqSummary,
       source,
       suggestion.categories,
+      suggestion.sessionModes ?? null,
     ],
   );
 }
@@ -140,6 +141,13 @@ export async function analyzeItem(contentItemId: string, options: { hints?: Disc
 
     // A rejected item isn't worth the free daily AI quota; an admin's "Re-analyze" (force) still reviews it.
     if (rejected && !options.force) {
+      await setStatus(contentItemId, "ASSESSED");
+      return { status: "ASSESSED" };
+    }
+
+    // Every item is scored by the AI once and keeps that score, even when its source changes or a new
+    // prompt ships; only an admin's "Re-analyze" (force) scores it again.
+    if (!options.force && (await hasKeptAiScore(pool, contentItemId))) {
       await setStatus(contentItemId, "ASSESSED");
       return { status: "ASSESSED" };
     }

@@ -67,19 +67,33 @@ export function friendlyError(error: unknown, fallback = "Something went wrong. 
   return error.message || fallback;
 }
 
-export type SimpleStatus = "published" | "draft" | "review" | "changes";
+export type SimpleStatus = "published" | "draft" | "review" | "changes" | "confirm";
 
-export function simpleStatus(item: Pick<AdminContent, "studio_state" | "current_status">): { key: SimpleStatus; label: string } {
-  if (item.current_status === "APPROVED") return { key: "published", label: "Published" };
-  if (item.current_status === "REJECTED" || ["NEEDS_ATTENTION", "FAILED"].includes(item.studio_state)) {
-    return { key: "changes", label: "Needs changes" };
+export function simpleStatus(item: { studio_state: string; current_status: string }): { key: SimpleStatus; label: string } {
+  switch (item.studio_state) {
+    case "APPROVED":
+      return { key: "published", label: "Published" };
+    case "REJECTED":
+    case "FAILED":
+    case "NEEDS_ATTENTION":
+      return { key: "changes", label: "Needs changes" };
+    case "PENDING_ANALYSIS":
+      return { key: "draft", label: "Pending review" };
+    case "READY_TO_APPROVE":
+      return { key: "confirm", label: "Needs confirmation" };
+    case "ANALYSING":
+    case "ANALYSIS_INCOMPLETE":
+      return { key: "review", label: "Review in progress" };
+    default:
+      return { key: "review", label: "Review in progress" };
   }
-  if (item.studio_state === "PENDING_ANALYSIS") return { key: "draft", label: "Draft" };
-  return { key: "review", label: "Under review" };
 }
 
 export const BLOCKER_LABELS: Record<string, string> = {
   CRITICAL_FLAG: "Complete the safety check",
+  EXCLUDED: "Review the exclusion check",
+  LOW_SCORE: "Content score is below the publishing range",
+  BORDERLINE_SCORE: "Confirm the borderline content score",
   MISSING_COMPONENTS: "Complete the content review",
   LOW_AI_CONFIDENCE: "Check the suggested details",
   MISSING_AGE: "Choose an age group",
@@ -90,12 +104,12 @@ export const BLOCKER_LABELS: Record<string, string> = {
 };
 
 export const STATE_LABELS: Record<string, string> = {
-  PENDING_ANALYSIS: "Pending analysis",
-  ANALYSING: "Analysing",
-  READY_TO_APPROVE: "Ready to approve",
-  NEEDS_ATTENTION: "Needs attention",
-  ANALYSIS_INCOMPLETE: "Analysis incomplete",
-  FAILED: "Failed",
-  APPROVED: "Approved",
-  REJECTED: "Rejected",
+  PENDING_ANALYSIS: "Pending review",
+  ANALYSING: "Review in progress",
+  ANALYSIS_INCOMPLETE: "Review in progress",
+  READY_TO_APPROVE: "Needs confirmation",
+  NEEDS_ATTENTION: "Needs changes",
+  FAILED: "Needs changes",
+  APPROVED: "Published",
+  REJECTED: "Needs changes",
 };

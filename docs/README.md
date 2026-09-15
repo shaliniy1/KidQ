@@ -6,6 +6,7 @@
 - [StoryWeaver](./content-curation/storyweaver.md) — picture books: license review, what KidQ stores, how books are scored and read
 - [Recommendation System](./recommendation/README.md) — content score, AI scoring agent, admin gate, recommendation engine (implementation spec)
 - [Parent onboarding](./recommendation/parent-onboarding.md) — P2 fields, age-based defaults, and the vocabulary shared with admin tagging
+- [Parent experience](recommendation/parent-experience.md) — the parent app's screens and backend needs, with KidQ's decisions (who sees what, sessions, My Videos, analytics)
 - [Architecture & scoring process](./recommendation/architecture-process.md) — the original architecture and scoring document
 - [API integration guide](./api/README.md) — auth, content card, admin and parent flows, KidQ Player rules, PWA & smart TV
 - [Deployment](./deployment.md) — QA on Render + Supabase (free tiers) and what changes for prod

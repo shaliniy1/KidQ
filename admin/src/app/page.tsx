@@ -24,19 +24,10 @@ export default function DashboardPage() {
   }
 
   const summaries = [
-    { label: "Draft", count: data.by_state.PENDING_ANALYSIS ?? 0, href: "/content?state=PENDING_ANALYSIS", tone: "draft" },
-    {
-      label: "Under review",
-      count: (data.by_state.READY_TO_APPROVE ?? 0) + (data.by_state.ANALYSING ?? 0) + (data.by_state.ANALYSIS_INCOMPLETE ?? 0),
-      href: "/review",
-      tone: "review",
-    },
-    {
-      label: "Needs changes",
-      count: (data.by_state.NEEDS_ATTENTION ?? 0) + (data.by_state.FAILED ?? 0) + (data.by_state.REJECTED ?? 0),
-      href: "/content?state=NEEDS_ATTENTION",
-      tone: "changes",
-    },
+    { label: "Pending review", count: data.by_state.PENDING_ANALYSIS ?? 0, href: "/content?state=PENDING_ANALYSIS", tone: "draft" },
+    { label: "Review in progress", count: (data.by_state.ANALYSING ?? 0) + (data.by_state.ANALYSIS_INCOMPLETE ?? 0), href: "/review", tone: "review" },
+    { label: "Needs changes", count: (data.by_state.NEEDS_ATTENTION ?? 0) + (data.by_state.FAILED ?? 0) + (data.by_state.REJECTED ?? 0), href: "/content?state=NEEDS_ATTENTION", tone: "changes" },
+    { label: "Needs confirmation", count: data.by_state.READY_TO_APPROVE ?? 0, href: "/content?state=READY_TO_APPROVE", tone: "confirm" },
     { label: "Published", count: data.by_state.APPROVED ?? 0, href: "/content?state=APPROVED", tone: "published" },
   ];
 
@@ -62,8 +53,8 @@ export default function DashboardPage() {
       <section className="next-action">
         <div>
           <p className="eyebrow">Next step</p>
-          <h2>Review content waiting for you</h2>
-          <p className="muted">Check the content, confirm its category and age group, then publish or request changes.</p>
+          <h2>Content is waiting for your review</h2>
+          <p className="muted">Open the review list, confirm the category and age group, then publish or request changes.</p>
         </div>
         <Link href="/review" className="btn good">Open review list</Link>
       </section>

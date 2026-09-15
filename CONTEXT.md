@@ -57,7 +57,7 @@ The AI model call that watches a video and proposes component scores, rubric res
 _Avoid_: AI reviewer decision
 
 **Studio State**:
-The admin-facing state derived from the analysis status and the current publication status, such as Ready to approve or Needs attention.
+What an admin sees for an item, derived from its analysis and publication status: Draft, Ready to publish, Needs changes, Published or Rejected.
 _Avoid_: content status
 
 **Taxonomy Term**:
@@ -79,3 +79,19 @@ _Avoid_: feed item, suggestion
 **Library Item**:
 A parent's choice about a content item for one child: added, requested (awaiting admin approval), dismissed or removed. Only added, approved items are playable.
 _Avoid_: favourite, playlist entry
+
+**Play**:
+One playback of one video or activity by one child, from start to exit; watching again is a new play. Analytics count times watched, completion and screen time per play.
+_Avoid_: view, session
+
+**Screen Time**:
+Minutes a video was actually playing on screen: never paused, buffering, in a hidden tab or idle. Activity time is reported apart from it.
+_Avoid_: session length, time in app
+
+**Parent Category**:
+One of the seven groups parents choose from (Stories & Rhymes, Songs & Music, Numbers & Thinking, Our World, Art & Making, Move & Play, Calm & Breathe). Each rolls up admin categories, which admins and the AI keep tagging.
+_Avoid_: content type, genre
+
+**Session Mode**:
+How a session is shaped by time of day: Auto (India's clock decides) or a Morning, Daytime or Bedtime override the parent picked, remembered per child. Items carry the modes they suit, tagged once by the AI.
+_Avoid_: profile, playlist

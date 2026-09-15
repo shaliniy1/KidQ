@@ -167,28 +167,233 @@ describe("API", () => {
     expect(reviews.n).toBe(2);
   });
 
-  it("gives a child with only an age a mixed feed, and shows parents the KidQ expert line", async () => {
+  it("shows a published item to parents of matching children, and to a child once their parent adds it", async () => {
+    const counting = await importVideo("AAAAAAAAAAA"); // Maths, ages 2–4, English
+    const forOlder = await importVideo("BBBBBBBBBBB", [agentOutput({ classification: { category: "maths", age_min: 4, age_max: 6 } })], "Counting to a hundred");
+    const hindi = await importVideo("HHHHHHHHHHH", [agentOutput({ classification: { language: "hi" } })], "Ginti gaana");
+    const song = await importVideo("GGGGGGGGGGG", [agentOutput({ classification: { category: "music_rhymes" } })], "Slow lullaby");
+    await importVideo("UUUUUUUUUUU", [agentOutput()], "Counting to three"); // never published
+    for (const id of [counting, forOlder, hindi, song]) await publish(id, { decision: "APPROVED", reason: "Calm and clear." }).expect(201);
+
+    const ids = async (childId: string) =>
+      (await request(app).get(`/children/${childId}/recommendations`).set("Authorization", PARENT_A)).body.items.map((item: { card: { id: string } }) => item.card.id);
+    // A 3–4 child (age 3.5) who reads English: not the 4–6 video, the Hindi one or the unpublished one.
+    const surprise = await createChild(PARENT_A);
+    expect((await ids(surprise)).sort()).toEqual([counting, song].sort());
+    // "Let me choose: Maths" narrows it to Maths.
+    const mathsOnly = await createChild(PARENT_A, { content_mix: "CHOSEN", preferred_categories: ["maths"] });
+    expect(await ids(mathsOnly)).toEqual([counting]);
+
+    const pool = (await request(app).get("/content-pool").set("Authorization", ADMIN)).body;
+    expect(pool).toMatchObject({ published: 4, eligible: 4, not_reaching_parents: [] });
+    const band = pool.bands.find((b: { age_band: string }) => b.age_band === "3_4");
+    expect(band.categories.find((c: { category: string }) => c.category === "maths")).toEqual({ category: "maths", count: 2, thin: true });
+
+    // The child sees nothing until the parent adds it; then it plays; unpublishing takes it away again.
+    const library = async () => (await request(app).get(`/children/${mathsOnly}/library`).set("Authorization", PARENT_A)).body.items;
+    expect(await library()).toEqual([]);
+    await request(app).post(`/children/${mathsOnly}/library`).set("Authorization", PARENT_A).send({ content_item_id: counting });
+    expect((await library())[0].card.player).toMatchObject({ provider: "youtube", video_id: "AAAAAAAAAAA" });
+    await publish(counting, { decision: "MANUAL_REVIEW_REQUIRED", reason: "Another look." }).expect(201);
+    expect(await library()).toEqual([]);
+    expect(await ids(mathsOnly)).toEqual([]);
+  });
+
+  it("recommends strictly from the child's own age bucket, never a neighbouring one", async () => {
+    // Tagged right at the 2–3/3–4 boundary, so a continuous age comparison (rather than exact bucket
+    // membership) could let this leak into the wrong band depending on rounding.
+    const forToddlers = await importVideo("AAAAAAAAAAA", [agentOutput({ classification: { category: "maths", age_min: 0, age_max: 2 } })], "Peekaboo counting");
+    const forPreschool = await importVideo("BBBBBBBBBBB", [agentOutput({ classification: { category: "maths", age_min: 2, age_max: 3 } })], "Counting to five");
+    for (const id of [forToddlers, forPreschool]) await publish(id, { decision: "APPROVED", reason: "Calm and clear." }).expect(201);
+
+    const toddler = await createChild(PARENT_A, { age_band: "0_2" });
+    const preschooler = await createChild(PARENT_A, { age_band: "2_3" });
+    const ids = async (childId: string) =>
+      (await request(app).get(`/children/${childId}/recommendations`).set("Authorization", PARENT_A)).body.items.map((item: { card: { id: string } }) => item.card.id);
+    expect(await ids(toddler)).toEqual([forToddlers]);
+    expect(await ids(preschooler)).toEqual([forPreschool]);
+  });
+
+  it("starts a session from the child's library only, logs how it went, and keeps families apart", async () => {
+    const counting = await importVideo("AAAAAAAAAAA");
+    const song = await importVideo("GGGGGGGGGGG", [agentOutput({ classification: { category: "music_rhymes" } })], "Slow lullaby");
+    const notAdded = await importVideo("BBBBBBBBBBB", [agentOutput()], "Counting to ten");
+    for (const id of [counting, song, notAdded]) await publish(id, { decision: "APPROVED", reason: "Calm and clear." }).expect(201);
+    const childId = await createChild(PARENT_A);
+    for (const id of [counting, song]) await request(app).post(`/children/${childId}/library`).set("Authorization", PARENT_A).send({ content_item_id: id });
+
+    const started = await request(app).post(`/children/${childId}/sessions`).set("Authorization", PARENT_A).send({ minutes: 45 });
+    expect(started.status).toBe(201);
+    const session = started.body;
+    const queued = session.slots.flatMap((slot: { items: Array<{ card: { id: string } }> }) => slot.items.map((item) => item.card.id));
+    // Two 3:20 videos fill one slot: only what the parent added, and the session ends on the wind-down.
+    expect(queued.sort()).toEqual([counting, song].sort());
+    expect(session.slots.map((slot: { break_after: string }) => slot.break_after)).toEqual(["WIND_DOWN"]);
+    expect(session.short_by_minutes).toBe(38);
+    expect((await request(app).get(`/children/${childId}`).set("Authorization", PARENT_A)).body.session_minutes).toBe(45);
+
+    const first = session.slots[0].items[0];
+    const watched = await request(app).patch(`/sessions/${session.id}/items/${first.id}`).set("Authorization", PARENT_A).send({ outcome: "COMPLETED", watched_seconds: 200 });
+    expect(watched.body.slots[0].items[0]).toMatchObject({ outcome: "COMPLETED", watched_seconds: 200 });
+    expect((await request(app).post(`/sessions/${session.id}/end`).set("Authorization", PARENT_A).send({ outcome: "EXITED" })).body.outcome).toBe("EXITED");
+    expect((await request(app).post(`/sessions/${session.id}/end`).set("Authorization", PARENT_A).send({ outcome: "COMPLETED" })).status).toBe(409);
+
+    const log = (await request(app).get(`/children/${childId}/sessions`).set("Authorization", PARENT_A)).body.items;
+    expect(log).toHaveLength(1);
+    expect(log[0]).toMatchObject({ id: session.id, minutes: 45, outcome: "EXITED" });
+
+    expect((await request(app).get(`/children/${childId}/sessions`).set("Authorization", PARENT_B)).status).toBe(404);
+    expect((await request(app).patch(`/sessions/${session.id}/items/${first.id}`).set("Authorization", PARENT_B).send({ outcome: "SKIPPED" })).status).toBe(404);
+  });
+
+  it("records viewing once, caps screen time, and shows it only to the child's parent", async () => {
+    const videoId = await importVideo("AAAAAAAAAAA");
+    await publish(videoId, { decision: "APPROVED", reason: "Calm and clear." }).expect(201);
+    await request(app)
+      .post("/onboarding")
+      .set("Authorization", PARENT_A)
+      .send({ parent_name: "Asha", timezone: "Asia/Kolkata", children: [{ nickname: "Mia", age_band: "3_4" }] })
+      .expect(201);
+    const me = (await request(app).get("/me").set("Authorization", PARENT_A)).body;
+    expect(me.parent.timezone).toBe("Asia/Kolkata");
+    const childId = me.children[0].id as string;
+
+    const t0 = Date.now() - 10 * 60 * 1000;
+    const at = (seconds: number) => new Date(t0 + seconds * 1000).toISOString();
+    const [first, second] = [crypto.randomUUID(), crypto.randomUUID()];
+    const progress = { event_name: "video_progress", client_event_id: crypto.randomUUID(), occurred_at: at(100), content_id: videoId, play_id: first, position_seconds: 100, progress_percent: 50, active_seconds: 100 };
+    const send = (events: unknown[], auth = PARENT_A) => request(app).post(`/children/${childId}/events`).set("Authorization", auth).send({ events });
+
+    expect(
+      (
+        await send([
+          { event_name: "video_started", client_event_id: crypto.randomUUID(), occurred_at: at(0), content_id: videoId, play_id: first, recommendation_source: "PARENT_PLAYLIST" },
+          progress,
+          { event_name: "video_completed", client_event_id: crypto.randomUUID(), occurred_at: at(185), content_id: videoId, play_id: first, position_seconds: 185, progress_percent: 92, active_seconds: 85 },
+        ])
+      ).body,
+    ).toEqual({ accepted: 3, duplicates: 0, ignored: 0 });
+    // A resent event, then a replay whose app claims 500 s in the 10 s since it started.
+    expect(
+      (
+        await send([
+          progress,
+          { event_name: "video_started", client_event_id: crypto.randomUUID(), occurred_at: at(200), content_id: videoId, play_id: second },
+          { event_name: "video_exited", client_event_id: crypto.randomUUID(), occurred_at: at(210), content_id: videoId, play_id: second, position_seconds: 10, progress_percent: 5, active_seconds: 500 },
+        ])
+      ).body,
+    ).toEqual({ accepted: 2, duplicates: 1, ignored: 0 });
+
+    const page = (await request(app).get(`/children/${childId}/analytics?period=7d`).set("Authorization", PARENT_A).expect(200)).body;
+    const day = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(new Date(t0));
+    // 100 + 85 counted for the first play; the replay's 500 s is capped to 10 s + 5 s slack.
+    expect(page.overview).toMatchObject({ screen_minutes: 3, videos_watched: 1 });
+    expect(page.daily.find((entry: { date: string }) => entry.date === day).minutes).toBe(3);
+    expect(page.completion).toEqual({ started: 2, completed: 1, partly_watched: 0, stopped_early: 1 });
+    expect(page.top_content[0]).toMatchObject({ card: { id: videoId, player: null }, times_watched: 2 });
+    expect(page.timezone).toBe("Asia/Kolkata");
+
+    expect((await request(app).get(`/children/${childId}/analytics`).set("Authorization", PARENT_B)).status).toBe(404);
+    expect((await send([progress], PARENT_B)).status).toBe(404);
+  });
+
+  it("lets parents choose the seven categories, and shapes a session by mode and lean-toward", async () => {
+    const counting = await importVideo("AAAAAAAAAAA");
+    const nature = await importVideo("BBBBBBBBBBB", [agentOutput({ classification: { category: "science", session_modes: ["BEDTIME"] } })], "Sleepy forest animals");
+    for (const id of [counting, nature]) await publish(id, { decision: "APPROVED", reason: "Calm and clear." }).expect(201);
+
+    const childId = await createChild(PARENT_A, { content_mix: "CHOSEN", preferred_categories: ["our_world"] });
+    const recommended = (await request(app).get(`/children/${childId}/recommendations`).set("Authorization", PARENT_A)).body.items;
+    expect(recommended.map((item: { card: { id: string } }) => item.card.id)).toEqual([nature]);
+    expect(recommended[0].card).toMatchObject({ parent_category: "our_world", session_modes: ["BEDTIME"], kidq_check: { status: "REVIEWED" } });
+    expect(recommended[0].card.kidq_check.dimensions[0]).toEqual({ key: "CONTENT_LANGUAGE", label: expect.any(String), summary: expect.any(String) });
+
+    for (const id of [counting, nature]) await request(app).post(`/children/${childId}/library`).set("Authorization", PARENT_A).send({ content_item_id: id });
+    const start = (body: Record<string, unknown>) => request(app).post(`/children/${childId}/sessions`).set("Authorization", PARENT_A).send(body);
+    expect((await start({ minutes: 15, lean_toward: "animation" })).status).toBe(400);
+    const session = (await start({ minutes: 15, mode: "BEDTIME", lean_toward: "numbers_thinking" })).body;
+    expect(session).toMatchObject({ mode: "BEDTIME", opener: { band: "NIGHT" }, wind_down: "SLEEP", lean_toward: "numbers_thinking" });
+    // The parent's lean-toward outranks the Bedtime tag; both videos are calm enough for bedtime.
+    expect(session.slots[0].items.map((item: { card: { id: string } }) => item.card.id)).toEqual([counting, nature]);
+
+    const child = (await request(app).get(`/children/${childId}`).set("Authorization", PARENT_A)).body;
+    expect(child).toMatchObject({ session_mode: "BEDTIME", break_interval_minutes: 15 });
+    expect(child).not.toHaveProperty("lean_toward");
+    const patched = (await request(app).patch(`/children/${childId}`).set("Authorization", PARENT_A).send({ break_interval_minutes: 10, session_minutes: 30 })).body;
+    expect(patched.break_plan.total_breaks).toBe(3);
+  });
+
+  it("previews a YouTube link for the parent without saving it", async () => {
+    const childId = await createChild(PARENT_A);
+    apis.youtube.set("PPPPPPPPPPP", youtubeVideo("PPPPPPPPPPP", { title: "Counting to ten with numbers" }));
+    const preview = await request(app)
+      .post(`/children/${childId}/submissions/preview`)
+      .set("Authorization", PARENT_A)
+      .send({ url: "https://www.youtube.com/watch?v=PPPPPPPPPPP" });
+    expect(preview.status).toBe(200);
+    expect(preview.body).toMatchObject({
+      video_id: "PPPPPPPPPPP",
+      already_in_kidq: false,
+      title: "Counting to ten with numbers",
+      category: "maths",
+      parent_category: "numbers_thinking",
+      kidq_check: { status: "NOT_CHECKED", dimensions: [] },
+    });
+    expect((await pool.query("SELECT count(*)::int AS n FROM source_records WHERE external_id = 'PPPPPPPPPPP'")).rows[0].n).toBe(0);
+    expect((await request(app).post(`/children/${childId}/submissions/preview`).set("Authorization", PARENT_B).send({ url: "https://youtu.be/PPPPPPPPPPP" })).status).toBe(404);
+  });
+
+  it("serves child mode: today's session with break activities, the sun, resume and replay", async () => {
+    const first = await importVideo("AAAAAAAAAAA");
+    const second = await importVideo("GGGGGGGGGGG", [agentOutput({ classification: { category: "music_rhymes" } })], "Slow lullaby");
+    for (const id of [first, second]) await publish(id, { decision: "APPROVED", reason: "Calm and clear." }).expect(201);
+    const childId = await createChild(PARENT_A);
+    for (const id of [first, second]) await request(app).post(`/children/${childId}/library`).set("Authorization", PARENT_A).send({ content_item_id: id });
+    const current = () => request(app).get(`/children/${childId}/sessions/current`).set("Authorization", PARENT_A);
+    expect((await current()).body).toEqual({ session: null });
+
+    const session = (await request(app).post(`/children/${childId}/sessions`).set("Authorization", PARENT_A).send({ minutes: 15, mode: "DAYTIME" })).body;
+    expect(session).toMatchObject({ planned_seconds: 900, filled_seconds: 400, progress_seconds: 0 });
+    expect(session.slots.at(-1).break_activity).toMatchObject({ key: "sunset", variant: session.wind_down, spoken_instruction: expect.any(String) });
+    expect((await current()).body.session.id).toBe(session.id);
+
+    const item = session.slots[0].items[0];
+    const record = (body: Record<string, unknown>) => request(app).patch(`/sessions/${session.id}/items/${item.id}`).set("Authorization", PARENT_A).send(body);
+    await record({ position_seconds: 60, watched_seconds: 60 }).expect(200);
+    const later = (await record({ watched_seconds: 30 })).body;
+    expect(later.slots[0].items[0]).toMatchObject({ position_seconds: 60, watched_seconds: 60, outcome: null });
+    expect(later.progress_seconds).toBe(60);
+
+    await request(app).post(`/sessions/${session.id}/end`).set("Authorization", PARENT_A).send({ outcome: "EXITED" }).expect(200);
+    expect((await current()).body).toEqual({ session: null });
+
+    await publish(second, { decision: "MANUAL_REVIEW_REQUIRED", reason: "Unpublished for a fix." }).expect(201);
+    const replay = await request(app).post(`/sessions/${session.id}/replay`).set("Authorization", PARENT_A);
+    expect(replay.status).toBe(201);
+    expect(replay.body.id).not.toBe(session.id);
+    expect(replay.body.slots.flatMap((slot: { items: Array<{ card: { id: string } }> }) => slot.items.map((entry) => entry.card.id))).toEqual([first]);
+
+    expect((await request(app).get(`/children/${childId}/sessions/current`).set("Authorization", PARENT_B)).status).toBe(404);
+    expect((await request(app).post(`/sessions/${session.id}/replay`).set("Authorization", PARENT_B)).status).toBe(404);
+  });
+
+  it("gives a child with only an age a mixed feed", async () => {
     const counting = await importVideo("AAAAAAAAAAA");
     const moreCounting = await importVideo("BBBBBBBBBBB", [agentOutput()], "Counting to ten");
-    const song = await importVideo("GGGGGGGGGGG", [agentOutput({ classification: { category: "music_rhymes" } })], "Slow lullaby");
+    // A slightly lower score, so the two counting videos lead and variety has to split them.
+    const song = await importVideo("GGGGGGGGGGG", [agentOutput({ scores: [90, 78, 89, 87], classification: { category: "music_rhymes" } })], "Slow lullaby");
     for (const id of [counting, moreCounting, song]) await publish(id, { decision: "APPROVED", reason: "Calm and clear." }).expect(201);
-    await request(app)
-      .post(`/content-items/${counting}/expert-reviews`)
-      .set("Authorization", ADMIN)
-      .send({ reviewer_name: "Asha Rao", reviewer_type: "Early-years educator", recommendation: "RECOMMEND", verified: true })
-      .expect(201);
 
     // Screen 1 only: a nickname and an age band, nothing else.
     const onboarded = await request(app).post("/onboarding").set("Authorization", PARENT_A).send({ parent_name: "Priya", children: [{ nickname: "Mia", age_band: "3_4" }] });
     expect(onboarded.status).toBe(201);
     const feed = (await request(app).get(`/children/${onboarded.body.children[0].id}/recommendations`).set("Authorization", PARENT_A)).body.items;
-    expect(feed.map((item: { card: { id: string } }) => item.card.id)).toEqual([counting, song, moreCounting]);
+    expect(feed.map((item: { card: { category: string } }) => item.card.category)).toEqual(["maths", "music_rhymes", "maths"]);
 
     const [first] = feed;
-    expect(first.card.expert_review).toMatchObject({ verified: 1, verified_recommend: 1, label: "Recommended by 1 KidQ expert" });
-    expect(first.why).toContain("Recommended by 1 KidQ expert");
     expect(first.card.learning).toEqual({ value: 25, areas: ["Thinking"] });
     expect(first.card.categories).toEqual(["maths"]);
+    expect(first.card).not.toHaveProperty("expert_review");
   });
 
   it("serves a picture book's pages to admins, and to parents only once it's published", async () => {
@@ -322,8 +527,17 @@ describe("API", () => {
   it("shares one vocabulary between onboarding and admin tagging", async () => {
     const taxonomy = (await request(app).get("/taxonomy")).body;
     expect(taxonomy.age_group.map((term: { key: string }) => term.key)).toEqual(["0_2", "2_3", "3_4", "4_5", "5_6"]);
+    // Parents choose from seven groups; Animation is a style, not a category (spec v5, Block B).
+    expect(taxonomy.parent_category.map((term: { label: string }) => term.label)).toEqual([
+      "Stories & Rhymes",
+      "Songs & Music",
+      "Numbers & Thinking",
+      "Our World",
+      "Art & Making",
+      "Move & Play",
+      "Calm & Breathe",
+    ]);
     expect(taxonomy.category.map((term: { label: string }) => term.label)).toEqual([
-      "Animation",
       "Stories",
       "Storybooks",
       "Crafts",

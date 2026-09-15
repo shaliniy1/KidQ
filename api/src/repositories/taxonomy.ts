@@ -1,7 +1,7 @@
 // One controlled vocabulary for admin tagging, AI suggestions and parent onboarding.
 import type { Db } from "../db/pool";
 
-export const TAXONOMY_KINDS = ["category", "interest", "development_goal", "regulation_goal", "language", "age_group"] as const;
+export const TAXONOMY_KINDS = ["category", "interest", "development_goal", "regulation_goal", "language", "age_group", "parent_category"] as const;
 export type TaxonomyKind = (typeof TAXONOMY_KINDS)[number];
 
 export interface TaxonomyTerm {

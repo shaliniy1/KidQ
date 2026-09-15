@@ -1,9 +1,16 @@
-# Render Blueprint — KidQ QA environment (free plan). One repo, three services.
-# Free services sleep after 15 min idle (~1 min cold start) and have no background workers or
-# pre-deploy step, so the API migrates at boot and runs the job worker in-process.
-# Prod: copy these services with `plan: starter`, `branch: release`, a separate worker service
-# (`npm run start:worker -w api`) and RUN_WORKER_IN_PROCESS=false. See docs/deployment.md.
+# Render Blueprint — KidQ QA (free plan) and prod. One repo, five services.
+# QA (main) and prod (kidq-*-prod, branch `release`, promoted from `main`) both auto-deploy and
+# both run on Render's free plan for now: services sleep after 15 min idle (~1 min cold start on
+# the next request) and free plans support neither a separate background-worker service nor a
+# pre-deploy step, so kidq-api-prod migrates at boot and runs the job worker in-process, same as
+# QA. Pushing to `release` goes live immediately — there is no manual approval step before prod.
+# Upgrade kidq-*-prod to `starter` and split kidq-worker-prod back out once real traffic justifies
+# always-on service — no other changes needed. See docs/deployment.md "Prod — what changes".
 # Values marked `sync: false` are entered in the Render dashboard — never commit them.
+#
+# Not covered here: prod's daily discovery pull (docs/deployment.md lists it as "Render cron job,
+# daily", but only the admin-triggered `POST /ingestion-runs` exists today — no unattended script
+# to point a cron job at). Needs that script before a cron service can be added.
 services:
   - type: web
     name: kidq-api
@@ -78,6 +85,101 @@ services:
     plan: free
     region: singapore
     branch: main
+    buildCommand: npm ci --include=dev && npm run build -w web
+    startCommand: npm run start -w web
+    autoDeploy: true
+    buildFilter:
+      paths: ["web/**", "packages/**", "package.json", "package-lock.json"]
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NEXT_PUBLIC_API_URL
+        sync: false
+      - key: NEXT_PUBLIC_SUPABASE_URL
+        sync: false
+      - key: NEXT_PUBLIC_SUPABASE_ANON_KEY
+        sync: false
+
+  # ── Prod ─────────────────────────────────────────────────────────────────────
+  - type: web
+    name: kidq-api-prod
+    runtime: node
+    plan: free
+    region: singapore
+    branch: release
+    buildCommand: npm ci --include=dev && npm run build -w api
+    startCommand: npm run start -w api
+    healthCheckPath: /ready
+    autoDeploy: true
+    buildFilter:
+      paths: ["api/**", "config/**", "package.json", "package-lock.json"]
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NODE_ENV
+        value: production
+      - key: RUN_MIGRATIONS_ON_BOOT
+        value: "true"
+      - key: RUN_WORKER_IN_PROCESS
+        value: "true"
+      - key: AUTH_MODE
+        value: supabase
+      - key: DATABASE_SSL
+        value: verify-full
+      - key: DATABASE_URL
+        sync: false
+      - key: DATABASE_CA_CERT
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_JWT_SECRET
+        sync: false
+      - key: YOUTUBE_DATA_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+      - key: AI_SCORING_MODEL
+        value: gemini-3.8-flash
+      - key: AI_FALLBACK_MODELS
+        value: gemini-3.7-flash,gemini-3.6-flash
+      - key: AI_DAILY_VIDEO_SECONDS_CAP
+        sync: false
+      - key: AI_INPUT_USD_PER_MTOK
+        sync: false
+      - key: AI_OUTPUT_USD_PER_MTOK
+        sync: false
+      - key: HTTP_USER_AGENT
+        value: "KidQ-content-ingestion/1.0 (+https://github.com/shaliniy1/KidQ)"
+
+  - type: web
+    name: kidq-admin-prod
+    runtime: node
+    plan: free
+    region: singapore
+    branch: release
+    buildCommand: npm ci --include=dev && npm run build -w admin
+    startCommand: npm run start -w admin
+    autoDeploy: true
+    buildFilter:
+      paths: ["admin/**", "packages/**", "package.json", "package-lock.json"]
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NEXT_PUBLIC_API_URL
+        sync: false
+      - key: NEXT_PUBLIC_SUPABASE_URL
+        sync: false
+      - key: NEXT_PUBLIC_SUPABASE_ANON_KEY
+        sync: false
+
+  - type: web
+    name: kidq-web-prod
+    runtime: node
+    plan: free
+    region: singapore
+    branch: release
     buildCommand: npm ci --include=dev && npm run build -w web
     startCommand: npm run start -w web
     autoDeploy: true

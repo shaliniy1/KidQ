@@ -27,14 +27,15 @@ Admin or parent adds content (URLs or discovery queries)
 - `content_items.current_status` changes only through `publication_decisions`.
 - **Studio states** (`content_records_v.studio_state`):
 
-  | State | Meaning |
-  |---|---|
-  | `PENDING_ANALYSIS`, `ANALYSING` | Waiting for, or in, the rule checks and AI scoring |
-  | `READY_TO_APPROVE` | Every publish check passes |
-  | `NEEDS_ATTENTION` | Something to check or fix: see the publish policy |
-  | `ANALYSIS_INCOMPLETE` | The AI couldn't score it; an admin rates it |
-  | `FAILED` | A pipeline step failed after its retries |
-  | `APPROVED`, `REJECTED` | A decision: an admin's, or a KidQ-checks rejection (`decision_source = SYSTEM`) an admin can reverse |
+  | State | Admin label | Meaning |
+  |---|---|---|
+  | `PENDING_ANALYSIS` | Draft | Waiting for, or in, the rule checks and AI review |
+  | `READY_TO_APPROVE` | Ready to publish | Every check passed; one click publishes |
+  | `NEEDS_ATTENTION` | Needs changes | An admin must act: `publish_blockers` says what to fix, and `analysis_status` shows when the AI couldn't review the item (`ANALYSIS_INCOMPLETE`) or the pipeline failed (`FAILED`) |
+  | `APPROVED` | Published | Live for parents |
+  | `REJECTED` | Rejected | Rejected by an admin, or by KidQ checks (`decision_source = SYSTEM`); an admin can restore it |
+
+  `analysis_status` (QUEUED, ANALYSING, ASSESSED, ANALYSIS_INCOMPLETE, FAILED) and `current_status` (APPROVED, REJECTED, MANUAL_REVIEW_REQUIRED) are internal; screens show only the studio state. Five states since 2026-09-13: the dropped three are one-to-one parts of these.
 
 - **Unpublish**: a decision of `MANUAL_REVIEW_REQUIRED`. The item leaves recommendations and libraries immediately.
 
@@ -156,6 +157,7 @@ The score measures how calm and safe an item is. What a child can learn is measu
     - Each score records its model. If every model is busy, the item waits a few minutes without using up a retry.
   - Parent requests are scored first.
   - **Schedule**: on QA, the daily `drain-jobs` GitHub workflow processes queued work at 08:15 UTC (13:45 IST), just after the quota resets.
+- **Scored once**: every item is scored by the AI once, with prompt v2 or later, and keeps that score. A change at the source or a new prompt version doesn't re-score it; only an admin's "Re-analyze" does.
 - **Scoring the backlog**: items the AI hasn't reviewed with the current prompt go to the AI in bulk from the dashboard ("Score N items with AI", `POST /content-items/bulk-reanalyze`), shortest first. Rejected items are skipped: a rejected item never uses AI quota unless an admin re-analyses it (`POST /content-items/:id/reanalyze`).
 - **Cache**: no new call when content hash, rubric version, prompt version and model are all unchanged.
 - **Audit**: every call records model, snapshot, prompt and rubric versions, tokens and estimated cost (README "Model assessment record").
@@ -184,7 +186,7 @@ Targets before "Ready to approve" is trusted without a second look:
 
 Run it once after deploying a new prompt or rubric version.
 
-## Recommendation engine (`RANK_V2`)
+## Recommendation engine (`RANK_V3`)
 
 1. **Eligible**: approved, playable, no unresolved safety flag, scored, and tagged with age, category and at least one goal.
 2. **Hard filters**:
@@ -193,8 +195,7 @@ Run it once after deploying a new prompt or rubric version.
    - with "Let me choose categories", **any** of the item's categories is one the parent chose;
    - the item isn't already in the library or recently dismissed.
 3. **Relevance** (0–1): overlap of interests (0.4), development goals (0.3), regulation goals (0.2) and preferred categories (0.1), counting only the dimensions the parent filled in. For a child with only an age, the age band's default development goals count.
-4. **Rank** = 0.40·relevance + 0.25·(score/100) + 0.15·(learning value/100) + 0.10·expert + 0.10·fit.
-   - **Expert**: (recommendations + 2 × 0.5) / (reviews + 2). A neutral prior means one review can't make an item 100%. A public review counts half as much as a verified KidQ expert's.
+4. **Rank** = 0.45·relevance + 0.30·(score/100) + 0.15·(learning value/100) + 0.10·fit.
    - **Fit**: the average of age fit and session fit. Age fit is 1 when the child's age sits in the middle of the item's range and 0.5 at its edges. Session fit is 1 when the item fits one session.
    - An item nobody judged for learning ranks as if its learning value were 50.
    - The weights are versioned and configurable (`/config/ranking`).
@@ -208,17 +209,8 @@ Views, likes, subscribers and trending are never inputs.
 Every result carries the full content card and a `why`: plain-language reasons.
 - Matched interests and goals.
 - The favourite category.
-- The expert line, e.g. "Recommended by 3 KidQ experts".
 - "Calm and gentle" for a score of 85 or more.
 - The learning areas.
-
-### The expert line
-
-- Expert reviews stay separate from the score (architecture doc §7).
-- The card's `expert_review` carries the counts and a ready-to-show `label`:
-  - "Recommended by 3 KidQ experts" or "3 of 4 KidQ experts recommend it", from reviewers KidQ verified;
-  - "Recommended in 2 public reviews", when no reviewer is verified. Unverified reviews are never called experts.
-- A KidQ panel review needs no `source_url`.
 
 ## Taxonomy and age groups
 
@@ -247,6 +239,7 @@ Every result carries the full content card and a `why`: plain-language reasons.
 | Pacing / visual / audio | No downloads | Analyse media | Gemini watches the public video; its observations bound its scores; admins adjust |
 | Age | 0–2 / 2–4 / 4–6 | One-year bands | 0–2, 2–3, 3–4, 4–5, 5–6 — the onboarding bands — stored as min/max |
 | Filters vs ranking | — | Interests and goals as filters | Hard filters: age, language, and the categories a parent chose. Interests and goals rank (hard AND-filters empty a 300-item catalogue) |
+| Expert review | — | Expert reviews shown to parents and used in ranking (§7, §11) | Removed (decided with Shalini, 2026-09-13): no expert line for parents and no expert signal in ranking |
 | Parent URLs | Only APPROVED reaches children | Parent keeps or removes | AI score shown to the parent; admin approval before the child sees it |
 
 ## Not built yet

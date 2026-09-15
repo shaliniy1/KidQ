@@ -15,11 +15,14 @@ When something below changes, update it; delete any line that is no longer true.
   - AI backlog scoring: the dashboard's "Score N items with AI" (`POST /content-items/bulk-reanalyze`). Scoring pauses when Gemini's daily quota runs out and resumes after midnight Pacific, so no item fails for quota.
   - parent onboarding (P2 revision): `POST /onboarding`, `GET`/`PATCH /me`, and child profiles with an age band, age-based defaults and the Customize blocks
   - one vocabulary for onboarding and admin tagging: 5 age bands and the 12 onboarding categories, each with a definition. An item fits up to three categories, and picture books always have Storybooks first.
-  - recommendations (`RANK_V2`):
-    - ranking inputs: learning value, age fit, and expert reviews weighed against a neutral prior;
+  - recommendations (`RANK_V3`; expert reviews removed 2026-09-13):
+    - ranking inputs: relevance, KidQ score, learning value, and fit (age and session length);
     - category variety, which also makes the default feed for a child whose parent gave only an age;
-    - the expert line on every card;
     - plus the parent library and parent URL submissions.
+  - child mode (API, for the `design/` prototype): a break activity on every slot (find 3 things, stand like a tree, breathe, count to 10, follow my eyes; the sunset as the final wind-down), today's live session, replay, the sun's progress and where each video stopped.
+  - parent spec v5 (API): the seven parent categories over the admin ones (Animation dropped), break interval, time-of-day session mode with AI session-mode tags (prompt v3, tagged once), "today, lean toward…", the KidQ check badge on cards, and the Add-a-Video preview.
+  - parent analytics (API): viewing events, deduplicated and with screen time capped by the server; a per-play rollup; `GET /children/:id/analytics` for every section of the page.
+  - sessions (spec §2–5): Start a Session builds ~15-minute slots of whole videos from the child's library only, with breaks and a calm last slot; each video's outcome and the handoff log are recorded.
   - calibration report (`npm run eval:scoring -w api`) and the re-curation script (`npm run recurate -w api`)
   - OpenAPI contract at `/openapi.json` and `/docs`
 - **Admin Content Studio** (`admin/`; Shalini is rebuilding its screens) and the shared **KidQ Player** and **story reader** (`packages/kidq-player`), both with Visual Comfort Mode.

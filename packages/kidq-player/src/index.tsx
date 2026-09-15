@@ -22,6 +22,14 @@ export type PlayerSource =
   | { provider: "html5"; media_url: string; mime_type: string | null }
   | { provider: "story"; page_count: number };
 
+/**
+ * What the picture is doing, for the app's own screen-time tracking. `playing` only while frames
+ * advance: buffering, paused and ended all stop the clock. `time` ticks about twice a second.
+ */
+export type PlaybackEvent =
+  | { type: "playing" | "paused" | "buffering" | "ended"; position: number; duration: number }
+  | { type: "time"; position: number; duration: number };
+
 export interface KidQPlayerProps {
   player: PlayerSource | null;
   title: string;
@@ -30,6 +38,8 @@ export interface KidQPlayerProps {
   /** YouTube error code (100/101/150/153 = unavailable) or 5 for an HTML5 media error. */
   onError?: (code: number) => void;
   onEnded?: () => void;
+  /** Playback state and position, e.g. for Parent Analytics; the player itself records nothing. */
+  onPlayback?: (event: PlaybackEvent) => void;
   /** Shown over the end screen instead of "Watch again" (later: the break activity). */
   endCard?: ReactNode;
   /** Visual Comfort Mode: a warm, softer picture (e.g. in the evening). Off by default. */
@@ -101,8 +111,11 @@ export const KidQPlayer = forwardRef<KidQPlayerHandle, KidQPlayerProps>(function
   const controlsRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const youtubeRef = useRef<YTPlayer | null>(null);
-  const callbacks = useRef({ onError: props.onError, onEnded: props.onEnded });
-  callbacks.current = { onError: props.onError, onEnded: props.onEnded };
+  const callbacks = useRef({ onError: props.onError, onEnded: props.onEnded, onPlayback: props.onPlayback });
+  callbacks.current = { onError: props.onError, onEnded: props.onEnded, onPlayback: props.onPlayback };
+  const report = useCallback((type: PlaybackEvent["type"], position: number, length: number) => {
+    callbacks.current.onPlayback?.({ type, position, duration: length });
+  }, []);
 
   const [status, setStatus] = useState<Status>("idle");
   const [muted, setMuted] = useState(false);
@@ -119,8 +132,12 @@ export const KidQPlayer = forwardRef<KidQPlayerHandle, KidQPlayerProps>(function
 
   const finish = useCallback(() => {
     setStatus("ended");
+    const youtube = youtubeRef.current;
+    const media = videoRef.current;
+    const length = youtube ? youtube.getDuration() : (media?.duration ?? 0);
+    report("ended", length, length);
     callbacks.current.onEnded?.();
-  }, []);
+  }, [report]);
 
   useEffect(() => {
     if (!youtubeId || !mountRef.current) return;
@@ -141,8 +158,15 @@ export const KidQPlayer = forwardRef<KidQPlayerHandle, KidQPlayerProps>(function
         events: {
           onReady: (event: { target: YTPlayer }) => setDuration(event.target.getDuration()),
           onStateChange: (event: { data: number }) => {
-            if (event.data === states.PLAYING) setStatus("playing");
-            else if (event.data === states.PAUSED) setStatus("paused");
+            const youtube = youtubeRef.current;
+            const at = youtube ? [youtube.getCurrentTime(), youtube.getDuration()] as const : ([0, 0] as const);
+            if (event.data === states.PLAYING) {
+              setStatus("playing");
+              report("playing", ...at);
+            } else if (event.data === states.PAUSED) {
+              setStatus("paused");
+              report("paused", ...at);
+            } else if (event.data === states.BUFFERING) report("buffering", ...at);
             else if (event.data === states.ENDED) finish();
           },
           onError: (event: { data: number }) => fail(event.data),
@@ -154,7 +178,7 @@ export const KidQPlayer = forwardRef<KidQPlayerHandle, KidQPlayerProps>(function
       youtubeRef.current?.destroy();
       youtubeRef.current = null;
     };
-  }, [youtubeId, youtubeParams, fail, finish]);
+  }, [youtubeId, youtubeParams, fail, finish, report]);
 
   // The IFrame API has no time events, so poll while playing.
   useEffect(() => {
@@ -164,9 +188,10 @@ export const KidQPlayer = forwardRef<KidQPlayerHandle, KidQPlayerProps>(function
       if (!youtube) return;
       setTime(youtube.getCurrentTime());
       setDuration(youtube.getDuration());
+      report("time", youtube.getCurrentTime(), youtube.getDuration());
     }, 500);
     return () => clearInterval(timer);
-  }, [status]);
+  }, [status, report]);
 
   const play = useCallback(() => {
     if (youtubeRef.current) youtubeRef.current.playVideo();
@@ -244,10 +269,20 @@ export const KidQPlayer = forwardRef<KidQPlayerHandle, KidQPlayerProps>(function
             disablePictureInPicture
             controlsList="nodownload noremoteplayback noplaybackrate"
             style={{ ...styles.media, ...comfort?.picture }}
-            onPlay={() => setStatus("playing")}
-            onPause={() => setStatus((current) => (current === "ended" ? current : "paused"))}
+            onPlaying={(event) => {
+              setStatus("playing");
+              report("playing", event.currentTarget.currentTime, event.currentTarget.duration);
+            }}
+            onPause={(event) => {
+              setStatus((current) => (current === "ended" ? current : "paused"));
+              if (!event.currentTarget.ended) report("paused", event.currentTarget.currentTime, event.currentTarget.duration);
+            }}
+            onWaiting={(event) => report("buffering", event.currentTarget.currentTime, event.currentTarget.duration)}
             onEnded={finish}
-            onTimeUpdate={(event) => setTime(event.currentTarget.currentTime)}
+            onTimeUpdate={(event) => {
+              setTime(event.currentTarget.currentTime);
+              if (!event.currentTarget.paused) report("time", event.currentTarget.currentTime, event.currentTarget.duration);
+            }}
             onLoadedMetadata={(event) => setDuration(event.currentTarget.duration)}
             onError={() => fail(5)}
           />

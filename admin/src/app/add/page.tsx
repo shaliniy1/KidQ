@@ -19,6 +19,7 @@ export default function AddContentPage() {
   const [method, setMethod] = useState<"links" | "pdf" | "discover">("links");
   const [urls, setUrls] = useState("");
   const [pdfs, setPdfs] = useState<File[]>([]);
+  const [cover, setCover] = useState<File | null>(null);
   const [ageGroup, setAgeGroup] = useState("");
   const [category, setCategory] = useState("");
   const [source, setSource] = useState("youtube");
@@ -88,6 +89,25 @@ export default function AddContentPage() {
     if (query.trim().length >= 2) void start({ mode: "search", source, queries: [{ query: query.trim(), maxResults, hints: hints() }] });
   }
 
+  const classificationFields = () => (
+    <div className="classification-fields">
+      <label>
+        Age group
+        <select aria-label="Age group" value={ageGroup} onChange={(event) => setAgeGroup(event.target.value)}>
+          <option value="">Choose an age breakpoint…</option>
+          {taxonomy?.age_group.map((term) => <option key={term.key} value={term.key}>{term.label}</option>)}
+        </select>
+      </label>
+      <label>
+        Category
+        <select aria-label="Category" value={category} onChange={(event) => setCategory(event.target.value)}>
+          <option value="">Choose a category…</option>
+          {taxonomy?.category.map((term) => <option key={term.key} value={term.key}>{term.label}</option>)}
+        </select>
+      </label>
+    </div>
+  );
+
   return (
     <div className="stack">
       <div className="page-heading"><div><h1>Add content</h1><p className="muted">New content is saved as a draft for you to review before publishing.</p></div></div>
@@ -118,6 +138,7 @@ export default function AddContentPage() {
           <div className="add-panel-heading"><span className="method-icon">↗</span><div><h2>Add video links</h2><p className="muted">Paste one or more YouTube URLs. Each link will be added as a draft.</p></div></div>
           <textarea aria-label="YouTube links, one per line" placeholder={'https://www.youtube.com/watch?v=…\nhttps://youtu.be/…'} value={urls} onChange={(event) => setUrls(event.target.value)} rows={6} />
           {parsedUrls.length > 0 && <div className="import-preview"><strong>{parsedUrls.length} {parsedUrls.length === 1 ? "link" : "links"} ready</strong>{parsedUrls.slice(0, 4).map((url) => <span key={url}>{url}</span>)}</div>}
+          {classificationFields()}
           <button className="btn primary add-submit" disabled={!urls.trim()}>
             Add {parsedUrls.length || ""} {parsedUrls.length === 1 ? "item" : "items"}
           </button>
@@ -130,6 +151,12 @@ export default function AddContentPage() {
             <strong>{pdfs.length ? `${pdfs.length} PDF ${pdfs.length === 1 ? "selected" : "files selected"}` : "Choose PDF files"}</strong>
             <span>{pdfs.length ? pdfs.map((file) => file.name).join(", ") : "PDF files up to 20 MB each"}</span>
           </label>
+          <label className="cover-picker">
+            Cover image
+            <input type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => setCover(event.target.files?.[0] ?? null)} />
+            <span>{cover ? cover.name : "Choose a JPG, PNG or WebP cover"}</span>
+          </label>
+          {classificationFields()}
           <button className="btn primary add-submit" disabled title="Connect file storage to enable PDF uploads">Add {pdfs.length || ""} {pdfs.length === 1 ? "PDF" : "PDFs"}</button>
           <p className="muted storage-note">PDF saving will be enabled after KidQ file storage is connected.</p>
         </section>}
@@ -141,33 +168,12 @@ export default function AddContentPage() {
             <label className="discover-query">Search for<input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="calm counting for toddlers" /></label>
             <label>Number of results<input type="number" min={1} max={50} value={maxResults} onChange={(event) => setMaxResults(Number(event.target.value))} /></label>
           </div>
+          {classificationFields()}
           <button className="btn primary add-submit" disabled={query.trim().length < 2}>
             Find content
           </button>
         </form>}
       </div>
-
-      <details className="advanced-review">
-        <summary>Set a category and age group</summary>
-        <div className="row" style={{ marginTop: 12 }}>
-        <select aria-label="Age group hint" value={ageGroup} onChange={(event) => setAgeGroup(event.target.value)}>
-          <option value="">Age group…</option>
-          {taxonomy?.age_group.map((term) => (
-            <option key={term.key} value={term.key}>
-              {term.label}
-            </option>
-          ))}
-        </select>
-        <select aria-label="Category hint" value={category} onChange={(event) => setCategory(event.target.value)}>
-          <option value="">Category…</option>
-          {taxonomy?.category.map((term) => (
-            <option key={term.key} value={term.key}>
-              {term.label}
-            </option>
-          ))}
-        </select>
-        </div>
-      </details>
 
       {error && <div className="notice-error">{error}</div>}
       {current && (

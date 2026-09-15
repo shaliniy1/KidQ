@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { BulkBar } from "@/components/BulkBar";
 import { ContentTable } from "@/components/ContentTable";
 import { api, friendlyError, unwrap, type AdminContent } from "@/lib/api";
@@ -22,19 +22,29 @@ function Library() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState(params.get("q") ?? "");
+  const [loading, setLoading] = useState(false);
+  const requestVersion = useRef(0);
 
   const filters = Object.fromEntries(FILTER_KEYS.map((key) => [key, params.get(key) ?? undefined]).filter(([, value]) => value)) as Record<string, string>;
   const filterKey = JSON.stringify(filters);
+  const searchPending = search.trim() !== (params.get("q") ?? "");
+  const resultsPending = loading || searchPending;
 
   const load = useCallback(async () => {
+    const version = ++requestVersion.current;
     setError(null);
+    setLoading(true);
     try {
       const query = { ...JSON.parse(filterKey), limit: PAGE_SIZE, offset };
       const page = unwrap(await api.GET("/content-items", { params: { query } }));
+      if (version !== requestVersion.current) return;
       setItems(page.items);
       setTotal(page.total);
     } catch (failure) {
+      if (version !== requestVersion.current) return;
       setError(friendlyError(failure, "Content could not be loaded. Please try again."));
+    } finally {
+      if (version === requestVersion.current) setLoading(false);
     }
   }, [filterKey, offset]);
 
@@ -74,7 +84,7 @@ function Library() {
     });
 
   return (
-    <div className="stack library-page">
+    <div className="stack library-page" aria-busy={resultsPending}>
       <div className="page-heading">
         <div>
           <h1>Content</h1>
@@ -90,7 +100,7 @@ function Library() {
           }}
         >
           <span aria-hidden="true">⌕</span>
-          <input aria-label="Search content" placeholder="Search by title, category, keyword, type or age…" value={search} onChange={(event) => setSearch(event.target.value)} />
+          <input aria-label="Search content" placeholder="Search by title, category, keyword or age…" value={search} onChange={(event) => setSearch(event.target.value)} />
           {search && <button type="button" className="clear-search" aria-label="Clear search" onClick={() => setSearch("")}>×</button>}
       </form>
 
@@ -106,8 +116,9 @@ function Library() {
       <div className="library-controls">
         <select aria-label="Status" value={filters.state ?? ""} onChange={(event) => setFilter("state", event.target.value)}>
           <option value="">All statuses</option>
-          <option value="PENDING_ANALYSIS">Draft</option>
-          <option value="READY_TO_APPROVE">Ready to publish</option>
+          <option value="PENDING_ANALYSIS">Pending review</option>
+          <option value="ANALYSIS_INCOMPLETE">Review in progress</option>
+          <option value="READY_TO_APPROVE">Needs confirmation</option>
           <option value="NEEDS_ATTENTION">Needs changes</option>
           <option value="APPROVED">Published</option>
           <option value="REJECTED">Rejected</option>
@@ -141,7 +152,7 @@ function Library() {
             </label>
           </div>
         </details>
-        <span className="result-count">{total} {total === 1 ? "item" : "items"}</span>
+        <span className="result-count" aria-live="polite">{resultsPending ? "Updating…" : `${total} ${total === 1 ? "item" : "items"}`}</span>
       </div>
 
       <BulkBar
@@ -152,7 +163,7 @@ function Library() {
         }}
       />
       {error && <div className="notice-error">{error}<button className="link-button" onClick={() => void load()}>Try again</button></div>}
-      <ContentTable items={items} selected={selected} onToggle={toggle} onToggleAll={toggleAll} />
+      <ContentTable items={items} selected={selected} onToggle={toggle} onToggleAll={toggleAll} searchQuery={filters.q} loading={resultsPending} />
       <div className="pagination">
         <button className="btn small" disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}>
           ← Previous
