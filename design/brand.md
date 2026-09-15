@@ -205,7 +205,11 @@ Scale in use (size / weight / face):
   width 3.4 idle / 5 rippling), dot eyes r1.9, smile stroke 2.2.
   Sizes: 64 px on-arc (watching), 110 px (cast), 150 px (sleeping),
   168 px (sunrise hero), 170 px (break guide). Halo: radial gold glow
-  ~34 px beyond disc.
+  ~34 px beyond disc. **The on-arc sun only** (watching/cast/choice —
+  the `.kq-sun` component, never the large hero suns above) carries a
+  soft ink-soft drop-shadow, `0 1.5px 3.5px rgba(107,100,89,.65)`
+  (2026-09-16, see §7 and OPEN-ITEMS.md item 56): edge definition
+  against the day sky, no colour change.
 - **Moon:** disc r26 on 64-viewBox, craters r4 + r3, curved-eye smile;
   sizes 94–150 px. Gold four-point twinkles (11/9/8 px) around it.
 - **Arc:** dashed stroke 2.5, dash `1 9`, round caps; horizon line
@@ -478,7 +482,12 @@ Scale in use (size / weight / face):
 - **Day progress bar:** height 12, radius 99, gradient `#F7EBD2` →
   `#FFC64D` 34% → `#C9B8E8` 68% → `#2B2955` 100% (the day in a bar);
   unplayed portion veiled `rgba(250,244,232,.78)`; knob 20 px sun-gold,
-  3 px white border.
+  3 px white border. **Inset hairline** (2026-09-16, see §7 and
+  OPEN-ITEMS.md item 56), set once at class level so every responsive
+  tier inherits it: `inset 0 0 0 1px rgba(107,100,89,.5)` ink-soft, plus
+  a matching `0 0 0 1px rgba(107,100,89,.4)` ring added to the knob's
+  existing drop-shadow (now `0 2px 6px rgba(46,42,36,.45)`). Edge
+  definition only — gradient and knob fill are unchanged.
 - **Queue cards:** 124×70, radius 14; thumbnail card has 2 px
   `rgba(46,42,36,.1)` border. A queue simply ends after its last real
   card — there is no end-of-queue card or marker. The session's own end
@@ -570,6 +579,23 @@ factual labels. Never nagging, never gamified.
   touch to turn on or off" with `aria-pressed`).
 - Live-changing captions (break phase lines) use `aria-live="polite"`.
 - Full `prefers-reduced-motion` support.
+- **Colour is never the sole carrier of a time indicator (2026-09-16).**
+  The on-arc sun and the day-progress-bar deliberately melt into the warm
+  day sky — a considered choice, not an oversight, in service of this
+  brand's calm, anti-overstimulation stance (§1). Where the melt needed
+  firming for plain findability, the fix stayed non-colour: a soft
+  ink-soft drop-shadow on the sun and an ink-soft inset hairline plus a
+  matching knob ring on the day-bar (§5, "Sun" and "Day progress bar"),
+  each tuned to read as a soft edge rather than a hard border. Neither
+  reaches the 3:1 non-text-UI contrast floor at the alpha that still
+  reads as a hairline (see OPEN-ITEMS.md item 56 for the measured
+  ratios) — so the *formal*, accessible time indicators are, and stay,
+  text: the "‹N› min left" pill and the "video ‹x› of ‹y›" line, both
+  already WCAG AA text pairs per the rule above. This is the same
+  underlying point item 35 raises about the find-game's outlined-gold
+  SETTLE hero (a second, non-ink-on-fill contrast mechanism) applied to
+  a second component pair — logged there as advancing, not closing,
+  that item.
 
 ## 8. Engineering notes (for the eventual build)
 
