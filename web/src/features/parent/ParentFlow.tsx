@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import styles from "./ParentFlow.module.css";
 import { getMockRecommendations, type ParentRecommendation } from "./recommendationService";
@@ -76,6 +77,9 @@ function toParentRecommendation(rec: Recommendation, selectedAge: string): Paren
 }
 
 export default function ParentFlow() {
+  // Mounted at "/", "/parent" and "/login" alike — the history bookkeeping below
+  // must stay on whichever of those it was actually loaded at, not assume one.
+  const pathname = usePathname();
   const [screen, setScreen] = useState<Screen>("login");
   const screenRef = useRef<Screen>("login");
   const historyRef = useRef<Screen[]>(["login"]);
@@ -106,12 +110,12 @@ export default function ParentFlow() {
     historyRef.current = nextHistory;
     historyIndexRef.current = nextHistory.length - 1;
     screenRef.current = next;
-    window.history.pushState({ kidqParent: true, parentIndex: historyIndexRef.current }, "", "/parent");
+    window.history.pushState({ kidqParent: true, parentIndex: historyIndexRef.current }, "", pathname);
     setScreen(next);
   }
 
   useEffect(() => {
-    window.history.replaceState({ kidqParent: true, parentIndex: 0 }, "", "/parent");
+    window.history.replaceState({ kidqParent: true, parentIndex: 0 }, "", pathname);
     const handlePopState = (event: PopStateEvent) => {
       const state = event.state as { kidqParent?: boolean; parentIndex?: number } | null;
       if (state?.kidqParent && typeof state.parentIndex === "number" && state.parentIndex < historyIndexRef.current) {
@@ -124,10 +128,11 @@ export default function ParentFlow() {
 
       // Keep browser Back inside the Parent journey. The Kid route is only
       // reachable through the explicit View kid mode action.
-      window.history.pushState({ kidqParent: true, parentIndex: historyIndexRef.current }, "", "/parent");
+      window.history.pushState({ kidqParent: true, parentIndex: historyIndexRef.current }, "", pathname);
     };
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Real-session bootstrap: a returning, already-onboarded parent skips
