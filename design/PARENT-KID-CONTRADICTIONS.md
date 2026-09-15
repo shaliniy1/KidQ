@@ -17,7 +17,7 @@ Break-game completion (tree pose etc.) is tracked separately and excluded here.
 - **Clash:** a parent who turns Autoplay off still gets an auto-advancing child
   session.
 - **Needs:** an autoplay-off mode on the kid side. Natural fallback: the
-  item-25 tap-gated choice screen becomes the between-video state when off.
+  item-25 touch-gated choice screen becomes the between-video state when off.
 
 ## 2. Break schedule: parent-configured vs. hardcoded 2 breaks
 
@@ -57,7 +57,7 @@ Break-game completion (tree pose etc.) is tracked separately and excluded here.
   No kid-side changes. **Contract note for the parent-side owner:** this
   only holds if sessions contain nothing the parent hasn't actively accepted
   into the library. The "Made for Aarav" flow's 6-pre-checked-cards bulk-add
-  weakens "actively" — a parent who taps "Looks good" without unchecking has
+  weakens "actively" — a parent who touches "Looks good" without unchecking has
   still made a choice, but the flow should never grow an auto-add path that
   skips the parent entirely, or the kid-side framing becomes a lie.
 
@@ -72,28 +72,28 @@ Break-game completion (tree pose etc.) is tracked separately and excluded here.
 - **RESOLVED (2026-09-15): status vocabulary mapped, no new child control.**
   Proposed contract for parent + backend owners: **completed** = video ended
   naturally · **exited early** = child switched away mid-video (queue-card
-  tap) · **skipped** = queued but never started before the session ended.
+  touch) · **skipped** = queued but never started before the session ended.
   All three are derivable from what the child side already does
   (`watched`/progress vs. the queue); their Insight Log UI keeps its three
   labels unchanged. Explicitly rejected: a child-facing skip button — no-skip
   is a thesis decision, same family as no-search and no-feed.
 
-## 6. Session start: parent's "Start session" button vs. child's sun tap
+## 6. Session start: parent's "Start session" button vs. child's touch of the sun
 
 - **Parent app:** the flow ends on a big **Start session** button.
-- **Kid prototype:** the session starts when the **child taps the sleepy sun**
+- **Kid prototype:** the session starts when the **child touches the sleepy sun**
   (one action per screen; the start belongs to the child).
 - **Clash:** if the parent button force-starts playback on the child device,
   the sunrise screen and the child's start moment are dead.
 - **RESOLVED (2026-09-15): arm, don't start.** The parent's button arms
   today's session: the child device flips from the no-session screen to the
-  sunrise screen, and nothing plays until the child taps the sun. Zero
+  sunrise screen, and nothing plays until the child touches the sun. Zero
   kid-side changes — the no-session → sunrise transition is already the
   model; the parent's button is what causes the flip. Suggestions for the
   parent-side owner: (1) rename the button toward the arm framing their own
   headline already uses ("Ready when Aarav is") — e.g. "Set up Aarav's day"
   instead of "Start session"; (2) after arming, show "Waiting for Aarav to
-  tap the sun 🌅" so the handoff is taught, not mysterious.
+  touch the sun 🌅" so the handoff is taught, not mysterious.
 
 ## 7. Sensory-friendly mode vs. reduced motion
 
