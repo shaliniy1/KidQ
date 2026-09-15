@@ -224,8 +224,9 @@ tiers, with one element inventory at every size.
 **"Follow me with your eyes" is done — shipped as follow the sun**, built on
 `design/follow-the-ball-break` (Tasks 1–10 plus the closing verification
 sweep) per `docs/superpowers/specs/2026-09-14-kidq-follow-the-ball-break-design.md`.
-Still designed but not built: stand like a tree, count to 10 with eyes closed.
-The cadence and rotation already support more entries with no other change.
+**"Stand like a tree" is done too** — see item 43. Still designed but not
+built: count to 10 with eyes closed. The cadence and rotation already
+support more entries with no other change.
 
 Building it surfaced follow-ups that were logged in the spec (sections 11 and
 13.7) but not yet tracked anywhere in this file — now items 26–35 below.
@@ -934,3 +935,106 @@ afterward (unlike `<audio>`'s persistent `.volume`), so this is a
 code-level guarantee — the same `sensoryFriendly ? SENSORY_VOLUME : 1`
 expression already verified live for `safePlay`/`sayLine` — rather than
 something observed firing softer live in this environment.
+
+## Stand like a tree (2026-09-15)
+
+### [x] 43. "Stand like a tree" activity break, built
+Per `docs/superpowers/specs/2026-09-14-kidq-tree-pose-break-design.md`, built
+on `design/tree-pose-break`. `BREAK_GAMES.move` is now `["find", "tree"]` —
+the change item 17 flagged as making movement-bucket rotation real — and
+`BREAK_START.tree = startTree` joins the dispatch map, plus a
+`data-break="tree"` demo-bar button.
+
+**Asset.** "Young woman meditating in yoga tree pose" by Farfique
+(LottieFiles, Lottie Simple License). The documented download-URL technique
+(Download button → editor → signed `private-cdn.lottie.host` fetch) wasn't
+needed: the same public `.lottie` bundle that powers the LottieFiles page's
+own live preview player is embedded directly in the page's server-rendered
+HTML (`assets-v2.lottiefiles.com/.../K9v8FCUpy1.lottie`, 17,876 bytes —
+matching the page's own stated 17.5KB dotLottie figure almost exactly).
+Recoloured via `scratchpad/recolor-tree.py` into
+`design/prototype/kidq-tree-anim.js` (`window.KIDQ_TREE_ANIM`, header
+comment documents the exact mapping) — never hand-edited. Clothing only:
+tank top `#F2F2F2` → cream `#FAF4E8`, shorts/bikini `#631218` → dusk
+`#C9B8E8`, shorts/bikini shadow `#561216`/`#561217` → the existing
+dusk-deep `#A991D6` (already used in this file for the high-five fallback's
+second hand). Skin and hair untouched. The top-level "Shadow" layer (the
+ground/mat ellipse) is removed entirely, not just recoloured. Verified: no
+pure white/black fill remains anywhere in the bundle; no baked-in
+lettering; the mirrored hold (`scaleX(-1)` on the Lottie container, never
+the stage — see brand.md) renders clean, checked at 300×300 side by side
+with the unmirrored pose.
+
+**Voice.** Three new clips via the same edge-tts pipeline as follow
+(`en-IN-NeerjaNeural`, `--rate=-10%`, confirmed against commit `a32e1a5`'s
+own regeneration note rather than guessed): `voice-tree-intro.mp3` (6.360s),
+`voice-tree-count.mp3` (7.800s — "5… 4… 3… 2… 1!", word-start offsets read
+from edge-tts's own `--write-subtitles` output: 1758/3327/4827/6244ms),
+`voice-tree-switch.mp3` (1.872s — "Other leg!"). Ending reuses
+`voice-follow-done.mp3` (2.016s) — no duplicate file, per spec. The hold
+chain is tuned to these REAL measured lengths, not the spec's own ~5.5s/
+~1.1s-per-number estimates — at this unhurried a pace the real gap between
+numbers runs ~1.4–1.7s. Consequence, flagged honestly: the full run is
+**~26.6s** end to end (measured via instrumentation, see below), not the
+spec's "~20s, same band as breathing" — a direct, logged result of
+following the spec's own explicit instruction to tune to the measured clip
+rather than the other way round.
+
+**Count presentation — changed mid-build from the spec's small text
+sub-line, twice, both by user steer, not a unilateral call:** (1) the
+current number now renders as one BIG digit (36/44/54px across the three
+tiers) with the still-to-come numbers trailing small and dimmed beside it,
+popping in on every change via the existing `pop()` vocabulary — "a bit fun
+and playful and visible," per the steer; (2) the digit's colour was
+overruled a second time — sun-gold measured 1.2–1.9:1 against this app's
+cream sky (nowhere near the 3:1 AA floor for large text), so it sits in
+plain **teal** (`var(--teal)`, the app's one UI accent), measured
+4.04–4.88:1 across the sky's three gradient stops. Written up as the
+shared **break-count digit pattern** in brand.md §5 (not a tree-only
+style), since count-to-10 (item 17's remaining entry) will reuse it.
+
+**Scene.** Side-tree decor rule and sun-as-sidekick sizing documented in
+brand.md §5, alongside the digit pattern. One real layout bug caught and
+fixed before commit: the side trees were first anchored to the raw
+viewport bottom (`bottom:0`), which sits far below the vertically-CENTRED
+content cluster on a tall test viewport and would clip the trees off-screen
+entirely on a real, shorter phone height — refactored to anchor off the
+viewport's own vertical centre instead. A second: the sun sidekick's
+position percentage was computed against the wrong containing block (the
+full-width scene, not the stage), pushing it partly off-screen at some
+tablet widths — fixed by nesting it inside the stage. A third: the
+assembled cluster ran 90–120px taller than find's own cluster (the tallest
+of the other three break screens) at every width on the first pass: the
+stage was trimmed from a 220/258/300px cap to 196/228/264px and the
+cluster's own gap from 18px to 14px, closing it to ~20–40px over find —
+logged in brand.md as the reasoning for staying close to, not a full step
+above, breathing's own hero caps.
+
+**Verified** (§9, adapted to this machine's hidden-tab limits — see the
+spec's own note): all eight widths (390/600/601/900/1099/1100/1440/1920)
+via raw `getBoundingClientRect()` tables — nothing overflows, nothing
+shrinks as the container grows, her stage never rectangularly intersects
+either side tree at any width (a stronger check than a silhouette check).
+Full hands-off run verified via `setTimeout` instrumentation (overriding
+`window.setTimeout` to log every scheduled delay before it fires) rather
+than watching it play, since automation tabs are always `document.hidden`
+here and rAF/Lottie frames never advance visually — the captured schedule
+matches the coded constants exactly (COUNT_STEP_MS, COUNT_MS=7800,
+SWITCH_MS=2100, the final `hold(startChoice, 1900)`) with only ordinary
+~10ms timer jitter, both dots ending lit and the mirrored class set.
+Reduced-motion run verified the same way plus a `MutationObserver` on the
+stage's class list: confirms the crossfade path fires (never the bounce
+`.flipping` class), the still-pose `goToAndStop`, and an identical
+~26.6s total (every phase here uses `hold()`, never `later()` — grepped to
+confirm). Real-session dispatch path verified by driving an actual
+`aarav` session through two videos via synthetic `ended` events (the demo
+mp4s are too short to make a real 15-minute wait meaningful) — the break
+lands on `screen-playtime` synchronously, then `screen-tree` after the
+1600ms seam hold, through `gameForBreak()`'s own array indexing, not the
+toolbar's direct jump. Recolour bundle greps clean (no pure `#fff`/`#000`).
+`node --check` clean on every JS file touched.
+
+**Human check still needed, not simulated here:** whether the pose, the
+sun's wobble, and the tree sway actually *look* right in motion — this
+environment can confirm the schedule and DOM state but not judge visual
+motion in a hidden tab.

@@ -177,6 +177,49 @@ Scale in use (size / weight / face):
   **Set these in CSS, never inline on the element** — an inline width cannot be
   overridden by a container query, which is how the find and seam suns came to
   be the only things on those screens that never scaled.
+- **Stand-like-a-tree scene:** she is the hero — largest bounded element of
+  the four break screens, square stage `min(46cqw,196px)` → `228px` (tablet,
+  ≥601px) → `264px` (desktop, ≥1100px), a step above the breathing sun's own
+  caps but kept close to them: the break-count digit row below adds height
+  the other three screens' sub-lines don't carry, so the stage stays modest
+  to keep the assembled cluster within the sibling screens' vertical budget
+  (find's own cluster is the tallest of the other three, and is the
+  reference — tree runs ~20-40px past it at every width, not the 90-120px
+  the first, unconstrained pass measured). The sun perches beside her, small
+  (~1/3 her height), lower-side, existing face/halo/no limbs — the stick-limb
+  performer this scene replaces is retired. **Side-tree decor rule:** two
+  simple rounded trees (stacked circles + a trunk rect, breathing's-clouds
+  craft tier) at the screen's side edges, `top: calc(50% + 54px)` — off the
+  *viewport's* vertical centre with a downward nudge, not the raw screen
+  bottom, since `.kq-centercol` centres the whole cluster regardless of
+  viewport height and an edge anchored to the true bottom clips off-screen
+  on a short viewport. Teal foliage, ink-soft trunks, 62% opacity, gentle
+  sway (same subtle tier as the sun's own wobble), one faster rustle on
+  celebration. Mirrored hold: `scaleX(-1)` on the Lottie container only,
+  never the stage — a bounce keyframe (`translateY`) and a static mirror
+  both touch `transform`, and only different elements can carry both without
+  one clobbering the other.
+- **Break-count digit pattern** (shared: tree's two 5-counts, count-to-10
+  next): the live count for a timed counting break renders as one BIG
+  current digit with the still-to-come numbers trailing small and dimmed
+  beside it (`5` then `4 · 3 · 2 · 1`, shrinking each step) — never a plain
+  small text sub-line, which read as too quiet for a MOVE-bucket break.
+  `--cnt` (36/44/54px across the three tiers) sizes the big digit; the
+  trail sits at `--cnt * .48`, `var(--ink-soft)`, 72% opacity. The digit
+  pops on every change (the existing squash-stretch `pop()` helper,
+  retriggered — reduced motion needs no special-casing: `pop()`'s own
+  `later()` cleanup clamp only delays removing the animation class, and the
+  animation itself is already crushed to instant by the global
+  `.reduce-motion` rule). Colour was a two-round call: a sun-gold chip
+  first, then overruled — flat sun (`#FFC64D`) or sun-deep (`#F0A72E`) text
+  measures 1.2–1.9:1 against this app's cream sky gradient (`#FDF8EC` /
+  `#F7EBD2` / `#F1E2C4`), nowhere near the 3:1 AA floor for large text this
+  project holds every game element to. Plain **teal** (`var(--teal)`, the
+  app's one UI accent) measures **4.04–4.88:1** across those same three sky
+  stops — clears 3:1 everywhere with real margin — so the digit sits
+  directly on the sky, no badge. The whole count row is `aria-hidden`; the
+  break's own headline stays the sole accessible carrier, so a five-times-a-
+  break digit swap never spams a screen reader's `aria-live` region.
 - **Player card:** 16:9, radius 24, soft shadow `0 12px 28px -16px
   rgba(46,42,36,.4)`, at (20, 310) width 350. Corner pause: 44 px cream
   circle, teal-deep icon, top-right 14,14. Playing bars: 3 teal bars
