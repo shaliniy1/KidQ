@@ -295,7 +295,7 @@ button{font-family:inherit; -webkit-tap-highlight-color:transparent}
 .kq-sun .halo{inset:-18px; background:radial-gradient(circle, rgba(255,198,77,.4), transparent 70%)}
 .kq-sun.kq-sunpick .halo{animation:kq-halopulse 3s ease-in-out infinite}
 .kq-sun svg{position:relative; width:100%; height:100%}
-.kq-sun .rays line{stroke:var(--sun-deep); stroke-width:3.4; stroke-linecap:round; opacity:.55}
+.kq-sun .rays line{stroke:var(--sun-deep); stroke-width:3.4; stroke-linecap:round}
 /* the status-pill slot: the time pill, and the Playtime pill on the two break
    screens where it has no headline to sit above. Position is shared; each pill
    keeps its own fill. */
