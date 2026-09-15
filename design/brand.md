@@ -90,6 +90,41 @@ button. Green is a true green rather than a second teal, so game content never
 reads as the UI accent; red is deeper and less orange than the `heart` coral,
 which a 2–4 year old does not read as red.
 
+**Flower-and-candle prop colours (2026-09-16) — a new subsection, not an
+addition to the find-a-colour table above:** that table is scoped to
+find-a-colour's own three named hunt colours (line 69); the flower/candle
+break's props are hero-scale illustration, not a colour the child is asked
+to name, so they get their own entry. Promoted from the breathing screen's
+own offline-fallback SVG row (`docs/superpowers/specs/2026-09-16-kidq-
+flower-candle-break-design.md`), then recoloured for the sky/petal/rose
+adjacencies this hero scale actually needs:
+
+| Element | Hex | Contrast |
+|---|---|---|
+| Petals | `#A8506E` (rose, the already-verified balloon palette) | 4.07–4.91:1 vs the three day-sky stops |
+| Flower centre disc | `sun-deep` `#F0A72E` (unchanged token) | 2.54:1 vs the rose petals — **under** this pairing's own 3:1 expectation; flagged, not silently patched (see below) |
+| Flame body | `sun-deep` `#F0A72E` (unchanged token) + a ~2px outline ring `#9C6A18` | 3.66–4.41:1 (the ring) vs the three day-sky stops |
+| Candle outline | `#6B6459` (`ink-soft`, unchanged token) | 4.57–5.52:1 vs the three day-sky stops |
+| Stem/leaf | `teal` `#1F7A6D` (unchanged token, reused as-is) | already covered above |
+
+The flame's ring is the **second live instance of the outlined-gold contrast
+mechanism** open item 35 asked this file to document: gold alone measures
+only 1.60–1.93:1 against this sky (the same structural failure the sun-
+button hero on the follow-the-sun break already worked around at
+3.9–4.7:1, task-7-report.md) — so rather than swap the hue a second time,
+the fill stays gold-as-illustrated and a darker rim of the same hue family
+carries the WCAG 1.4.11 non-text floor instead. This is now an established
+pattern in this app, not a one-off: **gold content keeps its hue and earns
+contrast from an outline ring**, everywhere gold has to sit on the day sky.
+
+The centre-disc-vs-petals number (2.54:1) is logged here as an honest miss
+against its own stated expectation, not rounded up or re-coloured on the
+builder's own authority — the disc sits on the rose petals, not the sky, and
+whether that specific adjacency needs the 3:1 non-text floor (it is
+decoration-on-decoration, like the props' faces) or is already covered by
+the same WCAG 1.4.11 "essential presentation" exemption the find-a-colour
+swatches use is an open call for design review, not a self-evident one.
+
 Supporting: arc/horizon stroke on day sky `#E4D6B8`; on sunrise sky
 `#FAF4E8` at 65% opacity; moon craters `#E4D6B8`; night cloud `#454179`.
 

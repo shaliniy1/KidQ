@@ -1664,3 +1664,126 @@ needs to perceive. Visually confirmed (forced render, screenshot) that the
 WIP splash-backdrop balloons from item 48 read as calm background accents
 behind the hero letters, not competing with them — achieves their stated
 design goal.
+
+## Flower and candle (2026-09-16)
+
+### [x] 55. "Smell the flower, blow out the candle" activity break, built
+Per `docs/superpowers/specs/2026-09-16-kidq-flower-candle-break-design.md`
+(17 Opus review findings folded in before build), built on
+`design/flower-candle-break` (worktree `KidQ-fork-flower`, off main at
+`7c3fa69`). `BREAK_GAMES.settle` is now `["breathe", "follow", "count",
+"flower_candle"]` and `BREAK_START.flower_candle = startFlowerCandle` joins
+the dispatch map. Rotation seed widened `Math.random()*6` → `*12` (Opus
+finding 3) so a 4-entry settle bucket rotates evenly (6 was the LCM of the
+old 2/2 bucket sizes; 12 is the LCM of 2/4) — left at 6, breathe/follow
+would draw twice as often as count/flower_candle.
+
+Promoted from breathing's own offline-fallback SVG row (`#screen-breathing`),
+not a new invention: same flower-left/sun-centre/candle-right trio, same
+`.kq-prop`/`.kq-bsunwrap`/`.kq-breathrow` shared markup, but every
+behavioural CSS rule is re-authored under `#screen-flower-candle`'s own
+`.ph-smell`/`.ph-blow`/`.celebrate` state classes (Opus finding 9) —
+breathing's own `.ph-in`/`.ph-out` rules are untouched and this screen
+inherits nothing from them.
+
+**Voice.** Three new clips, same edge-tts pipeline as follow/tree/count
+(`en-IN-NeerjaNeural`, `--rate=-10%`): `voice-flower-intro.mp3` (4.224s,
+"Smell the flower… then blow out the candle!"), `voice-flower-smell.mp3`
+(2.352s, "Smell the flower…"), `voice-flower-blow.mp3` (2.568s, "Blow out
+the candle!"). Ending reuses `voice-follow-done.mp3` unchanged, same
+decision tree/count both made. `FC_PHASE_MS` (the shared smell/blow phase
+length) is `max(longer clip + ~300ms room, 3500)` capped ~4000 per spec §4
+— the 3500 floor wins outright here (2568+300=2868<3500), so every phase
+runs a flat 3.5s. Consequence, flagged honestly exactly as tree/count's own
+items did: the full run measures **~27.7s coded** (600ms lead + 4.224s
+intro + 3×(3.5s smell + 3.5s blow) + 1.9s celebration hold), in the same
+family as tree's 26.56s and count's 27.42s, not the spec's own "~28–32s"
+estimate — chain follows the measured audio, not the spec's own guess (the
+same established lesson).
+
+**Colours — amended live during build, twice, both user calls made through
+the coordinator, not spec deviations chosen unilaterally:**
+1. Spec's original flame body (coral `#C2543F`) was rejected on sight
+   ("candle light is not looking good") and reverted to gold `#F0A72E`
+   (matching the fallback row's original colour) with cream inner kept.
+   Flat gold alone still fails the 3:1 decorative floor against this sky
+   (Opus finding 1's original 1.60–1.93:1), so a ~2px outline ring in
+   `#9C6A18` carries the contrast instead: measures **3.66–4.41:1** against
+   the three sky stops (re-verified with the scratchpad script, numbers
+   below).
+2. The flame's face was cut entirely (first to eyes-only, then to no face
+   at all) — only the flower keeps a face now. The blow phase is a plain
+   ~500ms fade (delayed ~600ms so it follows the voice cue rather than
+   racing it) plus the smoke puff at ~750ms; there is no pose to hold
+   first, so Opus finding 8's "the face must be seen before the flame
+   goes" choreography no longer applies to the flame specifically — the
+   flower's own face stays exactly as spec'd (closed-curve happy eyes +
+   smile, no blush).
+
+Petals rose `#A8506E`, candle outline `#6B6459`, stem/leaf teal — all as
+spec'd, unchanged. **Full re-measurement** (scratchpad Python/WCAG
+contrast-ratio script): rose, the new gold-outline ring, and the candle
+outline all clear ≥3.54:1 against every sky stop (rose 4.07–4.91:1,
+`#9C6A18` outline 3.66–4.41:1, `#6B6459` outline 4.57–5.52:1). One number
+does **not** clear its own expectation: the flower's gold centre disc
+against the rose petals (the spec's own sanity check for that specific
+pairing) measures **2.54:1 — under the 3:1 the spec named**, logged here
+rather than silently patched or re-coloured. Flagged to the coordinator;
+decision pending. (Face-ink-on-gold, a different pairing the spec also
+cites, is unaffected — that one measures well over 7:1, the balloon-digit
+precedent.)
+
+**Bug caught in my own verification, fixed before commit:** the round dot
+was filling at blow-PHASE-START instead of blow-phase-END (spec §4), a
+one-line miss against breathing's own `later(() => {...}, PHASE)` idiom.
+Caught via a DOM class/state trace (see Verified below); fixed by moving
+the dot-fill/round-increment into the phase-end `hold()` callback, with the
+final round's cushion duration decided before `round` increments.
+
+**Verified**, adapted to this machine's hidden-tab limits (this build also
+found that CSS transitions do not tick at all in a `document.hidden` tab —
+confirmed by re-testing breathing's own already-shipped `.flameB` fade
+under the same harness, which also never progressed past its start value —
+so fade/swell timing was verified by reading the CSS source and its
+transition-delay/duration values, not by sampling `getComputedStyle`
+mid-transition):
+- Console clean on load and through every run (forced, organic, and
+  reduced-motion).
+- Full hands-off run traced via a DOM class/audio-state signature poll:
+  intro → 3×(smell → blow) → celebrate → choice, exactly one audio clip
+  active at a time throughout (`hush()` verified with no overlap),
+  headline and dots changing in lock-step with the phase classes.
+- Reduced-motion run: `hold()`-driven cadence identical to the full-motion
+  run (unclamped, per spec's decided stance) — discrete state flips (phase
+  classes, dots, headline) still fire every phase.
+- 390px tier: zero scroll/client-height overflow in every phase state
+  (`ph-smell`/`ph-blow`/`celebrate`); the hero row measured well inside the
+  usable width (spans roughly 48px–342px of a 390px container).
+- Organic path (no live route existed before this build — PR #36 removed
+  the demo bar): a temporary `breakType:"quiet"`/`breakEveryMinutes:10`
+  edit to the `aarav` session (reverted before commit, diff confirmed
+  clean) plus a real login → sunrise → watching click-through. The
+  session's placeholder clips only decode 8 real seconds regardless of
+  their logical 7–8-minute length, but even that never advanced in this
+  hidden tab (`readyState` stuck at 0, video never loads), so the real
+  `ended` event was dispatched directly on the `<video>` element rather
+  than waited out — the listener doesn't care how `ended` arrives, and
+  this still exercises the actual `breakIsDue()` → `gameForBreak()` →
+  `startPlaytimeSeam()` path with no `forceGame` override. Landed on
+  `screen-flower-candle` through that real path, `state.breaksTaken`
+  incremented correctly.
+- `forceGame` (manual test hook, `startPlaytimeSeam("flower_candle")`)
+  kept and commented per spec §7, for every future break's own testing.
+
+**Human check still needed, not simulated here** (same caveat tree/count's
+own items logged): whether the halo swell, petal bloom, and flame fade read
+as intended in motion, and whether the flower's face is legible at the
+smallest (390px) tier — this environment can confirm the state schedule
+and DOM values but not judge rendered motion or sub-pixel legibility in a
+hidden tab.
+
+This closes the selector spec's §3 "Flower and Candle" row
+(`2026-09-14-kidq-break-selector-naming-design.md`). **5 concepts remain**
+open there: puddle_jump, butterfly_wings, cloud_reach, sleepy_stretch,
+firefly_count — plus the still-open Firefly-Count-vs-count overlap
+question, neither touched by this build.
