@@ -296,6 +296,18 @@ button{font-family:inherit; -webkit-tap-highlight-color:transparent}
 .kq-sun.kq-sunpick .halo{animation:kq-halopulse 3s ease-in-out infinite}
 .kq-sun svg{position:relative; width:100%; height:100%}
 .kq-sun .rays line{stroke:var(--sun-deep); stroke-width:3.4; stroke-linecap:round; opacity:.55}
+/* "melt kept, edges firmed" (user-approved): the small arc-riding sun (this
+   component only - never .kq-bigsun/.kq-bsunwrap, the large hero suns, which
+   never had the problem and stay untouched) gets a soft ink-soft drop-shadow
+   so it doesn't melt into the cream day sky. Scoped per-screen rather than to
+   .kq-sun svg globally so each screen's inclusion is a deliberate, visible
+   decision: watching and cast were the approved scope; #screen-choice's
+   #choice-sun is the same .kq-sun component riding the same arc one screen
+   later, so it is included too - without it the sun's look would flicker
+   between consecutive screens. Uses only the existing ink-soft token, no new
+   colour. */
+#screen-watching .kq-sun svg, #screen-cast .kq-sun svg, #screen-choice .kq-sun svg{
+  filter:drop-shadow(0 1.5px 3.5px rgba(107,100,89,.65))}
 /* the status-pill slot: the time pill, and the Playtime pill on the two break
    screens where it has no headline to sit above. Position is shared; each pill
    keeps its own fill. */
@@ -353,12 +365,27 @@ button{font-family:inherit; -webkit-tap-highlight-color:transparent}
   animation:eqb 1s ease-in-out infinite}
 .kq-eq i:nth-child(2){animation-delay:.2s}
 .kq-eq i:nth-child(3){animation-delay:.45s}
+/* "melt kept, edges firmed" (user-approved): the day-bar deliberately keeps its
+   melt-into-the-sky gradient (no colour change) but gets a soft ink-soft inset
+   hairline so its edge reads against the page. Set once here at class level -
+   NOT per responsive tier - so it carries through the base/tablet/wide overrides
+   at :1191, :1218 and :1282 (position/size only, no box-shadow of their own)
+   without duplication. Alpha .5 chosen after tuning upward from the originally-mocked
+   .28: composited over the page background (#FAF4E8) it measures ~2.06:1,
+   and over the track's lightest stop (#F7EBD2) ~2.00:1 - short of the 3:1
+   non-text-UI target (ink-soft's own ceiling only clears 3:1 past ~alpha .72,
+   which reads as a visible dark border rather than a hairline and would undo
+   the approved "melt kept" treatment), but a clear, visually-confirmed step up
+   from .28 while still reading quiet. See OPEN-ITEMS.md item 35 / this pass's
+   own entry for the full reasoning. */
 .kq-daybar{position:absolute; left:20px; right:20px; top:530px; height:12px; border-radius:99px;
-  background:linear-gradient(90deg,#F7EBD2 0%,#FFC64D 34%,#C9B8E8 68%,#2B2955 100%)}
+  background:linear-gradient(90deg,#F7EBD2 0%,#FFC64D 34%,#C9B8E8 68%,#2B2955 100%);
+  box-shadow:inset 0 0 0 1px rgba(107,100,89,.5)}
 .kq-daybar .veil{position:absolute; top:0; bottom:0; right:0; border-radius:0 99px 99px 0;
   background:rgba(250,244,232,.78)}
 .kq-daybar .knob{position:absolute; top:50%; width:20px; height:20px; transform:translate(-50%,-50%);
-  border-radius:50%; background:var(--sun); border:3px solid #fff; box-shadow:0 2px 6px rgba(46,42,36,.3)}
+  border-radius:50%; background:var(--sun); border:3px solid #fff;
+  box-shadow:0 2px 6px rgba(46,42,36,.45), 0 0 0 1px rgba(107,100,89,.4)}
 .kq-now{position:absolute; left:0; right:0; top:562px; text-align:center; padding:0 30px}
 .kq-now .title{font-family:var(--disp); font-weight:700; font-size:21px; color:var(--ink); line-height:1.2}
 .kq-now .sub{display:flex; justify-content:center; align-items:center; gap:8px; margin-top:6px;
