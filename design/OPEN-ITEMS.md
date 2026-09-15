@@ -569,3 +569,126 @@ it), since video 1 of the demo session lands exactly on the first break
 boundary. Both the anti-flash guard and the ended-flow continuation are
 therefore verified at the code-execution level, just not via an actual
 decoded video frame reaching its last one.
+
+---
+
+## The parent app's Autoplay setting arrives (2026-09-15)
+
+### [x] 40. Mirror the parent app's Autoplay toggle; never strand a non-tapper when it's off
+
+The KidQ Parent app (built by a teammate) now has a per-family **Autoplay**
+toggle: "Play the next video automatically within a session." This
+prototype had no notion of it and always auto-advanced — unconditionally
+between videos (`autoAdvance`), out of a break (item 25's `CHOICE_AUTO_MS`),
+and, separately, the all-done screen's high-five (item 38's
+`HIFIVE_AUTO_MS`). It needed to honour the setting.
+
+**Decided and built (2026-09-15), user-directed.** A session-level
+`autoplay` flag (default ON) stands in for the parent setting, flipped by a
+new Autoplay control on the demo bar, following `#motion-toggle`'s existing
+pattern — a plain variable, not part of `state`, read fresh at each decision
+point rather than reset per session.
+
+- **Autoplay ON is exactly today's behaviour, unchanged.** All three
+  existing timers — `autoAdvance`'s 700ms dip, item 25's `CHOICE_AUTO_MS`,
+  item 38's `HIFIVE_AUTO_MS` — fire exactly as before. Zero regressions was
+  the bar.
+- **Autoplay OFF, between videos:** the `ended` handler no longer calls
+  `autoAdvance()` — it calls `startChoice()` directly instead, landing on
+  the same after-break choice screen (sun plus the remaining parent picks),
+  with no auto-advance timer. The existing copy — "Tap the sun for your next
+  video / or pick one of Mumma & Papa's videos" — turned out to already read
+  correctly from either entry point, so no copy changed.
+- **Autoplay OFF, the choice screen itself (both entry paths):**
+  `CHOICE_AUTO_MS` is never scheduled. In its place, an **escalating-nudge
+  ladder**, added specifically so a pre-reader is never silently
+  stranded — this was *the* concern raised for this item, the same one
+  item 25 raised for the indefinite pre-autoplay wait and item 38 raised
+  for the high-five. With autoplay off, the choice screen has no timeout to
+  fall back on the way autoplay-on does, so instead of ending the wait it
+  interrupts it: a first attention beat at ~7s, then every ~15s after that,
+  for as long as the child sits there. Each beat reuses `pop()`'s existing
+  squash-stretch (`choiceSun`) — the same animation a real tap produces
+  elsewhere in the app — rather than inventing new motion, plus a soft
+  audio cue. It never advances anything by itself; only a tap does that, so
+  nudging "forever" is fine here in a way a timeout wouldn't have been.
+  No separate cancellation wiring was needed: a tap (sun or a card) already
+  runs `startWatching` → `showScreen` → `clearTimers`, and so does every
+  demo-bar jump away from the screen — both already wipe whatever `hold()`
+  is pending, `CHOICE_AUTO_MS`'s or the nudge's, the same way.
+- **The high-five stays exempt from the flag.** `HIFIVE_AUTO_MS` is
+  unconditional either way — decided explicitly, and unchanged in this
+  diff beyond a comment. It ends the session; it doesn't advance content,
+  so "play the next video automatically" has no opinion about it.
+  End-of-session is likewise not an advance: the last video's `ended` still
+  goes straight to sunset in both modes, exactly as before.
+- **Timer discipline:** the nudge uses `hold()`, not `later()` — the delay
+  *is* the nudge, not a transition, so it must not clamp to 200ms under
+  reduced motion, the same reasoning already documented above
+  `CHOICE_AUTO_MS` and `HIFIVE_AUTO_MS`.
+
+**Voice line placeholder.** There is no recorded "Tap the sun for your next
+video" line in the repo — the existing clips (`voice-follow-intro`,
+`voice-follow-done`) are follow-the-sun specific — so the nudge's audio cue
+reuses the soft sunset chime for now, with a `TODO(production)` comment in
+`kidq-desktop-app.js` next to `scheduleNudge`. Production should record a
+spoken "Tap the sun for your next video" line for pre-readers, in the same
+voice as the other clips, and wire it in via `sayLine()` the way
+`startFollow` already does for its own intro line.
+
+**Note for the parent-side settings owner:** suggested copy for the
+Autoplay setting's off-state description, to sit under the toggle:
+*"Off means Aarav continues each video himself."* Flagging it here rather
+than deciding it — it's the parent app's copy to own, not this prototype's.
+
+**Verified live in Chrome** (port 8517), instrumenting `window.setTimeout`,
+`HTMLMediaElement.prototype.play` and a `MutationObserver` on `#choice-sun`
+rather than trusting wall-clock timing, since this machine's automation
+tabs run with `document.hidden === true` throughout (confirmed), which
+throttles `setTimeout` — delays land late but the scheduled `ms` values
+and firing order are exactly what's asserted below, not an artifact:
+
+- **Autoplay ON:** the between-video dip scheduled `setTimeout(…, 700)`
+  and landed on the next video; the after-break choice screen scheduled
+  `setTimeout(…, 4000)` (`CHOICE_AUTO_MS`) and auto-advanced on schedule;
+  a full demo session driven through to all-done (both breaks, including a
+  live "breathe" break with no interaction needed) scheduled
+  `setTimeout(…, 4000)` for `HIFIVE_AUTO_MS` and the high-five auto-fired
+  (`#screen-all-done.hifived`, chime replayed).
+- **Autoplay OFF:** a synthetic `ended` dispatched on the un-final video
+  landed directly on `#screen-choice` with **no** `setTimeout(…, 4000)`
+  anywhere in the log — only `setTimeout(…, 7000)`. Confirmed for both
+  entry paths (straight from a video's `ended`, and after a break). The
+  first nudge fired at ~7s: `#choice-sun`'s class flipped to include
+  `tapped` (matching the new `#screen-choice .kq-sun.tapped svg` CSS pop
+  rule), the chime's `play()` was called, and a fresh `setTimeout(…,
+  15000)` was logged for the next beat. A tap partway through a nudge wait
+  cancelled it cleanly — waited well past when the next 15s beat would
+  have fired and the log showed nothing further for `#choice-sun` after
+  the tap. A demo-bar jump away mid-wait did the same. Toggling the flag
+  between two decision points (after a break finished, before `startChoice`
+  had run) was picked up correctly at the next decision point, with no
+  errors and no stale timers. With reduced motion on, the nudge still
+  logged `setTimeout(…, 7000)` (unclamped, confirming `hold()` is in use,
+  not `later()`), while `pop()`'s own internal cleanup timer clamped to
+  200ms as expected — the global reduced-motion CSS rule
+  (`kidq-desktop-app.css:850`) is what actually shortens the pop animation
+  itself, and needed no item-specific handling.
+- Not independently re-verified live: toggling mid-`CHOICE_AUTO_MS`-wait
+  down to the exact millisecond (an attempt was made; this machine's
+  background-tab timer throttling had, by ~10 minutes into the session,
+  degraded enough that a bounded poll loop hit a 45s CDP timeout, so the
+  attempt was redone as a toggle-between-decision-points instead, which
+  is the case that actually matters — see above). Both directions follow
+  from the same mechanism (the flag is a plain variable read once per
+  decision point, never polled), which the above does establish live.
+
+One thing worth flagging for whoever picks up "port to `web/`" (item 16):
+the nudge ladder's "forever" is correct for a design prototype with no
+session end other than the child's own choices, but a real deployment may
+want a cap — a pre-reader is never stranded now, but neither is a parent
+told anything if a child truly walks away and the nudge just keeps going.
+Not raised as a concern for this item (out of scope — nothing in the brief
+asked for one, and item 38's high-five timer already gives the session a
+hard end regardless), just noted since it wasn't obviously covered
+elsewhere.
