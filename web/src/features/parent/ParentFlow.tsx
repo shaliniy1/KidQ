@@ -102,7 +102,7 @@ function Login({ google, firstTime }: { google: () => void; firstTime: () => voi
     {(entry === "google" || entry === "signupConsent") && <div className={styles.loginTerms}>
       <b>Privacy, terms &amp; consent</b>
       <p>KidQ only stores a nickname and age band for your child — never a full name, photo, or location. One Google account per family; every caregiver signs in with the same account. By continuing, you confirm that you are this child&apos;s parent or guardian and consent to KidQ using this minimal profile data to provide age-appropriate sessions.</p>
-      <label className={styles.check}><input type="checkbox" checked={consent} onChange={(event) => setConsent(event.target.checked)} /> I agree — I am this child&apos;s parent or guardian.</label>
+      <label className={styles.check}><input type="checkbox" checked={consent} onChange={(event) => setConsent(event.target.checked)} /> I agree, I am this child&apos;s parent or guardian.</label>
       <Button disabled={!consent} onClick={continueFromConsent}>{entry === "google" ? "Continue to KidQ" : "Continue to setup"}</Button>
     </div>}
     {entry && <button className={styles.textLink} onClick={() => { setEntry(null); setConsent(false); }}>Back to sign in</button>}
