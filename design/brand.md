@@ -7,9 +7,11 @@ anti-overstimulation, so the design must never overstimulate. Visual
 references: Ploy (bold display type, motion-led) × Givingli (warm cream,
 friendly type, one accent, floating illustrated objects).
 
-Everything below is locked and already implemented in
-`kidq-mockups-v1.html` (child mode) and the proposal artifact. Exact
-values throughout — copy them into Figma styles/variables verbatim.
+Everything below is locked and already implemented in `design/prototype/`
+(child mode) — the original values were established in the pre-prototype
+`kidq-mockups-v1.html` and proposal design artifacts, both kept outside
+this repository. Exact values throughout — copy them into Figma
+styles/variables verbatim.
 
 ## 1. The world (core metaphors)
 
