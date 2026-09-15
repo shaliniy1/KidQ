@@ -54,7 +54,7 @@
       <div class="kq-digitballoon kq-splashdrift sd3 hue-dusk pos-r"><span class="kq-balloon-body"></span><span class="kq-balloon-knot"></span><span class="kq-balloon-string"></span></div>
       <div class="kq-digitballoon kq-splashdrift sd4 hue-rose pos-b"><span class="kq-balloon-body"></span><span class="kq-balloon-knot"></span><span class="kq-balloon-string"></span></div>
     </div>
-    <span class="balloon-slot"><i class="seed s1"></i><span class="balloon b1">K</span></span><span class="balloon-slot"><i class="seed s2"></i><span class="balloon b2">i</span></span><span class="balloon-slot"><i class="seed s3"></i><span class="balloon b3">d</span></span><span class="balloon-slot"><i class="seed s4"></i><span class="balloon b4">Q</span></span>
+    <span class="balloon-slot" aria-hidden="true"><i class="seed s1"></i><span class="balloon b1">K</span></span><span class="balloon-slot" aria-hidden="true"><i class="seed s2"></i><span class="balloon b2">i</span></span><span class="balloon-slot" aria-hidden="true"><i class="seed s3"></i><span class="balloon b3">d</span></span><span class="balloon-slot" aria-hidden="true"><i class="seed s4"></i><span class="balloon b4">Q</span></span>
   </section>
 
   <!-- login: who's watching -->
@@ -507,6 +507,10 @@
           <p class="wn-label">What's next</p>
           <div class="wn-row" id="wn-row"></div>
         </div>
+        <!-- the headline/hf-say swaps above are plain display toggles with no
+             aria-live of their own - this is the one announcement for the
+             whole high-five moment, set once in fiveUp() -->
+        <p class="sr-only" id="done-announce" aria-live="polite"></p>
       </div>
     </div>
   </section>
@@ -577,6 +581,10 @@
           <svg viewBox="0 0 20 20" width="17" height="17" aria-hidden="true"><path d="M10 17 C4 12 2 8.5 4.2 6.2 A3.4 3.4 0 0 1 10 7.4 A3.4 3.4 0 0 1 15.8 6.2 C18 8.5 16 12 10 17 Z" fill="#E2705E"/></svg>
           <span>Watch yesterday's videos again?</span>
         </button>
+        <!-- sleeping-sun/waiting-moon only ever toggle a CSS wiggle/pop - this
+             announces the same gentle "nothing to see yet" confirmation for
+             screen-reader users when either is touched -->
+        <p class="sr-only" id="no-session-announce" aria-live="polite"></p>
       </div>
     </div>
   </section>
@@ -657,7 +665,7 @@
         </div>
       </div>
       <span class="kq-timeleft">12 min left</span>
-      <p class="kq-castpill">
+      <p class="kq-castpill" aria-live="polite">
         <svg width="17" height="14" viewBox="0 0 20 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="1" width="18" height="12" rx="2"/><path d="M6 15 h8"/></svg>
         <span class="playing-txt">Playing on Living Room TV</span>
         <span class="paused-txt">Paused on TV</span>

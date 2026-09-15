@@ -1374,45 +1374,293 @@ motion, and whether the balloon reads as clearly "balloon" rather than
 computed styles and timing, not the felt motion or the shape's silhouette
 recognisability, in a real but unattended browser tab.
 
-## Splash backdrop finalized: glow (2026-09-16)
+---
+
+## Screen-by-screen design review (2026-09-15), in progress
+
+A fresh pass through every child-mode screen, applying impeccable's
+critique rubric (Nielsen heuristics, cognitive-load checklist, personas) by
+hand — the native `impeccable detect` binary is still blocked on this
+machine (`impeccable-exe-flagged-malware`), so this is a manual/degraded
+run, not the automated dual-agent pipeline. Reviewed against the current
+working tree (`design/balloon-rose-hue`, 2 commits ahead of main —
+un-pushed WIP: muted digit-balloon hues + splash backdrop balloons).
+Findings land here as each screen is reviewed; screens with nothing new to
+report are noted as reviewed-clean rather than skipped silently.
+
+### [ ] 46. `screen-login`'s star/cloud sky decoration is hand-duplicated from the splash screen
+**Screen: "Who's watching today?" (profile picker).** `index.html:58-85`
+(the predawn sky's stars + two cloud SVGs) is near-byte-identical to the
+splash screen's own sky decoration at `index.html:40-47` — copy-pasted
+rather than shared. Zero user-visible effect (both screens render
+correctly); flagged as a P3 code-hygiene note, not a design defect. Worth
+factoring into one reusable partial/template only if a third screen ever
+needs the same predawn sky, not on its own.
+
+**Screen 1 ("Who's watching") otherwise reviewed clean:** cognitive load
+0/8 violations (single decision, 2 options), `:focus-visible` ring present
+on `.kq-who`, `aria-label`s already use "touch" per the tap-to-touch sweep,
+per-child colour-as-identity avatars reuse the app's own face-SVG grammar
+rather than inventing a new one. No P0-P2 issues found. This screen has
+already been through two prior manual impeccable audits (17/20, 18/20)
+plus ADHD/Fable passes; nothing new surfaced here.
+
+### [ ] 47. The choice-screen and high-five auto-advance timers give no visible signal that they're counting down
+Run via `adhd-design-expert`, focused on items 25/38/40 rather than
+re-relitigating whether the timers should exist (user-directed, already
+decided). `CHOICE_AUTO_MS`/`HIFIVE_AUTO_MS` (`kidq-desktop-app.js:1305,
+1376,1415,1463`) are plain silent timers — nothing on screen animates while
+either 4-second window runs. Checked for an existing affordance that might
+already cover this: `.kq-sun.kq-sunpick .halo{animation:kq-halopulse 3s
+ease-in-out infinite}` (`css:229`) is the "this is the recommended pick"
+marker, a constant loop that runs continuously before, during and after the
+auto-advance window — confirmed it is not a countdown cue, just checked
+against being mistaken for one.
+
+**Why it matters:** a child with time blindness or impulsivity gets no
+signal that something is about to happen in the next few seconds — the
+auto-advance either surprises them or, over repeated sessions, trains them
+to stop watching the screen during a wait. This is the same category of
+concern items 25/38/40 already raised for the *indefinite*-wait version of
+these screens; a silent bounded countdown is a smaller version of the same
+gap.
+
+**Tension, not resolved here:** the textbook ADHD-design fix (a visible
+countdown ring, a shrinking halo, a ticking indicator) adds a widget to two
+screens this brand deliberately keeps quiet — the same trade-off prior
+ADHD passes on this project have weighed before and often declined (see
+the rejected streaks/XP/confetti recommendations logged elsewhere in this
+project's history). Flagged for a decision, not fixed unilaterally.
 
 ### [x] 48. Splash-backdrop balloons share hue *names* with the hero letters but not their finish, and skip one hue with no stated reason
-Filed against this same branch (`design/balloon-rose-hue`) by a parallel
-screen-by-screen a11y/design review that lives on a sibling branch,
-`design/a11y-consistency` (commit `f813ff1`, its own `OPEN-ITEMS.md`,
-items 46–54) — not yet merged here, so it is ported into this branch's
-copy as item 48 only, numbered to match, rather than left undiscoverable
-from this side until some future merge. Original finding, unedited:
+Run via `critique-color` against the WIP branch `design/balloon-rose-hue`.
+The 3 new splash-backdrop balloons (`index.html:48-50`, `.kq-splashdrift`)
+use `hue-teal`/`hue-coral`/`hue-dusk` — 3 of the digit-balloon system's 4
+hues, skipping rose, with no reasoning recorded anywhere for which 3 were
+picked. Measured independently (canvas-reconstructed CSS gradient, sampled
+at the digit's actual rendered centre — not eyeballed) that the digit-text
+contrast on all 4 flattened hues clears the 3:1 large-text floor with real
+margin (teal 3.97:1, rose 3.99:1, coral 3.60:1, dusk 4.26:1 vs. cream text)
+— so this item is a palette-coherence question, not a contrast defect.
 
-> Run via `critique-color` against the WIP branch `design/balloon-rose-hue`.
-> The 3 new splash-backdrop balloons (`index.html:48-50`, `.kq-splashdrift`)
-> use `hue-teal`/`hue-coral`/`hue-dusk` — 3 of the digit-balloon system's 4
-> hues, skipping rose, with no reasoning recorded anywhere for which 3 were
-> picked. Measured independently (canvas-reconstructed CSS gradient, sampled
-> at the digit's actual rendered centre — not eyeballed) that the digit-text
-> contrast on all 4 flattened hues clears the 3:1 large-text floor with real
-> margin (teal 3.97:1, rose 3.99:1, coral 3.60:1, dusk 4.26:1 vs. cream text)
-> — so this item is a palette-coherence question, not a contrast defect.
->
-> The splash's hero KidQ letters (K/i/d/Q = teal/gold/coral/dusk) keep their
-> original glossy 5-stop recipe untouched (per the balloon-rose-hue commit's
-> own note), while the backdrop balloons use the new flat/muted recipe — so
-> the same screen now renders the same hue names two different ways at once.
-> That may well be the right call (flatter recedes behind the hero, which is
-> the stated intent of `.kq-splashdrift`'s reduced opacity), but it isn't
-> documented as a deliberate reason — it reads as a side effect of reusing
-> whichever component was nearest in the code. Worth confirming intent
-> before this goes into `brand.md` as a documented pattern rather than an
-> accident that happened to look fine.
+The splash's hero KidQ letters (K/i/d/Q = teal/gold/coral/dusk) keep their
+original glossy 5-stop recipe untouched (per the balloon-rose-hue commit's
+own note), while the backdrop balloons use the new flat/muted recipe — so
+the same screen now renders the same hue names two different ways at once.
+That may well be the right call (flatter recedes behind the hero, which is
+the stated intent of `.kq-splashdrift`'s reduced opacity), but it isn't
+documented as a deliberate reason — it reads as a side effect of reusing
+whichever component was nearest in the code. Worth confirming intent
+before this goes into `brand.md` as a documented pattern rather than an
+accident that happened to look fine.
 
 **Resolved.** Both open questions are closed by the glow-backdrop work that
-landed on this branch the same day this item was ported: the splash now
-uses all four hues (a fourth, bottom-anchored balloon was added — nothing
-skipped, no reason needed), and the finish split is now a documented,
-deliberate figure/ground decision rather than a side effect — see the
-"Splash backdrop: night sky + glowing balloons" bullet in `brand.md` §5,
-which spells out exactly the flat-recedes/glossy-leads reasoning this item
-asked for. This branch's own splash backdrop no longer reads
-`hue-teal`/`hue-coral`/`hue-dusk` at all (that was this session's
-now-superseded WIP state, three balloons skipping rose) — it reads
-`hue-teal`/`hue-coral`/`hue-dusk`/`hue-rose`, one balloon per hue.
+landed on `design/balloon-rose-hue` the same week this item was filed: the
+splash now uses all four hues (a fourth, bottom-anchored balloon was
+added — nothing skipped, no reason needed), and the finish split is now a
+documented, deliberate figure/ground decision rather than a side effect —
+see the "Splash backdrop: night sky + glowing balloons" bullet in
+`brand.md` §5, which spells out exactly the flat-recedes/glossy-leads
+reasoning this item asked for. `design/balloon-rose-hue`'s splash backdrop
+no longer reads `hue-teal`/`hue-coral`/`hue-dusk` at all (that was the WIP
+state this item's finding describes, three balloons skipping rose) — it
+reads `hue-teal`/`hue-coral`/`hue-dusk`/`hue-rose`, one balloon per hue.
+
+### [x] 49. `#sleeping-sun`'s accessible name implies an action; tapping it gives no non-visual feedback
+**Screen: "The sun is still asleep!" (no-session state).** `#sleeping-sun`
+and `#waiting-moon` (`index.html:537,553`) are both real `<button>`s with
+accessible names, but their click handlers (`kidq-desktop-app.js:1479-1483`)
+only toggle a CSS wiggle/pop class — no text change, no ARIA live region,
+no other state change. A screen-reader user who activates
+`#sleeping-sun` (announced as "The sun is still sleeping — no videos
+picked yet") gets no confirmation anything happened.
+
+Low real-world priority for this product's typical audience (a 0-6 year
+old is not a screen-reader user), flagged because WCAG 2.1 AA is this
+project's pinned accessibility standard and the gap is real, not because
+it blocks anything today. The design intent behind these two buttons is
+sound and deliberately honest — a harmless fidget rather than a fake fix
+for "no videos" — this item is about the buttons' accessible surface, not
+their existence.
+
+**Fixed (2026-09-15).** Both handlers now also update a new visually-hidden
+`#no-session-announce` (`aria-live="polite"`), gentle-voice copy matching
+the screen's own tone — "The sun is still sleeping. Shh!" /
+"The moon is keeping watch. Shh!" — alongside the existing wiggle/pop.
+Verified live: the region's text updates on each tap, no console errors.
+
+**Repeat-tap gap caught in review, fixed same day.** An `aria-live` region
+only announces on a genuine text change — touching the same button twice in
+a row (the whole point of this screen's fidget) set identical text twice
+and went silent on the second touch, reproducing the exact gap this item
+closed. Fix: a shared `announceNoSession()` helper alternates a trailing
+NBSP on a repeated identical set, used by both handlers so they can't
+drift. Copy strings unchanged. Verified live: three consecutive taps on
+`#sleeping-sun` produced three different `textContent` values in a row.
+
+### [ ] 50. The session-strip cards' spring entrance still violates brand.md §4 — a previously self-identified violation that was never logged
+Run via `improve-animations` against the watching screen. `.kq-pickwrap`'s
+entrance (`kq-cardin`, `css:819-820`) uses a spring/overshoot easing
+(`cubic-bezier(.34,1.56,.64,1)`, 600ms) for cards simply arriving on
+screen — not one of brand.md §4's "earned" moments ("Default 400-600ms
+ease-out. No bounces or pops by default — springy moments are earned:
+sun tap, high five, break celebration"). The same shared class renders on
+three screens: the watching session strip, the after-break choice screen,
+and the all-done what's-next cards.
+
+**Not new** — an earlier impeccable audit in this project caught the exact
+same thing on the choice-screen cards and explicitly declined to fix it at
+the time ("Same violation pre-exists on `.kq-pickwrap` (choice cards) from
+an earlier round — precedent in the code, not in the brand. Don't treat
+that as licence."), but it was never turned into a tracked item — confirmed
+absent from this file before now. Logging it here closes that gap.
+
+**Fix:** swap `kq-cardin`'s easing to the documented default (400-600ms
+ease-out, no overshoot) everywhere `.kq-pickwrap` is used.
+
+### [ ] 51. The sun's arc position and day-bar knob snap per tick instead of easing, unlike the sky veils driven by the same timer
+Run via `improve-animations` against the watching screen. `positionSun()`
+(`js:408-427`) and the day-bar's knob/veil width are written via direct
+`el.style.left`/`top`/`width` on every `timeupdate`, with no CSS
+transition — layout-triggering, not compositor-only. The dawn/ember sky
+veils on the *same* screen, driven by the *same* timeupdate cadence,
+correctly use `transition:opacity .9s linear`/`.4s` (`css:70-74`) — good
+technique, confirmed not a "chasing a moving target" bug: a CSS transition
+correctly reroutes toward a continuously-changing value, which is exactly
+why the sky colour already reads as smooth despite discrete sampling. The
+sun and knob don't get the same treatment, so they snap on each tick
+instead of reading as continuous.
+
+**Why it's low-medium, not high:** ticks are likely frequent/small enough
+that the snapping isn't visible on typical hardware today. Flagged anyway
+because it's a real inconsistency inside the same file, and a
+`transform: translate()`-based position (instead of `left`/`top`) would be
+both smoother and cheaper on more constrained hardware — this product's
+own research names budget Android tablets as a real target device.
+
+**Fix:** add an easing transition to `.kq-sun`'s position and `.knob`'s
+position (matching the veils' pattern), or move both to a
+`transform`-based position update. Cheap to do alongside item 50 since
+both touch the same screen's motion code.
+
+### Missed opportunity, not logged as an item: instant pause/play and expand/shrink icon swaps
+Both use a hard `display:none`/`block` cut (`css:258-267`) rather than a
+crossfade — functional and common, not broken. Noted only because the
+`improve-animations` audit surfaces missed opportunities separately from
+defects; not recommending a fix by default given this brand's explicit
+stance against adding motion that isn't already there.
+
+### [x] 52. The all-done screen's completion moment has no `aria-live` coverage, unlike every break screen
+**Screen: All-done (high-five + what's-next).** The "Bye bye, Aarav!"
+headline swap and the "Give me five!" → "What a day!" text swap
+(`css:880-882,950-953`) both happen purely via `display:none`/`block`
+class toggles on `.hifived` — no `aria-live` region anywhere on this
+screen. This is the one place the pattern breaks: every break screen's
+phase-change headline (`find-headline`, `follow-headline`, `tree-headline`,
+`count-headline`, `breath-headline`) correctly uses `aria-live="polite"`,
+confirmed while reviewing those screens. A screen-reader user tapping (or
+being auto-advanced into, per item 38) the high-five gets the chime — audio
+feedback with no content — and nothing that actually announces what
+happened, at what is arguably the single highest-stakes moment in the
+session (the celebratory close).
+
+**Fix:** add `aria-live="polite"` to the container holding `#done-gn` and
+`.hf-say`, or a dedicated visually-hidden live region announcing something
+like "High five! Bye bye, Aarav!" on `.hifived`.
+
+**Fixed (2026-09-15).** Went with the dedicated region, not the container —
+`#done-gn`/`.hf-say` both swap via `.hifived` display toggles already, and
+piling `aria-live` on top of them risked either a double announcement or a
+race between the two text nodes. New visually-hidden `#done-announce`
+(`aria-live="polite"`) is set once, in `fiveUp()` itself, whether the tap
+landed or the auto-advance fired: "High five! What a day! Bye bye,
+{name}!". Verified live via a direct `#high-five` click: the region's text
+updates correctly (profile name interpolated), a second click is a no-op
+per the existing `hifived` guard, no console errors.
+
+**Repeat-completion gap caught in review, fixed same day.** A same-page
+restart reaching all-done twice would set the identical string on the
+second `fiveUp()`, going silent the same way item 49's repeat-tap did.
+Smallest fix: `startAllDone()` now clears `#done-announce` to `""`
+alongside its existing `.hifived` reset, so the next `fiveUp()` set is
+always a real change from empty. Verified the mechanism live (clear, then
+set the same string twice, confirming a genuine `textContent` transition
+each time) — driving a full second real session to all-done in one page
+load was attempted but hit an unrelated automation-environment stall
+(the `setTimeout` compression used to fast-forward the session froze the
+tab), so this is confirmed at the code/mechanism level per the reviewer's
+own stated fallback, not via two full live completions.
+
+### [x] 53. The cast screen's pause button and status pill are silent on state change, unlike the identical pattern on the watching screen
+**Screen: Cast (visual mock).** `#cast-pause` (`index.html:668`,
+`js:1504`) is visually identical to `#watch-pause` (same icon-swap
+pattern) but its `aria-label` is hardcoded to "Pause the video on the TV"
+and never updates. Compare `#watch-pause`, which correctly flips between
+"Pause"/"Resume" on every click (`js:654`) and also syncs on the browser's
+own pause/play events (item 39) — same component, two screens, one has
+the accessibility fix and the other doesn't, most likely lost when the
+cast screen's markup was adapted from the watching screen's.
+
+Same root cause, second location on the same screen: `.kq-castpill`'s
+"Playing on Living Room TV" / "Paused on TV" swap (`css:329-331`) is a
+plain class-toggled `display:none`/`inline`, no `aria-live`, same silent-
+status-swap shape as item 52.
+
+**Fix:** update `#cast-pause`'s `aria-label` on click, matching
+`#watch-pause`'s exact pattern; add `aria-live="polite"` to `.kq-castpill`
+(or fold the two spans into one live-updated text node).
+
+**Fixed (2026-09-15).** `#cast-pause`'s click handler now computes `pausing`
+and sets the `aria-label` from it, same shape as `#watch-pause`'s own
+handler — "Pause the video on the TV" / "Resume the video on the TV" (kept
+the screen's existing longer copy rather than shortening to bare "Pause"/
+"Resume", since cast has no player chrome around it for context the way
+watching does). Took the smaller pill option: `aria-live="polite"` straight
+on `.kq-castpill`, no restructuring of its two spans. Verified live:
+clicking toggles the label both directions and the `.paused` class in sync;
+the pill's visible span (`display:none`/`block`) swaps under the live
+region with no console errors.
+
+**Also confirmed while reviewing these screens (not an issue, stated for
+the record):** the letterboxed dark area visible in every screenshot this
+session is not a real layout bug — `getBoundingClientRect()` on `#app`
+confirms it fills the full 1920×997 viewport with no `max-width` cap. It's
+a display-scale artifact of this session's browser-automation tooling, not
+something a real user would see.
+
+### [x] 54. The splash screen's KidQ balloon letters aren't hidden from assistive tech, unlike every other decorative element in this app
+**Screen: Splash (KidQ balloon-letter intro).** The four letter spans
+(`<span class="balloon b1">K</span>` etc., `index.html:52`) have no
+`aria-hidden="true"` — inconsistent with the pattern everywhere else in
+this app: every decorative SVG (sun/moon rays, stars, clouds) carries
+`aria-hidden="true"`, and the tree/count break screens hide their entire
+digit-balloon container the same way (`index.html:344,382`). The section
+already carries `aria-label="KidQ is opening"` as its accessible name
+(`index.html:20`), so the four letters are redundant, unhidden content a
+screen reader could read out separately ("K", "i", "d", "Q") when
+navigating into the section.
+
+Confirmed the new splash-backdrop balloons (item 48) don't share this
+problem — their markup contains no text nodes at all, just empty
+body/knot/string spans, so there's nothing for a screen reader to read out.
+
+**Fix:** add `aria-hidden="true"` to each `.balloon-slot` (or one
+`aria-hidden` wrapper around all four).
+
+**Fixed (2026-09-15).** Added `aria-hidden="true"` to each of the four
+`.balloon-slot` spans directly (`index.html`) rather than a wrapper, since
+they're four sibling spans on one line with no existing container to hang
+it on. Verified live: all four read `aria-hidden="true"` in the DOM,
+zero visual change.
+
+**Also confirmed while reviewing this screen (not issues, stated for the
+record):** reduced-motion handling here is deliberate and already correct
+— a documented override (`css:1262-1263`) zeroes the letters' stagger
+delay under reduced motion so all four still visibly land before the
+screen advances, and the screen's own `later()`-driven auto-advance
+collapsing to ~200ms under reduced motion is appropriate here (unlike
+breathing's item 31) since this screen carries no information the child
+needs to perceive. Visually confirmed (forced render, screenshot) that the
+WIP splash-backdrop balloons from item 48 read as calm background accents
+behind the hero letters, not competing with them — achieves their stated
+design goal.
