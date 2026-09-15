@@ -1116,6 +1116,7 @@
   }
 
   function runHold1() {
+    setTreeCount(0);
     sayLine($("#voice-tree-count"), "5… 4… 3… 2… 1!");
     treeCount(() => {
       treeDots[0]?.classList.add("on");
