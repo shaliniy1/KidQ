@@ -497,11 +497,16 @@
   });
 
   // Recover from the browser's own background pause the moment the tab is
-  // back in view - never from a pause the child chose (userPaused wins).
+  // back in view - never from a pause the child chose (userPaused wins), and
+  // never from a video that's already ended: autoAdvance's swapping dip holds
+  // watching active for ~700ms with the old video paused-and-ended before the
+  // src swap lands, and attemptPlay on an ended video would seek to 0 and
+  // replay it for a split second. That case belongs to the ended flow, not
+  // to this recovery.
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState !== "visible") return;
     if (!watching.classList.contains("active")) return;
-    if (video.paused && !userPaused) attemptPlay(video);
+    if (video.paused && !video.ended && !userPaused) attemptPlay(video);
   });
 
   /* ---------- sunset → all done ---------- */

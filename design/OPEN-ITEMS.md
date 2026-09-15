@@ -532,8 +532,11 @@ reset whenever `startWatching()` starts a new video, is the one rule that
 matters here: **a deliberate pause by the child is never silently
 overridden.** A `visibilitychange` listener calls the existing `attemptPlay`
 when the tab returns to visible and the video is paused — but only when
-`!userPaused`, so the recovery only ever undoes the browser's own pause,
-never the child's.
+`!userPaused` and the video isn't already `ended` (the swapping dip between
+videos holds a paused-and-ended video on an active watching screen for
+~700ms, and `attemptPlay` on an ended video would seek to 0 and replay it
+briefly), so the recovery only ever undoes the browser's own mid-video
+pause, never the child's or the tail end of a finished video.
 
 Verified live in Chrome (`python -m http.server`, port 8471, the demo bar's
 "Sun: midday" jump straight to watching) at the state level, since
