@@ -806,3 +806,131 @@ could be driven deterministically instead of raced) and a one-line
 directly. All of this was removed before committing — `git diff` against
 this section's own commit carries none of it, and `node --check` was
 re-run clean afterward.
+
+---
+
+## The parent app's Sensory-friendly setting arrives (2026-09-15)
+
+### [x] 42. Sensory-friendly mode: forced reduce-motion + softer (never silent) audio (PARENT-KID-CONTRADICTIONS item 7)
+
+The KidQ Parent app has a family-wide **Sensory-friendly mode** setting:
+"softer sounds, calmer visuals, fewer transitions." This prototype only had
+half of that — a reduced-motion toggle, visual only, with jingle/chime
+volumes untouched regardless of its state.
+
+**Decided (parent cross-check, 2026-09-15): one kid-side flag, two
+effects.** Reduce-motion already delivers "calmer visuals, fewer
+transitions" — the existing `.reduce-motion` class + `reducedMotion`
+variable needed no new mechanism, only a way to force them. The real gap
+was sound, so the second effect is: **every audio element this file plays
+drops to ~40% volume.** Softer, never silent — the audio carries meaning
+(the autoplay-off nudge chime, item 40, is how a pre-reader knows it's
+their move; the find/breathe/follow instructions are how a low-vision or
+colour-blind child gets the instruction at all, per the spoken-instructions
+block above `say()`). Silencing any of it would trade one accessibility
+gap for another.
+
+**Built**, following the same config pattern as `autoplay`/`breakType`
+(items 40/41):
+- `sensoryFriendly` is a session-config field (default `false`), added to
+  `prepSession()`'s projection alongside `breakEveryMinutes`/`breakType` —
+  an unlisted field is silently dropped, so the default is applied right
+  there, once. Like `breakType`, it seeds a live module flag every time a
+  session starts (through `setSensoryFriendly()`, mirroring
+  `setBreakType()`), and the demo bar's own Sensory control then overrides
+  the live flag between `prepSession()` calls — a plain login or restart
+  always reflects the session's own config again, same as break type.
+- **Volume.** `SENSORY_VOLUME = 0.4` (a starting point, not a tuned value —
+  wants testing against real families, same caveat the parent cross-check
+  itself raises). Applied at *play time*, not once at load, in every play
+  helper this file has: `safePlay()` (jingle, chime), `sayLine()` (the
+  recorded follow-the-sun voice clips) and its `say()` fallback (device
+  TTS — `SpeechSynthesisUtterance.volume`, so a device with no clip, or a
+  blocked clip, still gets the softer instruction rather than a full-volume
+  one). Explicit `1` when the flag is off, not just "leave it alone" — that
+  is what restores full volume the moment sensory-friendly turns off, and
+  what keeps a stale `.volume` from a prior sensory-friendly session from
+  surviving into a new one.
+  **Judgment call, one extension beyond the brief's literal "audio
+  element" wording:** the follow-the-sun break's catch sound (`plip()`) is
+  real app audio too — two soft sine tones via Web Audio, not an `<audio>`
+  element and not routed through `safePlay`/`sayLine` — so it was silently
+  exempt from every reading of "audio element." Included it anyway,
+  scaling the gain envelope's peak by the same constant (a `GainNode` has
+  no `.volume` to set directly), on the reasoning that leaving exactly one
+  sound at full volume while everything else the app plays drops to 40%
+  would read as broken, not deliberate, and directly contradicts "this
+  covers ALL audio." Flagged here rather than assumed silently.
+  **Explicitly out of scope:** `video` itself. `startWatching()` already
+  sets `video.muted = true` unconditionally — "demo clips carry no needed
+  audio; jingle/chime are the sound design" (pre-existing comment) — so
+  there is no audio there for this flag to soften either way.
+- **Reduce-motion coupling.** Turning sensory-friendly ON forces
+  `reducedMotion` on: the variable, the root `.reduce-motion` class, and
+  `#motion-toggle`'s own pressed state/label, so the demo bar never shows a
+  lying control. This reuses `setReducedMotion()`, extracted out of
+  `#motion-toggle`'s click handler for exactly this purpose (previously
+  inline, now a named function called by both the manual toggle and the
+  sensory-friendly force/release) — including the existing "never restart
+  mid-ending" follow-break guard, unchanged. Turning sensory-friendly OFF
+  releases the force but does not stomp a reduce-motion the child's own
+  household had chosen independently before the force: `preSensoryMotion`
+  remembers whatever `reducedMotion` was live the moment the force was
+  applied, and release restores exactly that value, not `false`. Both the
+  force and the release are additionally guarded to a genuine value change
+  (`reducedMotion !== target`) before calling `setReducedMotion()` at all —
+  without that guard, releasing sensory-friendly back to an *unchanged*
+  motion value (the case where motion was independently on, stays on)
+  would still re-run `setReducedMotion()`'s follow-break-restart side
+  effect for no reason. OS-level `prefers-reduced-motion` (`reducedMotion`'s
+  own startup default) still governs the baseline underneath all of this —
+  noted in-code, not just here.
+- **Demo bar.** One new toggle, `#sensory-toggle`, "Sensory: Off"/"On",
+  placed right after `#motion-toggle`, following the exact
+  `aria-pressed`/label convention of `#autoplay-toggle`/`#motion-toggle`.
+
+**Contract note for the parent-side settings owner:** this arrives as a
+plain family-wide boolean, same shape as `breakType`/`breakEveryMinutes` —
+nothing new needed from the API beyond carrying the field through.
+
+**Verified:** `node --check`. Live in Chrome
+(`python -m http.server`, port 8561, killed after), instrumenting through
+the DOM rather than the closure-private module state (`sensoryFriendly`,
+`reducedMotion`, `preSensoryMotion` have no external hook) — reading
+`#jingle`/`#chime`'s own `.volume` after triggering their real play paths,
+and the root element's `.reduce-motion` class plus both toggle buttons'
+`aria-pressed`/label:
+- **Flag ON** (toggled mid-session, after `prepSession()` had already run
+  so the toggle wasn't immediately undone by another seed): root gained
+  `.reduce-motion`, `#motion-toggle` read pressed/"Motion reduced", and
+  both `#jingle` (via the sunrise tap) and `#chime` (via the find break's
+  "I found them!") read `.volume === 0.4` on the very next play after the
+  toggle.
+- **Flag OFF after ON, both pre-force states:** motion was off before the
+  force → off again after release, jingle/chime back to `.volume === 1`.
+  Motion was turned on *manually* before the force → confirmed it stayed
+  on after release (not reset to off), matching the "never stomp an
+  independent choice" rule.
+- **Session-config path:** temporarily added `sensoryFriendly: true` to
+  the demo `aarav` session data (removed before committing — `git diff`
+  carries none of it), reloaded, and started that session through the
+  ordinary Sunrise demo button with the `#sensory-toggle` control never
+  touched by hand. The flag came up already on, the demo bar's own label
+  read "Sensory: On" with no click involved, reduce-motion was forced, and
+  the next jingle played at `.volume === 0.4` — confirms `prepSession()`'s
+  projection seeds the live flag on its own, and that the demo bar's label
+  never drifts from what the session actually configured.
+- **Regression:** with the flag left off throughout, jingle/chime stayed
+  at `.volume === 1`, and `#motion-toggle` was independently exercised
+  mid-way through a live follow-the-sun break (unchanged behaviour, now
+  reached through the extracted `setReducedMotion()`) — the break stayed
+  on screen, not re-celebrating, exactly as before this diff.
+- No console errors across any of the above.
+
+Not independently instrumented live: `plip()`'s gain scaling and
+`SpeechSynthesisUtterance.volume` on the `say()` fallback. Both are
+read-once-at-call parameters with no queryable element to inspect
+afterward (unlike `<audio>`'s persistent `.volume`), so this is a
+code-level guarantee — the same `sensoryFriendly ? SENSORY_VOLUME : 1`
+expression already verified live for `safePlay`/`sayLine` — rather than
+something observed firing softer live in this environment.
