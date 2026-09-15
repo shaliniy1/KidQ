@@ -240,10 +240,14 @@ where the child left off is the alternative. Deferred once already.
 The strip lets a child switch video mid-session, which supersedes the group's
 earlier "no switching before completion". Already flagged, and easy to revert.
 
-### [ ] 20. Sync the phone mockups
-`kidq-mockups-v1.html` still shows the pre-round-3 design — "The End" card, "Up
-next" instead of the session strip, the old arc colour. Only worth doing if
-those frames are still referenced.
+### [x] 20. Sync the phone mockups
+**Moot — the file doesn't exist in this repo.** `kidq-mockups-v1.html` was a
+static design artifact from the pre-prototype phase, kept in a separate,
+non-git folder (`Downloads/KidQ/`) outside this repository; it was never
+committed here and this repo's `design/mockups/` only ever held the later
+desktop-pivot mockup. The actual up-to-date reference for child mode is
+`design/prototype/` itself — the live interactive build, which every round's
+PR work has kept current by construction. Nothing to sync.
 
 ### [~] 25. Can a small child actually get out of a break?
 A break ends on "Touch the sun for your next video", and nothing continues until
