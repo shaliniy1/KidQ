@@ -102,7 +102,7 @@ adjacencies this hero scale actually needs:
 | Element | Hex | Contrast |
 |---|---|---|
 | Petals | `#A8506E` (rose, the already-verified balloon palette) | 4.07–4.91:1 vs the three day-sky stops |
-| Flower centre disc | `sun-deep` `#F0A72E` (unchanged token) | 2.54:1 vs the rose petals — **under** this pairing's own 3:1 expectation; flagged, not silently patched (see below) |
+| Flower centre disc | `sun` `#FFC64D` (the token, not `sun-deep` — see below) | 3.33:1 vs the rose petals; face ink `#2E2A24` on it measures 9.12:1 |
 | Flame body | `sun-deep` `#F0A72E` (unchanged token) + a ~2px outline ring `#9C6A18` | 3.66–4.41:1 (the ring) vs the three day-sky stops |
 | Candle outline | `#6B6459` (`ink-soft`, unchanged token) | 4.57–5.52:1 vs the three day-sky stops |
 | Stem/leaf | `teal` `#1F7A6D` (unchanged token, reused as-is) | already covered above |
@@ -117,13 +117,14 @@ carries the WCAG 1.4.11 non-text floor instead. This is now an established
 pattern in this app, not a one-off: **gold content keeps its hue and earns
 contrast from an outline ring**, everywhere gold has to sit on the day sky.
 
-The centre-disc-vs-petals number (2.54:1) is logged here as an honest miss
-against its own stated expectation, not rounded up or re-coloured on the
-builder's own authority — the disc sits on the rose petals, not the sky, and
-whether that specific adjacency needs the 3:1 non-text floor (it is
-decoration-on-decoration, like the props' faces) or is already covered by
-the same WCAG 1.4.11 "essential presentation" exemption the find-a-colour
-swatches use is an open call for design review, not a self-evident one.
+**Resolved (2026-09-16, coordinator follow-up).** The centre disc first
+shipped as `sun-deep` `#F0A72E`, which measured only 2.54:1 against the
+rose petals — under this pairing's own 3:1 expectation, logged honestly
+rather than rounded up. Fix: swap to the `sun` token (`#FFC64D`) instead of
+inventing a new hex — 3.33:1 against the petals, clears the gate, and
+happens to match the centre sun's own disc colour as a bonus. Face ink
+stays legible on the lighter fill (9.12:1, more headroom than the gold
+pairing had). No open call remains on this adjacency.
 
 Supporting: arc/horizon stroke on day sky `#E4D6B8`; on sunrise sky
 `#FAF4E8` at 65% opacity; moon craters `#E4D6B8`; night cloud `#454179`.

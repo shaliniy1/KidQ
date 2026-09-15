@@ -1724,14 +1724,16 @@ Petals rose `#A8506E`, candle outline `#6B6459`, stem/leaf teal — all as
 spec'd, unchanged. **Full re-measurement** (scratchpad Python/WCAG
 contrast-ratio script): rose, the new gold-outline ring, and the candle
 outline all clear ≥3.54:1 against every sky stop (rose 4.07–4.91:1,
-`#9C6A18` outline 3.66–4.41:1, `#6B6459` outline 4.57–5.52:1). One number
-does **not** clear its own expectation: the flower's gold centre disc
-against the rose petals (the spec's own sanity check for that specific
-pairing) measures **2.54:1 — under the 3:1 the spec named**, logged here
-rather than silently patched or re-coloured. Flagged to the coordinator;
-decision pending. (Face-ink-on-gold, a different pairing the spec also
-cites, is unaffected — that one measures well over 7:1, the balloon-digit
-precedent.)
+`#9C6A18` outline 3.66–4.41:1, `#6B6459` outline 4.57–5.52:1).
+
+**Resolved (2026-09-16, coordinator follow-up).** The flower's centre disc
+was flagged here at first build as an honest miss: `sun-deep` `#F0A72E`
+against the rose petals measured 2.54:1, under the 3:1 the spec named for
+that pairing. Fix: the disc swaps to `sun` `#FFC64D` (the token, not a new
+hex) — measures **3.33:1** against the rose petals, clearing the gate, and
+happens to match the centre sun's own disc colour as a bonus. Face ink
+`#2E2A24` on `#FFC64D` stays legible at **9.12:1** (even better than the
+gold pairing's own headroom). No open call remains on this pairing.
 
 **Bug caught in my own verification, fixed before commit:** the round dot
 was filling at blow-PHASE-START instead of blow-phase-END (spec §4), a

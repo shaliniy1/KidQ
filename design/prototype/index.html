@@ -284,7 +284,13 @@
               <ellipse cx="51" cy="49" rx="7" ry="10.5" fill="#A8506E" transform="rotate(144 51 49)"/>
               <ellipse cx="35" cy="49" rx="7" ry="10.5" fill="#A8506E" transform="rotate(-144 35 49)"/>
               <ellipse cx="30" cy="33" rx="7" ry="10.5" fill="#A8506E" transform="rotate(-72 30 33)"/>
-              <circle cx="43" cy="38" r="8" fill="#F0A72E"/>
+              <!-- Centre disc: `sun` token `#FFC64D`, not `sun-deep` `#F0A72E`
+                   (spec §3 amendment, coordinator verdict 2026-09-16, closing
+                   the 2.54:1 miss logged at build time): measures 3.33:1
+                   against the rose petals, clearing the ≥3:1 gate, and
+                   matches the centre sun's own disc colour as a bonus. Face
+                   ink stays legible on it (9.12:1). -->
+              <circle cx="43" cy="38" r="8" fill="#FFC64D"/>
               <!-- flower face (spec §3): closed-curve happy eyes + smile, ink
                    #2E2A24, no blush (clouds/sunrise-sun precedent) - static,
                    the petals carry the motion, so no phase-scoped rule below. -->
