@@ -429,16 +429,33 @@ export const recommendationSchema = registry.register(
   z.object({ rank: z.number(), final_score: z.number(), relevance: z.number(), cold_start: z.boolean(), why: z.array(z.string()), card: contentCardSchema }),
 );
 
-export const libraryBody = z.object({ content_item_id: z.uuid(), state: z.enum(["ADDED", "DISMISSED"]).default("ADDED") });
+export const libraryBody = z.object({ content_item_id: z.uuid(), state: z.enum(["ADDED", "DISMISSED"]).default("ADDED"), position: z.number().int().min(0).optional() });
 
 export const libraryItemSchema = z.object({
   state: z.enum(["ADDED", "REQUESTED", "DISMISSED"]),
   awaiting_review: z.boolean(),
   updated_at: z.string(),
+  position: z.number().nullable(),
   card: contentCardSchema,
+  activity_breakpoints: z.array(z.object({ timestamp_seconds: z.number().int().min(0), activity_id: z.uuid() })),
 });
 
-export const submissionBody = z.object({ url: z.string().min(5).max(500) });
+export const activitySchema = registry.register(
+  "ParentActivity",
+  z.object({
+    id: z.uuid(),
+    key: z.string(),
+    title: z.string(),
+    category: z.enum(["MOVING", "CALMER"]),
+    instruction: z.string(),
+    duration_seconds: z.number().int().positive(),
+  }),
+);
+
+export const activityBreakpointSchema = z.object({ timestamp_seconds: z.number().int().min(0), activity_id: z.uuid() });
+export const activityBreakpointsBody = z.object({ breakpoints: z.array(activityBreakpointSchema).max(30) });
+
+export const submissionBody = z.object({ url: z.string().min(5).max(500), visibility: z.enum(["PRIVATE", "PUBLIC_CANDIDATE"]).default("PUBLIC_CANDIDATE") });
 
 export const submissionSchema = z.object({
   id: z.uuid(),
@@ -447,6 +464,7 @@ export const submissionSchema = z.object({
   error: nullableString,
   created_at: z.string(),
   assessment: z.enum(["PENDING", "SCORED", "APPROVED", "REJECTED", "NEEDS_REVIEW"]).nullable(),
+  visibility: z.enum(["PRIVATE", "PUBLIC_CANDIDATE"]),
   card: z.union([contentCardSchema, z.null()]),
 });
 
@@ -499,13 +517,14 @@ export const sessionSchema = registry.register(
             duration_seconds: z.number(),
           })
           .nullable(),
-        items: z.array(
+          items: z.array(
           z.object({
             id: z.uuid(),
             position: z.number(),
             outcome: z.enum(["COMPLETED", "SKIPPED", "EXITED"]).nullable(),
             watched_seconds: z.number().nullable(),
             position_seconds: z.number().nullable().describe("Where the video last stopped"),
+            activity_breakpoints: z.array(activityBreakpointSchema),
             card: contentCardSchema,
           }),
         ),
@@ -525,6 +544,8 @@ export const submissionPreviewSchema = z.object({
   channel: nullableString,
   category: nullableString.describe("The admin category KidQ would suggest"),
   parent_category: nullableString,
+  score: z.number().nullable(),
+  reason: nullableString,
   kidq_check: z.object({
     status: z.enum(["REVIEWED", "CHECKING", "NOT_CHECKED"]),
     dimensions: z.array(z.object({ key: z.enum(COMPONENTS), label: z.string(), summary: z.string() })),

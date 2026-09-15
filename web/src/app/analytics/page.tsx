@@ -104,6 +104,7 @@ export default function AnalyticsPage() {
             ))}
           </div>
         </div>
+        <p className={styles.privacyNote}>Your family&apos;s viewing data stays inside KidQ&apos;s own analytics system. We do not sell it or share it outside KidQ.</p>
       </section>
 
       {error ? (

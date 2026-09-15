@@ -31,6 +31,9 @@ import {
   sessionStartBody,
   submissionBody,
   submissionSchema,
+  activitySchema,
+  activityBreakpointsBody,
+  activityBreakpointSchema,
 } from "../http/schemas";
 import * as parents from "../services/parents";
 import * as analytics from "../services/analytics";
@@ -38,6 +41,12 @@ import * as sessions from "../services/sessions";
 
 export const parentRouter = Router();
 const roles: Array<"parent" | "admin"> = ["parent", "admin"];
+
+defineRoute(
+  parentRouter,
+  { method: "get", path: "/activities", summary: "Live activities available for parent-authored video breaks", tag: "Library", roles, response: z.object({ moving: z.array(activitySchema), calmer: z.array(activitySchema) }) },
+  async () => parents.listParentActivities(),
+);
 
 defineRoute(
   parentRouter,
@@ -133,6 +142,21 @@ defineRoute(
 defineRoute(
   parentRouter,
   {
+    method: "put",
+    path: "/children/:id/library/:contentItemId/breakpoints",
+    summary: "Replace the optional activity breaks for one library content item",
+    tag: "Library",
+    roles,
+    params: childItemParams,
+    body: activityBreakpointsBody,
+    response: z.object({ content_item_id: z.uuid(), activity_breakpoints: z.array(activityBreakpointSchema) }),
+  },
+  async ({ user, params, body }) => parents.saveActivityBreakpoints(user, params.id, params.contentItemId, body.breakpoints),
+);
+
+defineRoute(
+  parentRouter,
+  {
     method: "post",
     path: "/children/:id/library",
     summary: "Add (or dismiss with 'Not now') an item. Unapproved own submissions become REQUESTED.",
@@ -143,7 +167,7 @@ defineRoute(
     response: z.object({ content_item_id: z.uuid(), state: z.string(), awaiting_review: z.boolean() }),
     status: 201,
   },
-  async ({ user, params, body }) => parents.setLibraryState(user, params.id, body.content_item_id, body.state),
+  async ({ user, params, body }) => parents.setLibraryState(user, params.id, body.content_item_id, body.state, body.position),
 );
 
 defineRoute(
@@ -173,7 +197,7 @@ defineRoute(
     response: submissionSchema,
     status: 202,
   },
-  async ({ user, params, body }) => parents.submitUrl(user, params.id, body.url),
+  async ({ user, params, body }) => parents.submitUrl(user, params.id, body.url, body.visibility),
 );
 
 defineRoute(

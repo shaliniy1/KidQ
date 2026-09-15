@@ -401,7 +401,7 @@ export async function getLibrary(user: AuthUser, childId: string) {
   await childRow(user, childId);
   const db = getPool();
   const { rows } = await db.query(
-    "SELECT content_item_id, state, updated_at FROM library_items WHERE child_profile_id = $1 AND state IN ('ADDED', 'REQUESTED') ORDER BY updated_at DESC",
+    "SELECT content_item_id, state, updated_at, activity_breakpoints, position FROM library_items WHERE child_profile_id = $1 AND state IN ('ADDED', 'REQUESTED') ORDER BY position NULLS LAST, updated_at DESC",
     [childId],
   );
   const cards = await getCardRows(db, rows.map((row) => row.content_item_id), { approvedOnly: false });
@@ -414,12 +414,55 @@ export async function getLibrary(user: AuthUser, childId: string) {
       if (row.state === "ADDED" && !approved) return [];
       const awaiting = row.state === "REQUESTED";
       const card = toCard(cardRow);
-      return [{ state: row.state, awaiting_review: awaiting, updated_at: toIso(row.updated_at), card: awaiting ? { ...card, player: null } : card }];
+      return [{ state: row.state, awaiting_review: awaiting, updated_at: toIso(row.updated_at), position: row.position ?? null, activity_breakpoints: row.activity_breakpoints ?? [], card: awaiting ? { ...card, player: null } : card }];
     }),
   };
 }
 
-export async function setLibraryState(user: AuthUser, childId: string, contentItemId: string, requested: "ADDED" | "DISMISSED") {
+/** Only live, Kid-implemented activities are exposed to parents. */
+export async function listParentActivities() {
+  const rows = (await getPool().query(
+    `SELECT id, key, title, instruction, duration_seconds, break_type
+       FROM activities
+      WHERE key IS NOT NULL AND break_type IN ('MOVEMENT', 'QUIET') AND duration_seconds > 0
+      ORDER BY break_type, title`,
+  )).rows;
+  return {
+    moving: rows.filter((row) => row.break_type === "MOVEMENT").map((row) => ({ ...row, category: "MOVING" as const })),
+    calmer: rows.filter((row) => row.break_type === "QUIET").map((row) => ({ ...row, category: "CALMER" as const })),
+  };
+}
+
+export async function saveActivityBreakpoints(
+  user: AuthUser,
+  childId: string,
+  contentItemId: string,
+  breakpoints: Array<{ timestamp_seconds: number; activity_id: string }>,
+) {
+  await childRow(user, childId);
+  const db = getPool();
+  const item = (await db.query(
+    `SELECT li.activity_breakpoints, ci.duration_seconds, ci.current_status
+       FROM library_items li JOIN content_items ci ON ci.id = li.content_item_id
+      WHERE li.child_profile_id = $1 AND li.content_item_id = $2 AND li.state IN ('ADDED', 'REQUESTED')`,
+    [childId, contentItemId],
+  )).rows[0];
+  if (!item) throw notFound("Library content item");
+  if (item.current_status !== "APPROVED") throw new ApiError(409, "CONTENT_NOT_PLAYABLE", "Activity breaks can be set once this content is approved.");
+  const duration = item.duration_seconds as number | null;
+  const ids = [...new Set(breakpoints.map((point) => point.activity_id))];
+  const activities = (await db.query("SELECT id FROM activities WHERE id = ANY($1) AND key IS NOT NULL AND break_type IN ('MOVEMENT', 'QUIET')", [ids])).rows;
+  if (activities.length !== ids.length) throw new ApiError(400, "ACTIVITY_NOT_AVAILABLE", "One or more selected activities are not available.");
+  if (duration === null) throw new ApiError(400, "DURATION_REQUIRED", "This content has no known video duration.");
+  const ordered = [...breakpoints].sort((a, b) => a.timestamp_seconds - b.timestamp_seconds);
+  if (ordered.some((point, index) => point.timestamp_seconds >= duration || (index > 0 && point.timestamp_seconds === ordered[index - 1].timestamp_seconds))) {
+    throw new ApiError(400, "BREAKPOINT_OUTSIDE_DURATION", "Activity time is outside the video duration or duplicates another break.");
+  }
+  await db.query("UPDATE library_items SET activity_breakpoints = $3::jsonb, updated_at = now() WHERE child_profile_id = $1 AND content_item_id = $2", [childId, contentItemId, JSON.stringify(ordered)]);
+  return { content_item_id: contentItemId, activity_breakpoints: ordered };
+}
+
+export async function setLibraryState(user: AuthUser, childId: string, contentItemId: string, requested: "ADDED" | "DISMISSED", position?: number) {
   await childRow(user, childId);
   const db = getPool();
   const item = (await db.query("SELECT current_status FROM content_items WHERE id = $1", [contentItemId])).rows[0];
@@ -428,9 +471,9 @@ export async function setLibraryState(user: AuthUser, childId: string, contentIt
   // A parent's own unapproved submission waits for an admin before the child can see it.
   const state = requested === "ADDED" && !approved ? "REQUESTED" : requested;
   await db.query(
-    `INSERT INTO library_items (child_profile_id, content_item_id, state) VALUES ($1, $2, $3)
-     ON CONFLICT (child_profile_id, content_item_id) DO UPDATE SET state = EXCLUDED.state, updated_at = now()`,
-    [childId, contentItemId, state],
+    `INSERT INTO library_items (child_profile_id, content_item_id, state, position) VALUES ($1, $2, $3, $4)
+     ON CONFLICT (child_profile_id, content_item_id) DO UPDATE SET state = EXCLUDED.state, position = COALESCE(EXCLUDED.position, library_items.position), updated_at = now()`,
+    [childId, contentItemId, state, position ?? null],
   );
   if (state === "REQUESTED") {
     await db.query("UPDATE outbox_events SET priority = GREATEST(priority, $2) WHERE dedupe_key = $1 AND status = 'PENDING'", [
@@ -468,11 +511,12 @@ function toSubmission(row: Row, cardRow: Row | undefined) {
     error: row.error,
     created_at: toIso(row.created_at),
     assessment: assessmentState(cardRow),
+    visibility: row.visibility ?? "PUBLIC_CANDIDATE",
     card: card && cardRow?.current_status !== "APPROVED" ? { ...card, player: null } : card,
   };
 }
 
-export async function submitUrl(user: AuthUser, childId: string, url: string) {
+export async function submitUrl(user: AuthUser, childId: string, url: string, visibility: "PRIVATE" | "PUBLIC_CANDIDATE" = "PUBLIC_CANDIDATE") {
   await childRow(user, childId);
   const db = getPool();
   const today = (
@@ -516,9 +560,9 @@ export async function submitUrl(user: AuthUser, childId: string, url: string) {
 
   const submission = (
     await db.query(
-      `INSERT INTO content_submissions (parent_user_id, child_profile_id, url, content_item_id, status)
-       VALUES ($1, $2, $3, $4, 'ACCEPTED') RETURNING *`,
-      [user.id, childId, url, contentItemId],
+      `INSERT INTO content_submissions (parent_user_id, child_profile_id, url, content_item_id, status, visibility)
+       VALUES ($1, $2, $3, $4, 'ACCEPTED', $5) RETURNING *`,
+      [user.id, childId, url, contentItemId, visibility],
     )
   ).rows[0];
   const cards = await getCardRows(db, [contentItemId], { approvedOnly: false });
@@ -562,6 +606,8 @@ export async function previewSubmission(user: AuthUser, childId: string, url: st
       channel: card.creator,
       category: card.category,
       parent_category: card.parent_category,
+      score: card.content_score?.score ?? null,
+      reason: card.content_score?.reason ?? null,
       kidq_check: { ...toKidqCheck(row), note: null },
     };
   }
@@ -579,6 +625,8 @@ export async function previewSubmission(user: AuthUser, childId: string, url: st
     channel: record.creator,
     category,
     parent_category: groupOf(groups, category),
+    score: null,
+    reason: "KidQ will score this item after it is added.",
     kidq_check: { status: "NOT_CHECKED" as const, dimensions: [], note: "KidQ checks this video after you add it." },
   };
 }
