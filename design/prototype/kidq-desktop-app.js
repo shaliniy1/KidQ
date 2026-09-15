@@ -71,6 +71,13 @@
 
   let timers = [];
   let reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  // Stands in for the KidQ Parent app's per-family "Autoplay" toggle ("Play the
+  // next video automatically within a session"). Default ON, matching today's
+  // shipped behaviour exactly - flipping it off must change nothing about the
+  // ON path (item 40). Session-level like reducedMotion above: a plain
+  // variable, not part of `state`, so switching profiles or restarting the
+  // demo flow does not reset it. Flipped by the demo bar's Autoplay control.
+  let autoplay = true;
   const later = (fn, ms) => { const id = setTimeout(fn, reducedMotion ? Math.min(ms, 200) : ms); timers.push(id); return id; };
   // Phase timing for activity breaks. Unlike later(), this does NOT clamp under
   // reduced motion: a 1.5s hold in a break is the activity itself, not a
@@ -430,7 +437,11 @@
     renderStrip();
     if (unwatched().length === 0) startSunset(false);
     else if (breakIsDue()) startPlaytimeSeam();
-    else autoAdvance();
+    else if (autoplay) autoAdvance();
+    // Autoplay off (item 40): no auto dip - land on the same choice screen a
+    // break sends the child to, sun plus the remaining parent picks, and let
+    // startChoice() decide there's no CHOICE_AUTO_MS timer to schedule.
+    else startChoice();
   });
 
   // Keep the UI honest about the video's real state, whatever caused the
@@ -462,17 +473,21 @@
 
   // The parent's picks play through on their own: one video rolls into the next
   // after a short dip, with no tap. This is not feed autoplay - the list is
-  // finite, parent-chosen, and still ends at sunset.
+  // finite, parent-chosen, and still ends at sunset. This is the AUTOPLAY-ON
+  // path only (the `ended` handler above only calls this when `autoplay` is
+  // true) - it is exactly today's shipped behaviour and item 40 must not
+  // change a byte of it.
   //
-  // Breaks are still the exception: the choice screen after a break (startChoice,
-  // below) waits indefinitely for a tap and does not advance on its own. Adding
-  // that too, after a pause, is DECIDED but NOT YET BUILT - see OPEN-ITEMS.md
-  // item 25 for the full reasoning; it lives unreconciled on the separate
-  // design/autoplay-item25 branch (commit 9836604), not in this file (final
-  // review I2). Until it lands, a child who does not realise it is their move
-  // is stranded on the choice screen, and on a cast TV the device that can tap
-  // may not even be in the room. A tap still wins once it lands: it picks the
-  // video, and picking a card picks a different one.
+  // Breaks used to be the exception here too: the choice screen after a break
+  // (startChoice, below) waited indefinitely for a tap. Item 25 gave it its own
+  // self-advance (CHOICE_AUTO_MS, in startChoice) so a child who doesn't
+  // realise it's their move - or, on a cast TV, whose device isn't even in the
+  // room - isn't stranded there either; that's now built, not just decided.
+  // Item 40 makes CHOICE_AUTO_MS itself conditional on this same `autoplay`
+  // flag: off, the choice screen nudges instead of timing out (see
+  // scheduleNudge near startChoice). A tap still wins the instant it lands,
+  // on every path: it picks the video, and picking a card picks a different
+  // one.
   //
   // No jingle here: the jingle marks a child's choice, and this isn't one. If the
   // child taps a different card during the dip, their startWatching clears this
@@ -887,6 +902,41 @@
   const choiceScreen = $("#screen-choice");
   const choiceSun = $("#choice-sun");
   const CHOICE_AUTO_MS = 4000; // item 25: choice screen self-advances if no tap. ~4s is a starting point to tune against a real child.
+
+  // Item 40: with the parent's Autoplay setting off, this screen has no
+  // CHOICE_AUTO_MS timer to fall back on - so, same worry item 25 raised, a
+  // pre-reader who doesn't realise it's their move could be left sitting here
+  // forever. Instead of a timeout, the sun nudges itself: a first attention
+  // beat at ~7s, then every ~15s after that, for as long as the child sits
+  // here. It never advances anything on its own - only a tap does that - so
+  // "forever" is fine here in a way it wasn't for CHOICE_AUTO_MS.
+  //
+  // The beat reuses pop()'s existing squash-stretch (the same animation a
+  // real tap produces elsewhere in the app) rather than inventing new motion,
+  // plus a soft audio cue. hold(), not later(): the delay IS the nudge, not a
+  // transition, so it must not clamp to 200ms under reduced motion - same
+  // reasoning as CHOICE_AUTO_MS and HIFIVE_AUTO_MS.
+  //
+  // No cancellation wiring needed here: a tap (sun or a card) runs
+  // startWatching -> showScreen -> clearTimers, and so does every demo-bar
+  // jump away from this screen - both already wipe whatever hold() is
+  // pending, CHOICE_AUTO_MS's or this one's, exactly the same way.
+  //
+  // Audio placeholder: there's no recorded "Tap the sun for your next video"
+  // line in the repo - voice-follow-intro/-done are follow-the-sun specific -
+  // so this reuses the soft sunset chime for now. TODO(production): record a
+  // spoken "Tap the sun for your next video" line for pre-readers, in the
+  // same voice as the other clips, and play it here via sayLine() the way
+  // startFollow does for its own intro line.
+  const NUDGE_FIRST_MS = 7000, NUDGE_REPEAT_MS = 15000;
+  function scheduleNudge(ms) {
+    hold(() => {
+      pop(choiceSun);
+      safePlay(chime);
+      scheduleNudge(NUDGE_REPEAT_MS);
+    }, ms);
+  }
+
   function startChoice() {
     // No video left: the day is over, and the decided flow ends at the moon -
     // sunset, then the all-done screen. A choice screen with nothing to choose
@@ -922,7 +972,10 @@
     showScreen("screen-choice");
     // No jingle: the jingle marks a child's choice, and this isn't one. A card tap
     // runs startWatching -> showScreen -> clearTimers, which cancels this pending timer.
-    hold(() => { const next = unwatched()[0]; if (next) startWatching(next); }, CHOICE_AUTO_MS);
+    if (autoplay) hold(() => { const next = unwatched()[0]; if (next) startWatching(next); }, CHOICE_AUTO_MS);
+    // Autoplay off (item 40): never schedule CHOICE_AUTO_MS - nudge instead,
+    // see scheduleNudge above.
+    else scheduleNudge(NUDGE_FIRST_MS);
   }
   choiceSun.addEventListener("click", () => {
     if (!choiceScreen.classList.contains("active")) return;
@@ -953,6 +1006,11 @@
   // child's OWN choice), the chime here already plays on other non-tap moments
   // elsewhere in the app (e.g. startSunset), so it stays on for the auto path too
   // - the day still earns its send-off whether or not the five landed.
+  //
+  // Deliberately NOT gated by the `autoplay` flag added for item 40: this
+  // timer ends the session, it doesn't advance content, so the parent's
+  // Autoplay setting ("play the next video automatically") has no opinion
+  // about it either way.
   const HIFIVE_AUTO_MS = 4000; // starting point to tune against a real child, same as item 25
   function fiveUp() {
     if (allDone.classList.contains("hifived")) return;
@@ -1070,6 +1128,20 @@
   }));
 
   $("#restart-flow").addEventListener("click", () => { clearTimers(); video.pause(); startSplash(); });
+
+  // Item 40: previews the KidQ Parent app's per-family Autoplay setting.
+  // Just flips the flag - it's read fresh at each decision point (the `ended`
+  // handler, startChoice's own scheduling) the next time one is reached, the
+  // same way reducedMotion below is. A timer already scheduled under the old
+  // value (an in-flight autoAdvance dip, a pending CHOICE_AUTO_MS, an
+  // already-running nudge chain) runs to completion rather than being torn
+  // down mid-flight; each still gets cleared by its own tap or screen change
+  // via clearTimers(), same as always, so nothing is left stale.
+  $("#autoplay-toggle").addEventListener("click", (e) => {
+    autoplay = !autoplay;
+    e.currentTarget.setAttribute("aria-pressed", String(!autoplay));
+    e.currentTarget.textContent = autoplay ? "Autoplay: On" : "Autoplay: Off";
+  });
 
   $("#motion-toggle").addEventListener("click", (e) => {
     reducedMotion = !reducedMotion;
