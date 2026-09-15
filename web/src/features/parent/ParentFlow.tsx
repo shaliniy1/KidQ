@@ -8,6 +8,9 @@ import { devSignIn, hasSession, signInWithGoogle, usingDevLogin } from "@/lib/se
 import { fetchSessionRouting } from "@/services/auth";
 import { getMe, submitOnboarding, type ChildProfile, type OnboardingChild } from "@/services/child-profile";
 import { getRecommendations as fetchRecommendations, addToLibrary, type Recommendation } from "@/services/recommendations";
+import { getLibrary, removeFromLibrary, submitVideo } from "@/services/my-videos";
+import { getCurationSettings, saveCurationSettings, type CurationSettings } from "@/services/curation-settings";
+import { getLocalPreferences, saveLocalPreferences, type LocalPreferences } from "@/services/local-preferences";
 
 type Screen = "login" | "home" | "profile" | "confirmation" | "preferences" | "interests" | "content" | "regulation" | "screentime" | "voice" | "guided" | "recommendation" | "playlist" | "addContent" | "planReady" | "preview" | "session" | "complete" | "details" | "insights" | "library" | "add" | "settings";
 type Child = { id: string; name: string; age: string; color: string; duration: number };
@@ -53,7 +56,7 @@ export default function ParentFlow() {
   const [busy, setBusy] = useState(false);
   const [newVideo, setNewVideo] = useState("");
   const [newVideoPublic, setNewVideoPublic] = useState(false);
-  const [library, setLibrary] = useState(videos);
+  const [library, setLibrary] = useState<{ id: string; title: string }[]>([]);
   const [range, setRange] = useState("week");
   const [timeMode, setTimeMode] = useState("Auto");
   const [recommendations, setRecommendations] = useState<ParentRecommendation[]>([]);
@@ -162,6 +165,23 @@ export default function ParentFlow() {
     }
   }
 
+  async function loadLibrary() {
+    if (child) {
+      try {
+        const entries = await getLibrary(child.id);
+        setLibrary(entries.map((entry) => ({ id: entry.card.id, title: entry.card.title })));
+      } catch {
+        // Keep whatever was already shown if the fetch fails.
+      }
+    }
+    setScreen("library");
+  }
+
+  function removeFromLibraryList(id: string) {
+    setLibrary((items) => items.filter((item) => item.id !== id));
+    if (child) removeFromLibrary(child.id, id).catch(() => undefined);
+  }
+
   async function confirmRecommendations() {
     if (!child || busy) return;
     const chosen = recommendations.filter((item) => selectedRecommendations.includes(item.id));
@@ -183,7 +203,7 @@ export default function ParentFlow() {
         <button className={screen === "recommendation" || screen === "playlist" ? styles.activeNav : ""} onClick={loadRecommendations}>Recommendations</button>
         <button className={screen === "details" ? styles.activeNav : ""} onClick={() => setScreen("details")}>Insight log</button>
         <button className={screen === "insights" ? styles.activeNav : ""} onClick={() => setScreen("insights")}>Insights</button>
-        <button className={screen === "library" || screen === "add" ? styles.activeNav : ""} onClick={() => setScreen("library")}>My Videos</button>
+        <button className={screen === "library" || screen === "add" ? styles.activeNav : ""} onClick={loadLibrary}>My Videos</button>
         <button className={screen === "settings" ? styles.activeNav : ""} onClick={() => setScreen("settings")}>Settings</button>
       </nav>
       <Link className={styles.kidLink} href="/kid">View kid mode</Link>
@@ -191,7 +211,7 @@ export default function ParentFlow() {
     </header>}
 
     <div className={styles.shellFrame}>
-    {screen !== "login" && <aside className={styles.desktopSidebar} aria-label="Parent workspace navigation"><div className={styles.sidebarTitle}>KidQ</div><div className={styles.sidebarLabel}>Workspace</div><button onClick={() => setScreen("home")}>▶ <span>Start a session</span></button><button onClick={() => setScreen("profile")}>＋ <span>First-time setup</span></button><button onClick={loadRecommendations}>✦ <span>Recommendations</span></button><button onClick={() => setScreen("insights")}>◔ <span>Analytics</span></button><button onClick={() => setScreen("library")}>▣ <span>My videos</span></button><button onClick={() => setScreen("settings")}>☼ <span>Preferences</span></button></aside>}
+    {screen !== "login" && <aside className={styles.desktopSidebar} aria-label="Parent workspace navigation"><div className={styles.sidebarTitle}>KidQ</div><div className={styles.sidebarLabel}>Workspace</div><button onClick={() => setScreen("home")}>▶ <span>Start a session</span></button><button onClick={() => setScreen("profile")}>＋ <span>First-time setup</span></button><button onClick={loadRecommendations}>✦ <span>Recommendations</span></button><button onClick={() => setScreen("insights")}>◔ <span>Analytics</span></button><button onClick={loadLibrary}>▣ <span>My videos</span></button><button onClick={() => setScreen("settings")}>☼ <span>Preferences</span></button></aside>}
     <div className={styles.shell}>
       {screen === "login" && <Login google={handleGoogleSignIn} firstTime={handleFirstTimeSignIn} />}
       {screen === "home" && child && <Home child={child} active={active} children={children} duration={duration} timeMode={timeMode} setTimeMode={setTimeMode} chooseChild={chooseChild} setDuration={setDuration} getRecommendations={loadRecommendations} setScreen={setScreen} parentName={parentName} />}
@@ -213,12 +233,12 @@ export default function ParentFlow() {
       {screen === "complete" && child && <Complete child={child} done={() => setScreen("home")} details={() => setScreen("details")} />}
       {screen === "details" && child && <Details child={child} library={library} back={() => setScreen("complete")} />}
       {screen === "insights" && child && <Insights child={child} active={active} children={children} range={range} setRange={setRange} chooseChild={chooseChild} />}
-      {screen === "library" && child && <Library child={child} children={children} library={library} remove={(title) => setLibrary((items) => items.filter((item) => item !== title))} add={() => setScreen("add")} />}
-      {screen === "add" && <AddVideo value={newVideo} setValue={setNewVideo} isPublic={newVideoPublic} setIsPublic={setNewVideoPublic} back={() => setScreen("library")} save={() => { setLibrary((items) => [...items, newVideo || "A new family video"]); setNewVideo(""); setNewVideoPublic(false); setScreen("library"); }} />}
+      {screen === "library" && child && <Library child={child} children={children} library={library} remove={removeFromLibraryList} add={() => setScreen("add")} />}
+      {screen === "add" && <AddVideo value={newVideo} setValue={setNewVideo} isPublic={newVideoPublic} setIsPublic={setNewVideoPublic} back={loadLibrary} save={async () => { if (child && newVideo.trim()) { try { await submitVideo(child.id, newVideo.trim(), newVideoPublic ? "PUBLIC_CANDIDATE" : "PRIVATE"); } catch { /* best-effort */ } } setNewVideo(""); setNewVideoPublic(false); await loadLibrary(); }} />}
       {screen === "settings" && child && <Settings child={child} openPreferences={() => setScreen("preferences")} />}
     </div>
     </div>
-    <nav className={styles.mobileTabs} aria-label="Mobile parent navigation"><button onClick={() => setScreen("home")}>▶<small>Start</small></button><button onClick={loadRecommendations}>✦<small>Recs</small></button><button onClick={() => setScreen("insights")}>◔<small>Insights</small></button><button onClick={() => setScreen("library")}>▣<small>Videos</small></button><button onClick={() => setScreen("settings")}>⚙<small>Settings</small></button></nav>
+    <nav className={styles.mobileTabs} aria-label="Mobile parent navigation"><button onClick={() => setScreen("home")}>▶<small>Start</small></button><button onClick={loadRecommendations}>✦<small>Recs</small></button><button onClick={() => setScreen("insights")}>◔<small>Insights</small></button><button onClick={loadLibrary}>▣<small>Videos</small></button><button onClick={() => setScreen("settings")}>⚙<small>Settings</small></button></nav>
   </main>;
 }
 
@@ -268,8 +288,46 @@ function PlanReady({ child, duration, items, viewKid, done }: { child: Child; du
 function Preview({ child, next, back }: { child: Child; next: () => void; back: () => void }) { return <div className={`${styles.flow} ${styles.preview}`}><Header title={`This is what ${child.name} sees`} sub="No settings icons, no text-heavy menus — just big, friendly taps." back={back} />{videos.map((item) => <div className={styles.previewItem} key={item}><span>☀</span><b>{item}</b></div>)}<Button onClick={next}>All set — go to Start a session</Button></div>; }
 function Session({ child, duration, done, back }: { child: Child; duration: number; done: () => void; back: () => void }) { return <div className={styles.flow}><Header title={`Session ready for ${child.name}`} sub={`${duration} minutes · device handoff`} back={back} /><div className={styles.handoff}><span>☀</span><div><b>Hand the device to {child.name}</b><p>KidQ will play the finite, parent-picked queue and finish with a gentle wind-down.</p></div></div><Button onClick={done}>Simulate session complete</Button><p className={styles.fine}>In production this screen is reached when the parent hands over the device.</p></div>; }
 function Complete({ child, done, details }: { child: Child; done: () => void; details: () => void }) { return <div className={styles.flow}><div className={styles.complete}>🔔<Header title="All done for now" sub={`${child.name}'s session is complete.`} /></div><div className={styles.info}><b>What {child.name} watched</b><p>The Bunny Wakes Up · Stories</p><p>Counting With Friends · Maths</p><small>Outcome: Completed — no early exits.</small></div><Button secondary onClick={details}>View details</Button><Button onClick={done}>Done</Button></div>; }
-function Details({ child, library, back }: { child: Child; library: string[]; back: () => void }) { return <div className={styles.flow}><Header title={`${child.name}'s session log`} sub="Factual — what played, nothing about mood or attention." back={back} />{library.map((item) => <div className={styles.listRow} key={item}><span>🎬</span><div><b>{item}</b><small>Approved catalog · 7 min</small></div><span>👍</span></div>)}<p className={styles.fine}>Want to stop a video from being suggested again? Manage that from My Videos.</p></div>; }
+function Details({ child, library, back }: { child: Child; library: { id: string; title: string }[]; back: () => void }) { return <div className={styles.flow}><Header title={`${child.name}'s session log`} sub="Factual — what played, nothing about mood or attention." back={back} />{library.map((item) => <div className={styles.listRow} key={item.id}><span>🎬</span><div><b>{item.title}</b><small>Approved catalog · 7 min</small></div><span>👍</span></div>)}<p className={styles.fine}>Want to stop a video from being suggested again? Manage that from My Videos.</p></div>; }
 function Insights({ child, active, children, range, setRange, chooseChild }: { child: Child; active: number; children: Child[]; range: string; setRange: (v: string) => void; chooseChild: (i: number) => void }) { const scale = active === 0 ? 1 : .6; return <div className={styles.flow}><Header title="Insights" sub={`Viewing ${child.name}'s data — one child at a time.`} /><div className={styles.children}>{children.map((item, index) => <button key={item.name} className={index === active ? styles.selected : ""} onClick={() => chooseChild(index)}>{item.name}</button>)}</div><div className={styles.pills}>{["day", "week", "month"].map((item) => <button key={item} className={range === item ? styles.pillSelected : ""} onClick={() => setRange(item)}>{item}</button>)}</div><div className={styles.metrics}><div><small>Total screen time</small><b>{Math.round((range === "day" ? 32 : range === "week" ? 231 : 735) * scale)}m</b></div><div><small>Completed</small><b>91%</b></div></div>{[["Stories", 72], ["Maths", 48], ["Science", 31], ["Music", 20]].map(([label, value]) => <div className={styles.bar} key={label as string}><span>{label}</span><i><b style={{ width: `${Number(value) / 72 * 100}%` }} /></i><small>{Math.round(Number(value) * scale)}</small></div>)}<p className={styles.privacy}>Your family&apos;s viewing data stays inside KidQ&apos;s own analytics system. We do not sell it or share it outside KidQ.</p></div>; }
-function Library({ child, children, library, remove, add }: { child: Child; children: Child[]; library: string[]; remove: (title: string) => void; add: () => void }) { return <div className={styles.flow}><Header title="My Videos" sub="Everything your family can watch, from every source." />{library.map((item) => <div className={styles.listRow} key={item}><span>🎬</span><div><b>{item}</b><small>Picked by your family · show for {child.name} and {children.length > 1 ? children[1].name : "your family"}</small></div><button onClick={() => remove(item)}>Remove</button></div>)}<Button onClick={add}>＋ Add a video</Button></div>; }
+function Library({ child, children, library, remove, add }: { child: Child; children: Child[]; library: { id: string; title: string }[]; remove: (id: string) => void; add: () => void }) { return <div className={styles.flow}><Header title="My Videos" sub="Everything your family can watch, from every source." />{library.length === 0 && <p className={styles.fine}>No videos yet — add one below.</p>}{library.map((item) => <div className={styles.listRow} key={item.id}><span>🎬</span><div><b>{item.title}</b><small>Picked by your family · show for {child.name} and {children.length > 1 ? children[1].name : "your family"}</small></div><button onClick={() => remove(item.id)}>Remove</button></div>)}<Button onClick={add}>＋ Add a video</Button></div>; }
 function AddVideo({ value, setValue, isPublic, setIsPublic, back, save }: { value: string; setValue: (v: string) => void; isPublic: boolean; setIsPublic: (v: boolean) => void; back: () => void; save: () => void }) { return <div className={styles.flow}><Header title="Add a video" sub="Paste a YouTube link — it is usable by your family right away." back={back} /><label>Video URL<input value={value} onChange={(event) => setValue(event.target.value)} placeholder="https://youtube.com/watch?v=..." /></label><div className={styles.videoReview}><span>🎬</span><div><b>{value ? "Video metadata ready" : "Review details after pasting"}</b><small>Title · duration · channel · category</small></div><em>KidQ reviewed</em></div><label className={styles.toggle}><input type="checkbox" checked={isPublic} onChange={(event) => setIsPublic(event.target.checked)} /><span>Also suggest this to other families</span></label><div className={styles.info}>Private is the default. Public suggestions are sent for review and never change your own family access.</div><Button onClick={save}>Add content</Button></div>; }
-function Settings({ child, openPreferences }: { child: Child; openPreferences: () => void }) { return <div className={styles.flow}><Header title="Settings" sub={`Rarely-changed defaults for ${child.name}.`} /><button className={styles.settingRow} onClick={openPreferences}><b>Content & curation preferences</b><span>Interests, content mix, regulation goals →</span></button>{["Autoplay next video", "Break type", "Sensory-friendly mode", "Daily schedule"].map((item) => <div className={styles.settingRow} key={item}><b>{item}</b><span>Default setting · Tap to change</span></div>)}</div>; }
+const BREAK_TYPE_ORDER: NonNullable<CurationSettings["break_type"]>[] = ["MOVEMENT", "QUIET", "ALTERNATE"];
+const BREAK_TYPE_LABELS: Record<string, string> = { MOVEMENT: "Movement", QUIET: "Quiet-calm", ALTERNATE: "Let KidQ alternate" };
+
+function Settings({ child, openPreferences }: { child: Child; openPreferences: () => void }) {
+  const [breakType, setBreakType] = useState<NonNullable<CurationSettings["break_type"]>>("ALTERNATE");
+  const [local, setLocal] = useState<LocalPreferences>(() => getLocalPreferences(child.id));
+
+  useEffect(() => {
+    getCurationSettings(child.id).then((settings) => { if (settings.break_type) setBreakType(settings.break_type); }).catch(() => undefined);
+    setLocal(getLocalPreferences(child.id));
+  }, [child.id]);
+
+  function cycleBreakType() {
+    const next = BREAK_TYPE_ORDER[(BREAK_TYPE_ORDER.indexOf(breakType) + 1) % BREAK_TYPE_ORDER.length];
+    setBreakType(next);
+    saveCurationSettings(child.id, { break_type: next }).catch(() => undefined);
+  }
+
+  function toggleLocal(key: "autoplay" | "sensoryMode") {
+    const next = { ...local, [key]: !local[key] };
+    setLocal(next);
+    saveLocalPreferences(child.id, next);
+  }
+
+  function toggleSchedule() {
+    const next = { ...local, dailySchedule: { ...local.dailySchedule, enabled: !local.dailySchedule.enabled } };
+    setLocal(next);
+    saveLocalPreferences(child.id, next);
+  }
+
+  return <div className={styles.flow}>
+    <Header title="Settings" sub={`Rarely-changed defaults for ${child.name}.`} />
+    <button className={styles.settingRow} onClick={openPreferences}><b>Content & curation preferences</b><span>Interests, content mix, regulation goals →</span></button>
+    <button className={styles.settingRow} onClick={() => toggleLocal("autoplay")}><b>Autoplay next video</b><span>{local.autoplay ? "On" : "Off"} · Tap to change</span></button>
+    <button className={styles.settingRow} onClick={cycleBreakType}><b>Break type</b><span>{BREAK_TYPE_LABELS[breakType]} · Tap to change</span></button>
+    <button className={styles.settingRow} onClick={() => toggleLocal("sensoryMode")}><b>Sensory-friendly mode</b><span>{local.sensoryMode ? "On" : "Off"} · Tap to change</span></button>
+    <button className={styles.settingRow} onClick={toggleSchedule}><b>Daily schedule</b><span>{local.dailySchedule.enabled ? "On" : "Off"} · Tap to change</span></button>
+  </div>;
+}
