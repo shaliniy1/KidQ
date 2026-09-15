@@ -3,8 +3,16 @@
 import { useEffect, useState } from "react";
 import { getHealth } from "@/services/api";
 import styles from "./page.module.css";
+import KidQDesktop from "@/features/kidq/KidQDesktop";
 
 export default function Home() {
+  return <KidQDesktop />;
+}
+
+// Retained as the former landing shell for reference while the integrated
+// parent/child experience is developed.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function LegacyHome() {
   const [apiStatus, setApiStatus] = useState<"checking" | "connected" | "unreachable">("checking");
 
   useEffect(() => {

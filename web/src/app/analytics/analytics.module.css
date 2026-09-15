@@ -97,6 +97,14 @@
   margin-top: 26px;
 }
 
+.privacyNote {
+  max-width: 640px;
+  margin-top: 18px;
+  color: var(--ink-soft);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
 .segmented {
   display: inline-flex;
   flex-wrap: wrap;
