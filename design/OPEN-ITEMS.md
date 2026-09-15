@@ -1228,30 +1228,42 @@ full table and worked geometry in `brand.md` §5 and the CSS comment above
 | hue   | sampled colour (t=0.55) | cream   | ink     | used |
 |-------|--------------------------|---------|---------|------|
 | teal  | `#258776`                | 4.00:1  | 3.25:1  | cream |
-| gold  | `#F6B43B`                | 1.66:1  | 7.83:1  | **ink** |
+| rose  | `#A2385A`                | 5.90:1  | 2.21:1  | cream |
 | coral | `#D0604C`                | 3.52:1  | 3.70:1  | cream |
 | dusk  | `#7C67B6`                | 4.28:1  | 3.04:1  | cream |
 
-All eight combinations clear the 3:1 AA large-text floor. Gold is the one
-hue cream can't sit on (matching the pre-existing flat-sun-vs-sky finding
-already on record in brand.md §5, not a new gap this balloon build
-introduces) — ink flips in on the same `hue-gold` class the body's own
-gradient swaps on, one class, two effects, never drifts.
+All four hues now clear the 3:1 AA large-text floor on cream alone. This
+table originally had gold in rose's slot: gold measured 1.66:1 on cream (a
+structural failure, matching the pre-existing flat-sun-vs-sky finding in
+brand.md §5, needing an ink-flip exception) and failed the balloon-vs-sky
+check below outright. **Resolved 2026-09-15 — see the closed item just
+below: replaced with rose rather than patched with an outline.** The fix is
+now cream-everywhere, no ink exception.
 
-**Balloon-vs-sky (non-text, 3:1 floor), also measured, honestly mixed:**
-the balloon is `aria-hidden` decoration around the digit (the digit text
-is the one piece actually carrying the count), so this is a self-imposed
-bar past what WCAG 1.4.11 requires of decorative graphics — checked anyway,
-per the design brief. At the same t=0.55 body tone: bright sky (tree) —
-teal 3.42:1, coral 3.01:1, dusk 3.67:1 clear, gold 1.43:1 does not; dimmed
-sky (count, `.kq-duskveil` @ .25) — teal 3.15:1 and dusk 3.39:1 still
-clear, coral drops to 2.78:1 (a real but narrow miss) and gold to 1.32:1
-(fails harder). Not re-tuned to force a pass — the brief asked to reuse the
-recipe's colour values, not invent past them, and the digit text itself
-(the functional half of the pattern) clears 3:1 on all four hues regardless
-of which sky sits behind the balloon. Logged honestly in brand.md §5 rather
-than silently dropped, matching this file's own habit for a known,
-narrow, out-of-scope gap.
+**Balloon-vs-sky (non-text, 3:1 floor), measured:** the balloon is
+`aria-hidden` decoration around the digit (the digit text is the one piece
+actually carrying the count), so this is a self-imposed bar past what WCAG
+1.4.11 requires of decorative graphics — checked anyway, per the design
+brief. At the same t=0.55 body tone: bright sky (tree) — teal 3.42:1, coral
+3.01:1, dusk 3.67:1, **rose 5.47:1**, all clear; dimmed sky (count,
+`.kq-duskveil` @ .25) — teal 3.15:1, dusk 3.39:1, **rose 4.93:1** still
+clear, coral drops to 2.78:1 (a real but narrow miss, pre-existing and
+unrelated to the rose swap — left as-is, not re-tuned). Gold measured
+1.43:1/1.32:1 here before the swap — not a narrow miss but a structural
+property of the hue against this warm sky, which is why it was replaced
+rather than tuned.
+
+### [x] Gold balloon body, low contrast vs. sky — outline considered, colour changed instead
+Flagged as a "candidate for outline polish later" when item 45 shipped:
+gold's balloon body measured 1.32–1.43:1 against the sky (above), the same
+structural sun-gold-vs-cream-sky failure already on record elsewhere in
+this file, not a narrow miss an outline stroke would meaningfully fix.
+Asked the user: darken gold and add an outline, or replace the hue outright.
+**User chose replacement.** Gold's slot in the digit-balloon's four-hue
+rotation is now `rose` (`#A2385A` at t=0.55, H≈340°) — see the table and
+measurements above. The splash screen's own gold "i" letter is untouched;
+this is the digit-balloon component only, and the first place these two
+balloon systems' hues diverge. Built on `design/balloon-rose-hue`.
 
 **Entrance, one per screen, both reusing existing vocabulary:** tree's
 balloon bounces in on the *same* `pop()` squash-stretch the bare digit used

@@ -548,8 +548,7 @@ button{font-family:inherit; -webkit-tap-highlight-color:transparent}
    "make them like coming on balloon") ----------
    Balloon over ball: the splash's own KidQ letters (css:89-141) are already
    glossy inflating balloons - an established brand vocabulary, not a new
-   shape to teach. Same 5-stop radial-gradient RECIPE, same four hues in the
-   same order the splash uses (teal->gold->coral->dusk), cycling once per
+   shape to teach. Same 5-stop radial-gradient RECIPE, cycling once per
    digit change - `hue-<name>` on `.kq-digitballoon`, swapped in JS
    (setBalloonHue, kidq-desktop-app.js).
    The gradient's SIZE is the one deliberate departure from the splash's own
@@ -559,22 +558,34 @@ button{font-family:inherit; -webkit-tap-highlight-color:transparent}
    badge's own CENTRE - where the digit sits - only reaches t~0.3 of the
    default gradient (still inside the near-white highlight/lower-highlight
    band), which is why an early pass measured cream failing on teal/coral
-   too, not just gold. Shrinking the radius moves the badge's centre to
-   t~0.55 - the recipe's own literal MID-tone, past the 36/40% "true hue"
-   stop, short of the 62/66% deep one - without touching a single colour
-   value. Measured there (brand.md §5; `scratchpad/balloon-sweep-t.js` this
-   session), against the two text colours brand.md §12 already uses
-   everywhere else (cream `--cream`, ink `--ink`):
-     teal  #258776  cream 4.00:1  ink 3.25:1  -> cream (both pass; cream wins)
-     gold  #F6B43B  cream 1.66:1  ink 7.83:1  -> ink (cream fails outright)
-     coral #D0604C  cream 3.52:1  ink 3.69:1  -> cream (per the design brief;
-                                                  both pass, margin is close)
-     dusk  #7C67B6  cream 4.28:1  ink 3.04:1  -> cream (both pass; cream wins)
-   All eight combinations clear the 3:1 AA large-text floor; gold is the one
-   hue that needs ink, matching the sun-gold-vs-cream failure this app has
-   measured everywhere else it appears (css:521-530). The digit swaps colour
-   on the SAME `hue-gold` class the body's gradient swaps on - one class,
-   two effects, never drifts.
+   too. Shrinking the radius moves the badge's centre to t~0.55 - the
+   recipe's own literal MID-tone, past the 36/40% "true hue" stop, short of
+   the 62/66% deep one - without touching a single colour value.
+
+   ROSE, NOT GOLD (2026-09-15, user-directed, the one deliberate divergence
+   from the splash): three of the four hues (teal/coral/dusk) still match
+   the splash's own K/d/Q letters exactly. The fourth was gold, matching
+   the splash's "i" - measured at t~0.55 as 1.32-1.43:1 against this app's
+   warm sky, failing the 3:1 non-text floor outright (the same finding
+   already on record for the flat sun icon and every other gold-on-cream
+   surface, brand.md §5). That is not a narrow miss an outline patches over
+   - it is a hue that cannot read against a cream/amber sky at any
+   lightness gold is still recognisably gold at. Replaced with `rose`
+   (H~340°, distinct from teal H~171/coral H~8/dusk H~261, chosen over
+   darkening gold itself so the balloon reads as a real different colour,
+   not a muddy near-brown standing in for the sun). Measured the same way
+   (brand.md §5; `scratchpad/balloon-sweep-t.js` this session), against the
+   two text colours brand.md §12 already uses everywhere else, AND against
+   both sky states behind these two screens (bright/tree, dusk-dimmed/count):
+     teal  #258776  cream 4.00:1  vs bright sky 3.42:1  vs dim sky 3.15:1
+     rose  #A2385A  cream 5.90:1  vs bright sky 5.47:1  vs dim sky 4.93:1
+     coral #D0604C  cream 3.52:1  vs bright sky 3.01:1  vs dim sky 2.78:1*
+     dusk  #7C67B6  cream 4.28:1  vs bright sky 3.67:1  vs dim sky 3.39:1
+   (*coral's dim-sky figure is a pre-existing narrow miss, logged in brand.md
+   §5, unrelated to this change - out of scope here.) Rose clears every
+   figure with real margin, comfortably ahead of the other three - cream
+   works for its digit text with no ink-flip exception, unlike gold before
+   it. One class, one recipe, no more special-casing.
    Knot: a small solid triangle in the SAME hue's own 100% (deepest) recipe
    stop - the shape's own shadow colour, not a new one. String: a short,
    plain, slightly-tilted thread in `--ink-soft` - neutral across all four
@@ -601,16 +612,14 @@ button{font-family:inherit; -webkit-tap-highlight-color:transparent}
 .kq-digitballoon .kq-breakcount-big{position:absolute; inset:0 0 auto 0;
   height:calc(var(--cnt) * 1.32); display:flex; align-items:center;
   justify-content:center; font-size:calc(var(--cnt) * .78); color:var(--cream)}
-.kq-digitballoon.hue-gold .kq-breakcount-big{color:var(--ink)}
-
 .kq-digitballoon.hue-teal .kq-balloon-body{background-image:radial-gradient(
   circle calc(var(--cnt) * .729) at 32% 24%,
   #EFFFFA 0%, #9ADEC9 9%, #35A98F 36%, #1F7A6D 62%, #123F37 100%)}
 .kq-digitballoon.hue-teal .kq-balloon-knot{background:#123F37}
-.kq-digitballoon.hue-gold .kq-balloon-body{background-image:radial-gradient(
+.kq-digitballoon.hue-rose .kq-balloon-body{background-image:radial-gradient(
   circle calc(var(--cnt) * .729) at 32% 24%,
-  #FFFBEA 0%, #FFE29A 9%, #FFC64D 40%, #F0A72E 66%, #8F5C12 100%)}
-.kq-digitballoon.hue-gold .kq-balloon-knot{background:#8F5C12}
+  #FFF1F5 0%, #EFA0BE 9%, #C2456B 40%, #8A2E4E 66%, #481828 100%)}
+.kq-digitballoon.hue-rose .kq-balloon-knot{background:#481828}
 .kq-digitballoon.hue-coral .kq-balloon-body{background-image:radial-gradient(
   circle calc(var(--cnt) * .729) at 32% 24%,
   #FFF1EC 0%, #F5A897 9%, #E2705E 40%, #C2543F 66%, #6E2818 100%)}

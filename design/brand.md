@@ -247,11 +247,13 @@ Scale in use (size / weight / face):
   screen itself, `kidq-desktop-app.css:89–141`) are glossy inflating
   balloons, four brand hues, squash-stretch inflate. This reuses that
   vocabulary rather than inventing a new shape — same 5-stop radial-gradient
-  **recipe** (identical hex values), same four hues in the same order the
-  splash cycles through its own letters: **teal → gold → coral → dusk →
-  repeat**, one hue step per digit change (`hue-<name>` class, swapped by a
-  shared `setBalloonHue()` helper both break screens call). Only the
-  gradient's **size** departs from the splash's own default
+  **recipe**, cycling one hue step per digit change (`hue-<name>` class,
+  swapped by a shared `setBalloonHue()` helper both break screens call):
+  **teal → rose → coral → dusk → repeat**. Three of the four are identical
+  hex values to the splash's own K/d/Q letters; the fourth is **rose, not
+  gold** (2026-09-15, user-directed — the one deliberate divergence from the
+  splash, see the contrast measurement below for why). Only the gradient's
+  **size** departs from the splash's own default
   (farthest-corner-from-32%/24%) sizing: an explicit `circle calc(var(--cnt)
   * .729)` radius instead. Reason: the splash's balloons ARE the letters,
   filling their own glyph edge-to-edge, so their centre sits deep in the
@@ -261,6 +263,19 @@ Scale in use (size / weight / face):
   smaller explicit radius moves the badge centre to **t≈0.55**, the
   recipe's own literal mid-point between the 36/40% "true hue" stop and the
   62/66% deep one, without touching a single colour value.
+  **Why rose, not gold:** gold was the original fourth hue, matching the
+  splash's own "i". At t≈0.55 it measured 1.66:1 against cream text and
+  1.32–1.43:1 against this app's sky (below) — not a narrow miss but a
+  structural property of the hue (the same finding already on record for
+  the flat sun icon, two paragraphs up: no sun-gold value clears 3:1 against
+  this warm cream/amber sky at any lightness that still reads as gold).
+  Darkening gold itself would only trade one problem for a muddy near-brown
+  that no longer reads as gold, so it was replaced outright with **rose**
+  (H≈340°, distinct from teal H≈171/coral H≈8/dusk H≈261) — a genuinely
+  different, unclaimed hue rather than a patched-up version of the sun's own
+  colour. User-directed 2026-09-15, after an outline-only fix (keeping gold,
+  adding a stroke for edge definition) was considered and turned down in
+  favour of a real colour change.
   **Digit ink per hue, measured** (at t=0.55, `scratchpad/balloon-*.js` this
   session — see `kidq-desktop-app.css`'s own copy of this table for the
   worked geometry):
@@ -268,29 +283,25 @@ Scale in use (size / weight / face):
   | hue   | sampled body colour | cream (`--cream`) | ink (`--ink`) | used |
   |-------|---------------------|--------------------|-----------------|------|
   | teal  | `#258776`           | 4.00:1             | 3.25:1          | cream |
-  | gold  | `#F6B43B`           | 1.66:1             | 7.83:1          | **ink** |
+  | rose  | `#A2385A`           | 5.90:1             | 2.21:1          | cream |
   | coral | `#D0604C`           | 3.52:1             | 3.70:1          | cream |
   | dusk  | `#7C67B6`           | 4.28:1             | 3.04:1          | cream |
 
-  All eight combinations clear the 3:1 AA large-text floor; gold is the one
-  hue where cream fails outright (as flat sun/sun-deep text already did
-  against this sky, two paragraphs up) — ink is used there instead, on the
-  same `hue-gold` class the body's own gradient swaps on, so the two effects
-  can never drift apart. Cream is used on teal/coral/dusk per the design
-  brief, even though coral's own ink number edges it out narrowly (3.70 vs
-  3.52) — both clear the floor with margin, and one consistent rule (ink
-  only for gold) is easier to hold correct than a per-hue coin-flip.
+  All four hues now clear the 3:1 AA large-text floor on **cream alone** —
+  rose clears it with the widest margin of the four (5.90:1), so the old
+  ink-flip exception gold needed is gone: one colour rule (cream, always),
+  no per-hue special case, nothing to drift.
   **Balloon body vs sky** (non-text, 3:1 floor — the balloon is
   `aria-hidden` pure decoration around the digit, so this is a self-imposed
   bar past what WCAG 1.4.11 itself requires of decorative graphics, not a
   strict floor): measured the same t=0.55 body tone against both skies.
   Bright sky (tree): teal 3.42:1, coral 3.01:1, dusk 3.67:1 all clear;
-  **gold 1.43:1 does not** — a structural property of the hue (this app's
-  cream sky and any sun-gold value never clear 3:1, the same finding already
-  on record two paragraphs up, not a new gap the balloon introduces).
+  **rose clears widest at 5.47:1** (gold measured 1.43:1 here before the
+  swap — the structural failure above).
   Dimmed sky (count, `.kq-duskveil` @ .25 — see the count-to-ten scene
-  below): teal 3.15:1 and dusk 3.39:1 still clear; **coral drops to 2.78:1**
-  (a real but narrow miss) and **gold to 1.32:1** (fails harder). The
+  below): teal 3.15:1 and dusk 3.39:1 still clear, **rose clears at 4.93:1**;
+  **coral drops to 2.78:1** (a real but narrow miss, pre-existing and out of
+  scope for this change — logged, not re-tuned). The
   balloon's own tiny specular highlight (the same near-white `0%`/`9%`
   recipe stops the splash's letters carry too) reads lighter still at its
   very edge — expected for a glossy round object and not evaluated
