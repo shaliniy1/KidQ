@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { ageBandsFor } from "../../src/domain/age";
 import { ageFit, eligibilityProblems, recommend, type CandidateInput, type ChildProfileInput, type RankingConfig } from "../../src/domain/recommendation";
 
 const config: RankingConfig = {
@@ -14,6 +15,7 @@ const config: RankingConfig = {
 
 const profile: ChildProfileInput = {
   ageYears: 4,
+  ageBand: "4_5",
   languages: ["en"],
   interests: ["animals", "space"],
   developmentGoals: ["social"],
@@ -44,6 +46,7 @@ function candidate(overrides: Partial<CandidateInput> = {}): CandidateInput {
     creator: `creator-${counter}`,
     kidqScore: 80,
     learningValue: null,
+    ageBands: ageBandsFor(overrides.ageMin ?? 2, overrides.ageMax ?? 6),
     ...overrides,
   };
 }
@@ -70,6 +73,22 @@ describe("recommend", () => {
   it("says why a published item can't be recommended", () => {
     expect(eligibilityProblems(candidate())).toEqual([]);
     expect(eligibilityProblems(candidate({ playable: false, kidqScore: null, developmentGoals: [], regulationGoals: [] }))).toEqual(["NOT_PLAYABLE", "NOT_SCORED", "NO_GOAL"]);
+    expect(eligibilityProblems(candidate({ ageBands: [] }))).toEqual(["NO_AGE"]);
+  });
+
+  it("recommends strictly from the child's own age bucket, never a neighbouring one", () => {
+    // A 0–2-only item: its numeric range would never overlap a 4–5 profile anyway, so use a profile
+    // right at the boundary, where the old continuous estimated-age check could have let it through.
+    const infantOnly = candidate({ ageMin: 0, ageMax: 2, ageBands: ["0_2"] });
+    const toddlerBand: ChildProfileInput = { ...profile, ageBand: "2_3", ageYears: 2 };
+    expect(ids(toddlerBand, [infantOnly])).toEqual([]);
+    expect(eligibilityProblems(infantOnly)).toEqual([]);
+
+    // An item genuinely spanning two bands is recommended to a child in either one.
+    const spansTwoBands = candidate({ ageMin: 2.5, ageMax: 3.5, ageBands: ["2_3", "3_4"] });
+    expect(ids({ ...profile, ageBand: "2_3" }, [spansTwoBands])).toEqual([spansTwoBands.id]);
+    expect(ids({ ...profile, ageBand: "3_4" }, [spansTwoBands])).toEqual([spansTwoBands.id]);
+    expect(ids({ ...profile, ageBand: "4_5" }, [spansTwoBands])).toEqual([]);
   });
 
   it("shows only the chosen categories when the parent picks them, and a mix otherwise", () => {
