@@ -89,6 +89,22 @@
   // time (see bucketForBreak below), no restart needed, since breakType only
   // decides which bucket a break draws from, never where breaks land.
   let breakType = "alternate";
+  // Label map for the demo bar's Break-type control, and the ONE place that
+  // ever changes `breakType` — both the toggle's own click handler and
+  // prepSession's reseed line (below) call this, so the button's label can
+  // never drift from the value gameForBreak() actually reads. Before this,
+  // prepSession() reseeding the variable directly (correct) left the label
+  // showing whatever the demo bar last set it to (stale) — a control whose
+  // label lies is worse than no control. No element-existence guard: every
+  // prepSession() call in this file runs from inside an event handler wired
+  // after this script's top-level code (including #breaktype-toggle's own
+  // wiring, near the bottom) has already run, so the button always exists by
+  // the time this fires.
+  const BREAK_TYPES = { alternate: "Alternate", movement: "Movement", quiet: "Quiet" };
+  function setBreakType(v) {
+    breakType = v;
+    $("#breaktype-toggle").textContent = `Break type: ${BREAK_TYPES[breakType]}`;
+  }
   const later = (fn, ms) => { const id = setTimeout(fn, reducedMotion ? Math.min(ms, 200) : ms); timers.push(id); return id; };
   // Phase timing for activity breaks. Unlike later(), this does NOT clamp under
   // reduced motion: a 1.5s hold in a break is the activity itself, not a
@@ -296,9 +312,10 @@
     state.breaks = state.session ? planBreaks(state.session.videos, state.session.breakEveryMinutes) : [];
     state.breaksTaken = 0;
     // Seeds the live breakType flag (declared near `autoplay` above) from this
-    // session's own config. breakType itself is read live at gameForBreak()
-    // fire time, not captured here — this line only sets its starting value.
-    breakType = state.session ? state.session.breakType : "alternate";
+    // session's own config, through setBreakType() so the demo bar's label
+    // stays in sync too. breakType itself is read live at gameForBreak() fire
+    // time, not captured here — this line only sets its starting value.
+    setBreakType(state.session ? state.session.breakType : "alternate");
     return !!state.session;
   }
 
@@ -1215,16 +1232,16 @@
 
   // Previews the KidQ Parent app's break-type setting (Movement / Quiet-calm /
   // Let KidQ alternate). A live flag exactly like autoplay above: just cycles
-  // the module-level `breakType` variable, read fresh at gameForBreak() fire
-  // time, so the change applies from the NEXT break onward with no restart —
-  // breakType only decides which bucket a break draws from, never where
-  // breaks land, so the already-planned state.breaks positions are untouched.
-  const BREAK_TYPES = { alternate: "Alternate", movement: "Movement", quiet: "Quiet" };
+  // the module-level `breakType` variable (through setBreakType, declared
+  // near it above, which also keeps this button's own label in sync), read
+  // fresh at gameForBreak() fire time, so the change applies from the NEXT
+  // break onward with no restart — breakType only decides which bucket a
+  // break draws from, never where breaks land, so the already-planned
+  // state.breaks positions are untouched.
   const BREAK_TYPE_ORDER = ["alternate", "movement", "quiet"];
-  $("#breaktype-toggle").addEventListener("click", (e) => {
+  $("#breaktype-toggle").addEventListener("click", () => {
     const i = BREAK_TYPE_ORDER.indexOf(breakType);
-    breakType = BREAK_TYPE_ORDER[(i + 1) % BREAK_TYPE_ORDER.length];
-    e.currentTarget.textContent = `Break type: ${BREAK_TYPES[breakType]}`;
+    setBreakType(BREAK_TYPE_ORDER[(i + 1) % BREAK_TYPE_ORDER.length]);
   });
 
   // Previews the KidQ Parent app's break-interval setting (every 10/15/20
@@ -1234,7 +1251,12 @@
   // runs the same [data-demo] prologue every jump above uses (clearTimers();
   // video.pause();) before restarting, or a pending autoAdvance later() /
   // autoplay-off nudge hold() chain would fire into the new session with
-  // stale state.
+  // stale state. The override carries the CURRENT live breakType forward
+  // (not the aarav session's own default) so cycling the interval doesn't
+  // silently revert a type the demo bar was already showing — a plain login
+  // or "↻ Restart full flow" still reseeds breakType from the session's own
+  // config, which is correct: the parent's config is the source of truth,
+  // and setBreakType() now keeps this button's label honest either way.
   const BREAK_EVERY_OPTIONS = [10, 15, 20];
   let demoBreakEvery = 15;
   $("#breakevery-toggle").addEventListener("click", (e) => {
@@ -1243,7 +1265,7 @@
     const i = BREAK_EVERY_OPTIONS.indexOf(demoBreakEvery);
     demoBreakEvery = BREAK_EVERY_OPTIONS[(i + 1) % BREAK_EVERY_OPTIONS.length];
     e.currentTarget.textContent = `Breaks: every ${demoBreakEvery}m`;
-    prepSession("aarav", { ...KidQData.sessions.aarav, breakEveryMinutes: demoBreakEvery });
+    prepSession("aarav", { ...KidQData.sessions.aarav, breakEveryMinutes: demoBreakEvery, breakType });
     startSunrise();
   });
 
