@@ -62,7 +62,7 @@ Sky gradients (top → bottom, 390×844 frame):
 |---|---|
 | Pre-dawn (sunrise screen) | `#9F8CCB` 0% → `#C9B8E8` 34% → `#EDD9C4` 50% → `#F7CBA0` 62% → `#F3B583` 100% |
 | Morning/day (watching, breaks, cast) | `#FDF8EC` 0% → `#F7EBD2` 58% → `#F1E2C4` 100% |
-| Night (no-session, all-done) | `#3A3768` 0% → `#2B2955` 52% → `#211F45` 100% |
+| Night (no-session, all-done, splash) | `#3A3768` 0% → `#2B2955` 52% → `#211F45` 100% |
 | Deep night (night-light) | `#2B2955` 0% → `#211F45` 48% → `#171530` 100% |
 | Dusk overlay (sunset moment) | `#9F8CCB` 0% → `#C9B8E8` 40% → `#F3B583` 100%, at 85% opacity over the day sky |
 
@@ -241,77 +241,71 @@ Scale in use (size / weight / face):
 - **Break-count digit BALLOON** (user request 2026-09-15, "make them like
   coming on balloon" — superseding the flat-teal digit above, which both
   break screens rode on until this session): the big current digit now
-  arrives riding a glossy brand-hue balloon instead of sitting bare on the
-  sky. Balloon over ball — the app already has an established balloon
-  vocabulary: the splash's own KidQ letters (§8.7's mark aside; the splash
-  screen itself, `kidq-desktop-app.css:89–141`) are glossy inflating
-  balloons, four brand hues, squash-stretch inflate. This reuses that
-  vocabulary rather than inventing a new shape — same 5-stop radial-gradient
-  **recipe**, cycling one hue step per digit change (`hue-<name>` class,
-  swapped by a shared `setBalloonHue()` helper both break screens call):
-  **teal → rose → coral → dusk → repeat**. Three of the four are identical
-  hex values to the splash's own K/d/Q letters; the fourth is **rose, not
-  gold** (2026-09-15, user-directed — the one deliberate divergence from the
-  splash, see the contrast measurement below for why). Only the gradient's
-  **size** departs from the splash's own default
-  (farthest-corner-from-32%/24%) sizing: an explicit `circle calc(var(--cnt)
-  * .729)` radius instead. Reason: the splash's balloons ARE the letters,
-  filling their own glyph edge-to-edge, so their centre sits deep in the
-  gradient; a small round digit badge's own centre only reaches t≈0.3 of the
-  *default* sizing — still inside the near-white highlight band — which
-  measured as cream failing on teal and coral too, not just gold. The
-  smaller explicit radius moves the badge centre to **t≈0.55**, the
-  recipe's own literal mid-point between the 36/40% "true hue" stop and the
-  62/66% deep one, without touching a single colour value.
-  **Why rose, not gold:** gold was the original fourth hue, matching the
-  splash's own "i". At t≈0.55 it measured 1.66:1 against cream text and
-  1.32–1.43:1 against this app's sky (below) — not a narrow miss but a
-  structural property of the hue (the same finding already on record for
-  the flat sun icon, two paragraphs up: no sun-gold value clears 3:1 against
-  this warm cream/amber sky at any lightness that still reads as gold).
-  Darkening gold itself would only trade one problem for a muddy near-brown
-  that no longer reads as gold, so it was replaced outright with **rose**
-  (H≈340°, distinct from teal H≈171/coral H≈8/dusk H≈261) — a genuinely
-  different, unclaimed hue rather than a patched-up version of the sun's own
-  colour. User-directed 2026-09-15, after an outline-only fix (keeping gold,
-  adding a stroke for edge definition) was considered and turned down in
-  favour of a real colour change.
-  **Digit ink per hue, measured** (at t=0.55, `scratchpad/balloon-*.js` this
-  session — see `kidq-desktop-app.css`'s own copy of this table for the
-  worked geometry):
+  arrives riding a brand-hue balloon instead of sitting bare on the sky.
+  Balloon over ball — the app already has an established balloon
+  vocabulary: the splash's own KidQ letters (the splash screen itself,
+  `kidq-desktop-app.css:89–141`) are glossy inflating balloons, four brand
+  hues, squash-stretch inflate. This reuses that vocabulary rather than
+  inventing a new shape, cycling one hue step per digit change
+  (`hue-<name>` class, swapped by a shared `setBalloonHue()` helper both
+  break screens call): **teal → rose → coral → dusk → repeat**.
+  **Why rose, not gold** (2026-09-15, user-directed — the first of two
+  deliberate divergences from the splash): gold was the original fourth
+  hue, matching the splash's own "i". Measured against this app's warm
+  cream/amber sky it came back a structural failure, not a narrow miss —
+  the same finding already on record for the flat sun icon: no sun-gold
+  value clears 3:1 against this sky at any lightness that still reads as
+  gold. Darkening gold itself would only trade one problem for a muddy
+  near-brown that no longer reads as gold, so it was replaced outright with
+  **rose** (H≈340°, distinct from teal H≈171/coral H≈8/dusk H≈261) — a
+  genuinely different, unclaimed hue — after an outline-only fix (keeping
+  gold, adding a stroke for edge definition) was considered and turned
+  down in favour of a real colour change.
+  **FLATTENED AND MUTED** (2026-09-15, the second divergence from the
+  splash): this component originally borrowed the splash's own 5-stop
+  glossy radial-gradient recipe verbatim (near-white specular highlight
+  through a fully-saturated "true hue" to a near-black shadow — a shiny 3D
+  sphere), with an explicit `circle calc(var(--cnt) * .729)` radius so a
+  small round digit badge's own centre landed past the gradient's highlight
+  band. Live in the browser, across repeated break screens rather than the
+  splash's one-time entrance, that read as brighter and glossier than the
+  rest of the app's own language, which is flat illustration throughout
+  (sun, moon, clouds, the tree-pose figure — none of them glossy-shaded).
+  Replaced with a simple 2-stop soft `linear-gradient` (135deg, a light
+  tint down to a single muted base tone at 65%) — a hint of directional
+  light, not a sphere; the old radius trick is moot once the gradient is
+  linear rather than radial, since there is no highlight band to steer the
+  badge's centre away from. Base tones pulled DOWN in saturation toward the
+  app's own established palette register, not just darkened — teal's base
+  is literally `var(--teal)` itself, this project's one UI-accent token:
+  **teal `#1F7A6D`, rose `#A8506E`, coral `#C2543F`, dusk `#6F5AA8`.**
+  **Digit ink per hue, measured** against the flattened recipe's base tone
+  (`kidq-desktop-app.css`'s own copy of this table sits above
+  `.kq-digitballoon.hue-teal`; supersedes the glossy-recipe numbers this
+  table originally carried, which were measured against a different hex
+  set entirely):
 
-  | hue   | sampled body colour | cream (`--cream`) | ink (`--ink`) | used |
-  |-------|---------------------|--------------------|-----------------|------|
-  | teal  | `#258776`           | 4.00:1             | 3.25:1          | cream |
-  | rose  | `#A2385A`           | 5.90:1             | 2.21:1          | cream |
-  | coral | `#D0604C`           | 3.52:1             | 3.70:1          | cream |
-  | dusk  | `#7C67B6`           | 4.28:1             | 3.04:1          | cream |
+  | hue   | base tone | cream (digit text) | vs bright sky (tree) | vs dim sky (count) |
+  |-------|-----------|---------------------|------------------------|-----------------------|
+  | teal  | `#1F7A6D` | 4.72:1              | 4.37:1                 | 3.94:1                |
+  | rose  | `#A8506E` | 4.75:1              | 4.40:1                 | 3.96:1                |
+  | coral | `#C2543F` | 4.14:1              | 3.83:1                 | 3.45:1                |
+  | dusk  | `#6F5AA8` | 5.18:1              | 4.80:1                 | 4.32:1                |
 
-  All four hues now clear the 3:1 AA large-text floor on **cream alone** —
-  rose clears it with the widest margin of the four (5.90:1), so the old
-  ink-flip exception gold needed is gone: one colour rule (cream, always),
-  no per-hue special case, nothing to drift.
-  **Balloon body vs sky** (non-text, 3:1 floor — the balloon is
-  `aria-hidden` pure decoration around the digit, so this is a self-imposed
-  bar past what WCAG 1.4.11 itself requires of decorative graphics, not a
-  strict floor): measured the same t=0.55 body tone against both skies.
-  Bright sky (tree): teal 3.42:1, coral 3.01:1, dusk 3.67:1 all clear;
-  **rose clears widest at 5.47:1** (gold measured 1.43:1 here before the
-  swap — the structural failure above).
-  Dimmed sky (count, `.kq-duskveil` @ .25 — see the count-to-ten scene
-  below): teal 3.15:1 and dusk 3.39:1 still clear, **rose clears at 4.93:1**;
-  **coral drops to 2.78:1** (a real but narrow miss, pre-existing and out of
-  scope for this change — logged, not re-tuned). The
-  balloon's own tiny specular highlight (the same near-white `0%`/`9%`
-  recipe stops the splash's letters carry too) reads lighter still at its
-  very edge — expected for a glossy round object and not evaluated
-  separately, the same way the splash's own highlight was never held to a
-  sky-contrast floor. Left as a known, honestly-logged gap rather than
-  re-tuning the recipe's actual colour values, which the brief asked not to
-  invent past: the digit **text** — the one piece doing real work, since the
-  balloon itself is decoration — clears 3:1 on all four hues either way.
-  **Knot:** a small solid triangle in the same hue's own 100% (deepest)
-  recipe stop — the shape's own shadow colour, not a new one. **String:** a
+  All four clear the 3:1 AA large-text floor for the digit **text** (the one
+  piece actually carrying the count) and the same self-imposed 3:1 floor
+  this project holds decorative balloon-vs-sky contrast to (the balloon is
+  `aria-hidden` pure decoration, so this is past what WCAG 1.4.11 itself
+  requires) — each hue with more margin than the old glossy recipe had for
+  teal/dusk, and much more than the old recipe's coral, which narrowly
+  missed on the dimmed sky (2.78:1, logged as a known gap at the time):
+  flattening incidentally fixed that pre-existing narrow miss too, not just
+  the brightness complaint. Cream still works for digit text on all four
+  hues, no ink-flip exception — gold was the only hue that ever needed one,
+  and it is gone from the rotation.
+  **Knot:** a darker shade of the same hue's own base tone (`#11433C` teal,
+  `#5C2C3D` rose, `#6B2E23` coral, `#3D325C` dusk) — the shape's own shadow
+  colour, not a new one. **String:** a
   short, slightly-tilted `1.5px` thread in `var(--ink-soft)`, neutral across
   all four hues (real balloon string doesn't recolour with the balloon) and
   deliberately short — a long one is more rigging than read at this badge
@@ -345,6 +339,44 @@ Scale in use (size / weight / face):
   meant either widening `pop()` past its established two-class shape or
   losing the "bounce vs float" distinction the design brief asked for by
   name — judged not worth it for two three-line CSS rules.
+- **Splash backdrop: night sky + glowing balloons** (user-chosen 2026-09-16,
+  after evaluating this treatment side by side with a plain-balloon
+  version and a Tangled-style paper-lantern version): the splash's
+  unconditional, default state is now a night sky (`.kq-sky--night`, §2)
+  behind four large flat balloons, edge-anchored and partially cropped off
+  the screen's corners/edges, each carrying a soft warm static halo — the
+  Givingli reference (this file's own locked visual reference, top of
+  file — warm cream, floating illustrated objects) applied to this
+  screen's own edge/crop structure. All four `.kq-digitballoon` hues
+  (teal/rose/coral/dusk, the flattened recipe in the bullet just above)
+  are used, one per balloon, none skipped.
+  **Flat balloons, glossy letters — a figure/ground decision, not an
+  accident:** the backdrop balloons deliberately keep the flattened/muted
+  finish, while the hero KidQ letters they frame keep their own original
+  glossy 5-stop recipe untouched (`kidq-desktop-app.css:89–141`). The flat
+  finish is what lets the balloons recede as backdrop instead of competing
+  with the glossy letters as a second focal point — the same screen
+  renders the same four hue names two different ways at once on purpose,
+  the flatter one always behind the glossier one.
+  **Static halo, no pulse:** a second, hue-tinted `drop-shadow` behind each
+  balloon, blurred, never animated — this project's anti-overstimulation
+  argument (top of file) rules out a pulsing or flickering glow the same
+  way §6 rules out points, badges and streaks: affirmations, not rewards.
+  **Night, not predawn — the sky-as-timer arc gets its starting frame:**
+  the splash previously opened on the same predawn sky the login screen
+  uses; it now opens on full night, one step earlier on the sky-as-timer
+  arc (§1) than predawn was — the day genuinely has not started yet when
+  the app opens, and it begins only once the child touches the sun on the
+  sunrise screen ("Touch the sun to start your day"). Night splash flowing
+  into a sunrise screen is a more legible first beat of that arc than
+  predawn flowing into a second, separate predawn (the login screen keeps
+  its own predawn sky unchanged). This was a readability finding as much
+  as a narrative one: measured (not assumed) against the letters' own
+  dominant gradient tone at their actual on-screen position, all four
+  letters contrast measurably better on night than on predawn — e.g. teal
+  2.59:1 vs 1.71:1, dusk 2.36:1 vs 1.56:1 — so the arc change and the
+  contrast improvement point the same direction, and no retuning of the
+  letters themselves was needed.
 - **Count-to-ten scene:** eyes-closed sun as hero, sized like breathing's own
   (`min(40cqw,190px)` → `214px` → `240px`) — the closest sibling in
   complexity: one bounded hero, no side decor, no dots, no new assets of any

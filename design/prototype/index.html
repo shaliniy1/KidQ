@@ -18,7 +18,11 @@
 
   <!-- splash -->
   <section class="screen" id="screen-splash" aria-label="KidQ is opening">
-    <div class="kq-sky kq-sky--predawn">
+    <!-- Night sky (not predawn): sets up the sky-as-timer arc (night here
+         -> the sunrise screen's "Touch the sun to start your day") and
+         measures better for the KidQ letters' own gradient than predawn did
+         (brand.md §5, splash-backdrop bullet). -->
+    <div class="kq-sky kq-sky--night">
       <span class="kq-star" style="left:15%; top:8%"></span>
       <span class="kq-star" style="left:82%; top:12%; animation-delay:-1.2s; width:3px; height:3px"></span>
       <span class="kq-star" style="left:62.7%; top:4.1%; animation-delay:-2.57s; width:2px; height:2px"></span>
@@ -49,15 +53,6 @@
       <div class="kq-digitballoon kq-splashdrift sd2 hue-coral pos-l"><span class="kq-balloon-body"></span><span class="kq-balloon-knot"></span><span class="kq-balloon-string"></span></div>
       <div class="kq-digitballoon kq-splashdrift sd3 hue-dusk pos-r"><span class="kq-balloon-body"></span><span class="kq-balloon-knot"></span><span class="kq-balloon-string"></span></div>
       <div class="kq-digitballoon kq-splashdrift sd4 hue-rose pos-b"><span class="kq-balloon-body"></span><span class="kq-balloon-knot"></span><span class="kq-balloon-string"></span></div>
-      <!-- REVIEW-ONLY (temporary, strip with the JS switch and its CSS -
-           see kidq-desktop-app.js/css, search REVIEW-ONLY): sky-lantern
-           backdrop candidate, only visible under ?backdrop=lanterns. No
-           text nodes, same as the balloons above. -->
-      <div class="kq-lantern lt1"><span class="kq-lantern-body"></span></div>
-      <div class="kq-lantern lt2"><span class="kq-lantern-body"></span></div>
-      <div class="kq-lantern lt3"><span class="kq-lantern-body"></span></div>
-      <div class="kq-lantern lt4"><span class="kq-lantern-body"></span></div>
-      <div class="kq-lantern lt5"><span class="kq-lantern-body"></span></div>
     </div>
     <span class="balloon-slot"><i class="seed s1"></i><span class="balloon b1">K</span></span><span class="balloon-slot"><i class="seed s2"></i><span class="balloon b2">i</span></span><span class="balloon-slot"><i class="seed s3"></i><span class="balloon b3">d</span></span><span class="balloon-slot"><i class="seed s4"></i><span class="balloon b4">Q</span></span>
   </section>

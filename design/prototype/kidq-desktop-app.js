@@ -428,29 +428,6 @@
 
   /* ---------- splash ---------- */
   const splash = $("#screen-splash");
-  /* REVIEW-ONLY (temporary, strip this whole block once the user picks one):
-     A/B/C switch for comparing three splash backdrop directions against the
-     Givingli reference (mobbin.com screen def2a712) - `balloons` (default,
-     large edge-anchored flat balloons, the shipped candidate), `glow` (the
-     same balloons plus a soft warm halo), `lanterns` (Tangled-style floating
-     paper lanterns). Set via `?backdrop=balloons|glow|lanterns` in the URL;
-     anything else (or nothing) falls back to `balloons`. Everything this
-     drives is additive CSS scoped under `#screen-splash[data-backdrop=...]`
-     (kidq-desktop-app.css, search REVIEW-ONLY) - nothing in the base splash
-     changes, so removal is just this block plus those CSS rules. */
-  const REVIEW_BACKDROP = (() => {
-    const v = new URLSearchParams(location.search).get("backdrop");
-    return (v === "glow" || v === "lanterns") ? v : "balloons";
-  })();
-  splash.dataset.backdrop = REVIEW_BACKDROP;
-  if (REVIEW_BACKDROP !== "balloons") {
-    // glow/lanterns read better on a night sky (user call) - reuse the same
-    // indigo night treatment the no-session/night-light/all-done screens
-    // already use (css:60), swapped in only for these two review variants.
-    const splashSky = splash.querySelector(".kq-sky");
-    splashSky.classList.remove("kq-sky--predawn");
-    splashSky.classList.add("kq-sky--night");
-  }
   function startSplash() {
     splash.classList.remove("go", "off");
     showScreen("screen-splash");

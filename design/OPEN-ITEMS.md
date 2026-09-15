@@ -1198,6 +1198,18 @@ but not judge visual motion or timing *feel* in a hidden tab.
 ## Break-count digits ride balloons (2026-09-15)
 
 ### [x] 45. The shared break-count digit now arrives on a balloon, both screens
+**Partially superseded 2026-09-15, same day — see "Flattened and muted"
+below and the "Break-count digit BALLOON" bullet in `brand.md` §5 for the
+current recipe.** The recipe description, the explicit-radius sizing
+trick, and both measured tables in this item all describe the *original*
+5-stop glossy radial-gradient recipe this session shipped first. Later the
+same day that recipe was flattened to a 2-stop muted `linear-gradient`
+with different base hex values entirely (`brand.md` §5,
+`kidq-desktop-app.css` above `.kq-digitballoon`) — the numbers below are
+history (what shipped first, and why gold was replaced), not the current
+implementation. Left in place rather than rewritten, per this file's own
+convention of annotating superseded content instead of deleting it.
+
 User request: "make them like coming on balloon" — balloon over ball because
 the splash's own KidQ letters are already glossy inflating balloons
 (`kidq-desktop-app.css:89–141`), an established brand vocabulary, not a new
@@ -1361,3 +1373,46 @@ motion, and whether the balloon reads as clearly "balloon" rather than
 "badge" at the smallest (390px) size — this environment confirmed geometry,
 computed styles and timing, not the felt motion or the shape's silhouette
 recognisability, in a real but unattended browser tab.
+
+## Splash backdrop finalized: glow (2026-09-16)
+
+### [x] 48. Splash-backdrop balloons share hue *names* with the hero letters but not their finish, and skip one hue with no stated reason
+Filed against this same branch (`design/balloon-rose-hue`) by a parallel
+screen-by-screen a11y/design review that lives on a sibling branch,
+`design/a11y-consistency` (commit `f813ff1`, its own `OPEN-ITEMS.md`,
+items 46–54) — not yet merged here, so it is ported into this branch's
+copy as item 48 only, numbered to match, rather than left undiscoverable
+from this side until some future merge. Original finding, unedited:
+
+> Run via `critique-color` against the WIP branch `design/balloon-rose-hue`.
+> The 3 new splash-backdrop balloons (`index.html:48-50`, `.kq-splashdrift`)
+> use `hue-teal`/`hue-coral`/`hue-dusk` — 3 of the digit-balloon system's 4
+> hues, skipping rose, with no reasoning recorded anywhere for which 3 were
+> picked. Measured independently (canvas-reconstructed CSS gradient, sampled
+> at the digit's actual rendered centre — not eyeballed) that the digit-text
+> contrast on all 4 flattened hues clears the 3:1 large-text floor with real
+> margin (teal 3.97:1, rose 3.99:1, coral 3.60:1, dusk 4.26:1 vs. cream text)
+> — so this item is a palette-coherence question, not a contrast defect.
+>
+> The splash's hero KidQ letters (K/i/d/Q = teal/gold/coral/dusk) keep their
+> original glossy 5-stop recipe untouched (per the balloon-rose-hue commit's
+> own note), while the backdrop balloons use the new flat/muted recipe — so
+> the same screen now renders the same hue names two different ways at once.
+> That may well be the right call (flatter recedes behind the hero, which is
+> the stated intent of `.kq-splashdrift`'s reduced opacity), but it isn't
+> documented as a deliberate reason — it reads as a side effect of reusing
+> whichever component was nearest in the code. Worth confirming intent
+> before this goes into `brand.md` as a documented pattern rather than an
+> accident that happened to look fine.
+
+**Resolved.** Both open questions are closed by the glow-backdrop work that
+landed on this branch the same day this item was ported: the splash now
+uses all four hues (a fourth, bottom-anchored balloon was added — nothing
+skipped, no reason needed), and the finish split is now a documented,
+deliberate figure/ground decision rather than a side effect — see the
+"Splash backdrop: night sky + glowing balloons" bullet in `brand.md` §5,
+which spells out exactly the flat-recedes/glossy-leads reasoning this item
+asked for. This branch's own splash backdrop no longer reads
+`hue-teal`/`hue-coral`/`hue-dusk` at all (that was this session's
+now-superseded WIP state, three balloons skipping rose) — it reads
+`hue-teal`/`hue-coral`/`hue-dusk`/`hue-rose`, one balloon per hue.
