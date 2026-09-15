@@ -438,7 +438,7 @@
     KidQData.profiles.forEach((p) => {
       const btn = document.createElement("button");
       btn.className = "kq-who";
-      btn.setAttribute("aria-label", `${p.name} — tap to start your day`);
+      btn.setAttribute("aria-label", `${p.name} — touch to start your day`);
       btn.innerHTML = `<span class="facewrap"><span class="halo"></span>${faceSvg(p)}</span><span class="name">${p.name}</span>`;
       btn.addEventListener("click", () => {
         pop(btn);
@@ -784,13 +784,13 @@
       s.style.animation = "";
     });
     $("#find-headline").textContent = `Find 3 ${c.name} things!`;
-    $("#find-sub").textContent = "Look around the room. Tap the sun when you find them.";
+    $("#find-sub").textContent = "Look around the room. Touch the sun when you find them.";
     // said after showScreen below, so the screen is up before the voice starts
     // the sun is the control, so it is disabled rather than hidden - hiding it
     // would remove the mascot from the celebration
     $("#find-done").disabled = false;
     showScreen("screen-find");
-    later(() => say(`Find 3 ${c.name} things. Look around the room, and tap the sun when you find them.`), 600);
+    later(() => say(`Find 3 ${c.name} things. Look around the room, and touch the sun when you find them.`), 600);
   }
   $("#find-done").addEventListener("click", (e) => {
     if (findScreen.classList.contains("celebrate")) return;
@@ -1192,10 +1192,10 @@
   // jump away from this screen - both already wipe whatever hold() is
   // pending, CHOICE_AUTO_MS's or this one's, exactly the same way.
   //
-  // Audio placeholder: there's no recorded "Tap the sun for your next video"
+  // Audio placeholder: there's no recorded "Touch the sun for your next video"
   // line in the repo - voice-follow-intro/-done are follow-the-sun specific -
   // so this reuses the soft sunset chime for now. TODO(production): record a
-  // spoken "Tap the sun for your next video" line for pre-readers, in the
+  // spoken "Touch the sun for your next video" line for pre-readers, in the
   // same voice as the other clips, and play it here via sayLine() the way
   // startFollow does for its own intro line.
   const NUDGE_FIRST_MS = 7000, NUDGE_REPEAT_MS = 15000;
