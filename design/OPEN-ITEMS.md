@@ -220,13 +220,14 @@ Vanilla HTML/CSS/JS with one closure-scoped state machine → React components
 under the App Router. Layout is driven by container queries on `#app` at three
 tiers, with one element inventory at every size.
 
-### [ ] 17. Three more activity breaks
+### [x] 17. Three more activity breaks
 **"Follow me with your eyes" is done — shipped as follow the sun**, built on
 `design/follow-the-ball-break` (Tasks 1–10 plus the closing verification
 sweep) per `docs/superpowers/specs/2026-09-14-kidq-follow-the-ball-break-design.md`.
-**"Stand like a tree" is done too** — see item 43. Still designed but not
-built: count to 10 with eyes closed. The cadence and rotation already
-support more entries with no other change.
+**"Stand like a tree" is done too** — see item 43. **"Count to 10, eyes
+closed" is done too, the last of the three** — see item 44. The cadence and
+rotation supported all three with no further change beyond the per-game
+work each one's own spec called for.
 
 Building it surfaced follow-ups that were logged in the spec (sections 11 and
 13.7) but not yet tracked anywhere in this file — now items 26–35 below.
@@ -1038,3 +1039,154 @@ toolbar's direct jump. Recolour bundle greps clean (no pure `#fff`/`#000`).
 sun's wobble, and the tree sway actually *look* right in motion — this
 environment can confirm the schedule and DOM state but not judge visual
 motion in a hidden tab.
+
+## Count to ten (2026-09-15)
+
+### [x] 44. "Count to 10, eyes closed" activity break, built
+Per `docs/superpowers/specs/2026-09-15-kidq-count-to-ten-break-design.md`,
+built on `design/count-break` (worktree `KidQ-fork-count`, off main at
+`7d1e692`, which already includes tree pose). `BREAK_GAMES.settle` is now
+`["breathe", "follow", "count"]` — the key the array's own comment had
+reserved — plus `BREAK_START.count = startCount` and a `data-break="count"`
+demo-bar button. This closes item 17: all three activity breaks the
+round-1 spec named are now built.
+
+**Voice.** Eleven new clips, same edge-tts pipeline as follow/tree
+(`en-IN-NeerjaNeural`, `--rate=-10%`, confirmed against commit `e7fa524`):
+`voice-count-intro.mp3` (3.696s, "Close your eyes… and count with me!"),
+`voice-count-1.mp3` … `voice-count-10.mp3` (ten SEPARATE per-number clips,
+per spec §4's own explicit reasoning — the hold chain triggers each at its
+own tick so digits and audio can't drift in any mode, including the
+device-TTS fallback — all eleven measure **exactly 1.872s each**, mutagen),
+`voice-count-open.mp3` (2.280s, "Open your eyes!"). Ending reuses
+`voice-follow-done.mp3` unchanged, same decision and naming wart as tree.
+Tick spacing is the measured per-number clip length itself (1872ms) —
+"chain follows audio" (spec §3) taken literally: each number gets exactly
+enough room to finish before the next starts, `hush()` the safety net
+tree's own build didn't need but this spec calls for explicitly ("Each
+sayLine call in this chain calls hush() first"), implemented on every one
+of the ten ticks plus the "Open!" transition. `TEN_OPEN_MS` (2500) adds a
+~220ms buffer past the measured 2.28s open clip, same reasoning as tree's
+own `SWITCH_MS` cushion. Consequence, flagged honestly exactly as tree's
+own item 43 did: the full run measures **~27.4s coded (~28.8s observed
+through real browser timers, the gap ordinary hidden-tab setTimeout
+coalescing)**, not the spec's own "~18.5s target" — ten clips at 1.872s
+each is already ~19s on its own, before intro/open/celebration. Not
+compressed to fit: this is the settle game, "sleepy and unhurried" is the
+explicit design goal (spec §4), and forcing a faster cadence would fight
+that goal directly.
+
+**Scene.** Donor is BREATHING's own `.bsun` dual-group `eyesOpen`/
+`eyesClosed` markup (spec §2's own explicit steer, Opus-reviewed) — the
+sunrise sun's eyes were rejected as a donor since its unscoped
+`.eyes-awake{opacity:0}` only lifts under `.screen.risen`, which
+`#screen-count` never gets. New ID-scoped CSS under `#screen-count`, not
+shared-component reuse (no shared sun component exists). A single `.dim`
+state class on `#screen-count` itself drives both the sky dim (the
+existing `.kq-duskveil` mechanism, pinned to a NEW ~0.25 opacity — the
+existing `.screen.setting`'s own 0.85 is a full dusk) and the closed eyes
+together, since the spec's sequence pairs them at the same two beats.
+Digit colour stays the shared teal (`var(--teal)`) tree's own build
+established, but RE-MEASURED against this screen's dimmed sky rather than
+inherited: alpha-compositing `.kq-duskveil`'s gradient at 0.25 opacity over
+the day sky's own three gradient stops gives **3.72–4.05:1** contrast
+across the composited range (worst case at the sky's bottom stop) — clears
+the 3:1 AA large-text floor with real margin, closer to the floor than
+tree's own 4.04–4.88:1 against the undimmed sky but not close enough to
+need a different colour. Digit entrance is deliberately quieter than
+tree's own `pop()` (spec §1: "a slow pulse, not a bounce" — count is the
+settle game): a new `kq-countpulse` keyframe, `.82→1` scale + `.55→1`
+opacity, ~300ms, its own small remove/reflow/add re-trigger helper rather
+than widening `pop()`'s two hardcoded class names for a third animation
+only this screen uses. Trail direction is the opposite of tree's: tree
+counts down and its trail previews what's still coming; this game counts
+up and its trail shows the WALKED-THROUGH numbers behind the current one
+(spec §1's own wording) — at nine numbers wide (big="10", trail="1 · 2 ·
+… · 9") this is one wider than tree's own four-wide max, the width risk
+spec §1 names by name. Measured rather than assumed to need mitigation
+(§8.1, below): the shared `.kq-breakcount-trail` size and `" · "`
+punctuation already carry real margin (180px scrollWidth against 330px
+usable at the 390px tier), so the only addition is
+`font-variant-numeric:tabular-nums`, to keep that measurement stable as
+the digits themselves change width — no smaller font, no thinner
+separator needed after all. No dots, no side decor, no new assets of any
+kind (spec §2) — the cheapest break in the set.
+
+**Demo note** (spec §8 item 5): the default "alternate" break-type config
+cannot demo count on its own. Under alternate, `bucketForBreak` sends a
+break to `move` at fraction ≤ 0.5 and `settle` above it; the default
+every-15-minute session on the demo `aarav` data plans exactly ONE break,
+landing at fraction 0.5000 — the `<=` boundary keeps it `move` (today's
+"first break is always find/tree" behaviour, unchanged by this build), so
+alternate can only reach `settle` — and only maybe reach count within
+that, depending on rotation — at every-10-minutes (two breaks, the second
+above 0.5) or wider gaps. To demo count specifically, use the demo bar's
+Break type: Quiet (forces every break to `settle`) or Breaks: every 10m
+(so there is a second, `settle`-side break to draw from) — exactly the
+combination the verification below drives.
+
+**Verified** (§8, same hidden-tab adaptation tree's own item 43 logged):
+- **8 widths** (390/600/601/900/1099/1100/1440/1920) via raw
+  `getBoundingClientRect()`/`scrollWidth` tables, worst-case digit state
+  forced (big="10", trail at its nine-number widest): no overflow, no
+  clipping, at any width. Cluster height (headline top to digit-row
+  bottom) runs 7px UNDER find's own reference cluster at 390px and
+  6.5–10.5px over it at the wider tiers — well inside tree's own precedent
+  of running 20–40px over at every width.
+- **Hands-off full run**, both motion modes, verified via the same
+  `setTimeout`-override instrumentation tree's own item 43 used (captures
+  the coded schedule without needing rAF/paint, which never advance in a
+  hidden automation tab): the full-motion run's `hold()` delays land
+  exactly on the coded constants (600, 4296, then 1872×9, 18720, 2500,
+  1900) with only ordinary timer jitter; the reduced-motion run's `hold()`
+  delays are **identical**, confirming spec §5 ("nothing shortened — all
+  `hold()`") — only the digit-pulse cleanup's own `later()` calls clamp
+  from 350ms to 200ms, a cosmetic detail outside the break's own pacing.
+- **Silent fallback**: every `<audio>.play()` forced to reject AND
+  `window.speechSynthesis` replaced with `null` (both the recorded clips
+  and the device-TTS fallback unreachable at once) — the `hold()` schedule
+  is bit-for-bit identical to the normal run; the digits still walk, same
+  total time, confirming §3's claim that visuals and the hold chain never
+  depend on audio actually playing.
+- **Eyes actually toggle**: computed `opacity` of both `.eyesOpen`/
+  `.eyesClosed` groups confirmed `1`/`0` at rest, `0`/`1` under `.dim`,
+  back to `1`/`0` on removal — instant in both directions (no `transition`
+  on that property, matching the sunrise sun's own reduced-motion
+  behaviour by construction, not by special-casing). The sky-dim
+  `.kq-duskveil` opacity target was confirmed the same way with its
+  `transition-duration` temporarily zeroed (`0`/`.25`/`0`) rather than by
+  waiting through the live 1.4s transition: this automation tab is always
+  `document.hidden`, and Chrome never ticks CSS transitions forward for a
+  hidden tab's compositor, so the live opacity reads frozen at its
+  pre-transition value even a full second past the transition's own
+  duration — a test-harness limitation (the same one that keeps rAF/Lottie
+  from advancing), not a bug in the rule; the CSSOM match and the
+  transition-bypassed target value both confirm the rule itself is
+  correct, and the mechanism (`.kq-duskveil` + `!important`
+  `transition-duration:.12s` under `.reduce-motion`) is the one already
+  proven live on the watching screen.
+- **`startCount` reached from the real session path**: Break type set to
+  Quiet, breaks every 10 minutes, driven through the actual `aarav` demo
+  session (sunrise tap → `ended` event on the video, real `state.current`/
+  `state.watched` set by the real code path, not synthesised) across
+  **7 fresh page reloads** (`breakRotation` reseeds per load, not per
+  session restart, confirmed by checking that `window.speechSynthesis`
+  and injected debug globals from a prior trial do NOT survive a `navigate`
+  call — a genuine reload, not a bfcache restore). All three settle games
+  appeared (count ×4, follow ×2, breathe ×1) — one more trial than tree's
+  own item 43 logged ("verified uniform, 6 % 3 == 0"), added here because
+  the first six landed on only two of the three games and a seventh was
+  needed to see breathing actually fire before calling the wiring
+  confirmed.
+- Celebration state inspected directly mid-run: `#screen-count` carries
+  `active celebrate` (not `dim`), headline reads "You did it! ✨", the
+  digit row computes `display:none` and both digit spans are cleared —
+  matching `#screen-count.celebrate` exactly as written.
+- Console clean across every run above (normal, reduced-motion, silent
+  fallback, all seven quiet-type reloads). `node --check` clean.
+
+**Human check still needed, not simulated here:** whether the digit's
+quieter pulse actually reads as calmer than tree's pop, and whether the
+sky-dim/eyes-close/eyes-open beats feel right in motion — this environment
+can confirm the schedule, the DOM state and the CSS rules' target values,
+but not judge visual motion or timing *feel* in a hidden tab.

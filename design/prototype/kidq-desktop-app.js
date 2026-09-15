@@ -247,8 +247,7 @@
      day is winding down) — the same arc the sun itself travels.            */
   const BREAK_GAMES = {
     move:   ["find", "tree"],
-    settle: ["breathe", "follow"]
-    // next round: "count" joins settle
+    settle: ["breathe", "follow", "count"]
   };
 
   // Returns the planned break points as fractions of the session's total
@@ -670,7 +669,7 @@
   /* ---------- playtime seam + activity breaks ---------- */
   // A ternary only ever reaches two games. Every new break must land here or it
   // silently runs breathing.
-  const BREAK_START = { find: startFind, breathe: startBreathing, follow: startFollow, tree: startTree };
+  const BREAK_START = { find: startFind, breathe: startBreathing, follow: startFollow, tree: startTree, count: startCount };
 
   function startPlaytimeSeam(forceGame) {
     video.pause();
@@ -1166,6 +1165,111 @@
     }
     hold(() => sayLine($("#voice-tree-intro"), "Stand like a tree with me! Arms up, one foot on your leg."), 600);
     hold(runHold1, 600 + TREE_INTRO_MS);
+  }
+
+  /* --- SETTLE: count to ten, eyes closed ---
+     No input at all (spec 2026-09-15 kidq-count-to-ten-break-design.md §1):
+     eyes are closed, so a tap would contradict the activity - everything
+     here is timed, same discipline as tree pose. Donor: BREATHING's own
+     .bsun dual-group eye markup (css, #screen-breathing .bsun .eyesClosed
+     etc.) - the only sun with a working eye TOGGLE. The sunrise sun's eyes
+     were rejected as a donor (spec §2): its unscoped .eyes-awake{opacity:0}
+     only lifts under .screen.risen, which #screen-count never gets, so
+     "Open your eyes!" would render no eyes at all. */
+  const countScreen = $("#screen-count");
+  const countHeadline = $("#count-headline");
+  const countBig = $("#count-big");
+  const countTrail = $("#count-trail");
+
+  // Ten spoken numbers, ten SEPARATE clips (spec §4) - not one multi-word
+  // track like tree's own count clip. Per-number clips let the hold chain
+  // trigger each one at its own tick, so digits and audio stay in step even
+  // on the device-TTS fallback (a single ~19s clip can't be paced, and
+  // say() would finish early); no clip is ever still playing under the next
+  // beat, since hush() (countTick, below) retires it first every time.
+  // Named TEN_* rather than tree's own COUNT_* (kidq-desktop-app.js above)
+  // to avoid redeclaring those consts in this shared module scope.
+  const TEN_WORDS = ["One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten"];
+  const TEN_BIG = TEN_WORDS.map((_, i) => String(i + 1));
+  // The WALKED-THROUGH numbers trail behind the current big digit (spec §1)
+  // - the opposite direction from tree's own countdown trail, which
+  // previews what's still coming. Same " · " join tree uses - the width
+  // risk spec §1 names explicitly ("one orphaned '· 10' away from wrapping"
+  // at the 390px tier) turned out not to need a thinner separator once
+  // measured: the worst case (big="10", all nine numbers trailing) scrolls
+  // to 180px against 330px usable at the narrowest tier (§8.1), so the
+  // shared punctuation stays. font-variant-numeric:tabular-nums (css:
+  // #screen-count .kq-breakcount-trail) keeps that measurement stable as
+  // the digits themselves change width.
+  const TEN_TRAIL = TEN_BIG.map((_, i) => TEN_BIG.slice(0, i).join(" · "));
+  const TEN_CLIPS = TEN_WORDS.map((_, i) => $(`#voice-count-${i + 1}`));
+
+  // voice-count-1..10.mp3 (edge-tts en-IN-NeerjaNeural --rate=-10%, same
+  // pipeline/rate as follow and tree, confirmed against commit e7fa524) all
+  // measure 1.872s (mutagen) - so the tick chain's own spacing IS the clip
+  // length: "chain follows audio" (spec §1), each number given room to
+  // finish before the next starts, hush() the safety net if a device ever
+  // runs slow. voice-count-intro.mp3 measures 3.696s. voice-count-open.mp3
+  // measures 2.280s; TEN_OPEN_MS adds a ~220ms buffer (same reasoning as
+  // tree's own SWITCH_MS cushion) so the open line has time to finish
+  // before the celebration's own sayLine call could ever collide with it.
+  const TEN_INTRO_MS = 3696;
+  const TEN_TICK_MS = 1872;
+  const TEN_OPEN_MS = 2500;
+
+  function setTenDigit(i) {
+    countBig.textContent = TEN_BIG[i];
+    countTrail.textContent = TEN_TRAIL[i];
+    // Quieter than tree's pop() (spec §1: "the entrance is a slow pulse,
+    // not a bounce" - count is the settle game). Its own remove/reflow/add
+    // dance (find's own re-entrancy pattern, css:781-785) rather than
+    // widening pop()'s two hardcoded class names for a third animation only
+    // this screen uses.
+    countBig.classList.remove("pulse");
+    void countBig.offsetWidth;
+    countBig.classList.add("pulse");
+    later(() => countBig.classList.remove("pulse"), 350);
+  }
+
+  function countTick(i) {
+    setTenDigit(i);
+    hush(); // every tick's own line (spec §3): retires whatever came before
+    sayLine(TEN_CLIPS[i], TEN_WORDS[i]);
+  }
+
+  function runTenCount() {
+    countTick(0);
+    for (let i = 1; i < TEN_BIG.length; i++) hold(() => countTick(i), i * TEN_TICK_MS);
+    hold(openTenEyes, TEN_BIG.length * TEN_TICK_MS);
+  }
+
+  function openTenEyes() {
+    countScreen.classList.remove("dim");
+    hush();
+    sayLine($("#voice-count-open"), "Open your eyes!");
+    hold(celebrateCount, TEN_OPEN_MS);
+  }
+
+  function celebrateCount() {
+    countScreen.classList.add("celebrate");
+    countHeadline.textContent = "You did it! ✨";
+    countBig.textContent = "";
+    countTrail.textContent = "";
+    sayLine($("#voice-follow-done"), "You did it!"); // shared ending clip, spec §4/§7.1
+    safePlay(chime);
+    hold(startChoice, 1900); // matches every other break's celebration exit
+  }
+
+  function startCount() {
+    showScreen("screen-count");
+    countScreen.classList.remove("celebrate");
+    countScreen.classList.add("dim"); // sky dims + sun's eyes close, one state class (spec §2)
+    countHeadline.textContent = "Close your eyes — count with me!";
+    countBig.classList.remove("pulse");
+    countBig.textContent = TEN_BIG[0];
+    countTrail.textContent = "";
+    hold(() => sayLine($("#voice-count-intro"), "Close your eyes… and count with me!"), 600);
+    hold(runTenCount, 600 + TEN_INTRO_MS);
   }
 
   /* ---------- after-break choice (within the parent's picks) ---------- */

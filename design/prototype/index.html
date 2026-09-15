@@ -345,6 +345,36 @@
     </div>
   </section>
 
+  <!-- SETTLE: count to ten, eyes closed -->
+  <section class="screen" id="screen-count" aria-label="Count to ten break">
+    <div class="kq-sky">
+      <div class="kq-duskveil"></div>
+      <span class="kq-ptpill slot">Playtime!</span>
+      <div class="kq-centercol">
+        <h1 class="kq-counthead" id="count-headline" aria-live="polite">Close your eyes — count with me!</h1>
+        <div class="kq-bsunwrap kq-countsun" id="count-sun" aria-hidden="true">
+          <span class="halo"></span>
+          <svg class="bsun" style="transform:none" viewBox="0 0 60 60" aria-hidden="true">
+            <g class="rays"><line x1="30" y1="1.5" x2="30" y2="9.5"/><line x1="50" y1="30" x2="58.5" y2="30"/><line x1="44" y1="16" x2="50" y2="10"/><line x1="44" y1="44" x2="50" y2="50"/><line x1="30" y1="50.5" x2="30" y2="58.5"/><line x1="10" y1="50" x2="16" y2="44"/><line x1="1.5" y1="30" x2="10" y2="30"/><line x1="10" y1="10" x2="16" y2="16"/></g>
+            <circle cx="30" cy="30" r="16.5" fill="#FFC64D"/>
+            <g class="eyesOpen" fill="#2E2A24"><circle class="eye" cx="24.5" cy="28" r="1.9"/><circle class="eye" cx="35.5" cy="28" r="1.9"/></g>
+            <g class="eyesClosed" stroke="#2E2A24" stroke-width="2" fill="none" stroke-linecap="round">
+              <path d="M21.5 28.5 q3 2.6 6 0"/><path d="M32.5 28.5 q3 2.6 6 0"/>
+            </g>
+            <path d="M24.5 34.5 Q30 39 35.5 34.5" fill="none" stroke="#2E2A24" stroke-width="2.2" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <!-- break-count digit pattern (brand.md §5): walked-through numbers
+             trail behind the current big one, dimmed - aria-hidden, the
+             headline above carries the accessible experience (spec §1). -->
+        <div class="kq-breakcount" id="count-count" aria-hidden="true">
+          <span class="kq-breakcount-big" id="count-big">1</span>
+          <span class="kq-breakcount-trail" id="count-trail"></span>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- after-break choice -->
   <section class="screen" id="screen-choice" aria-label="Choose your next video">
     <div class="kq-sky">
@@ -644,6 +674,7 @@
   <button data-break="find">Break: find 3</button>
   <button data-break="follow">Break: follow sun</button>
   <button data-break="tree">Break: tree</button>
+  <button data-break="count">Break: count</button>
   <button data-sky="0.08">Sun: rise</button>
   <button data-sky="0.5">Sun: midday</button>
   <button data-sky="0.95" data-dusk="1">Sun: sunset</button>
@@ -661,6 +692,18 @@
 <audio id="voice-tree-intro" src="proposal-src/voice-tree-intro.mp3" preload="auto"></audio>
 <audio id="voice-tree-count" src="proposal-src/voice-tree-count.mp3" preload="auto"></audio>
 <audio id="voice-tree-switch" src="proposal-src/voice-tree-switch.mp3" preload="auto"></audio>
+<audio id="voice-count-intro" src="proposal-src/voice-count-intro.mp3" preload="auto"></audio>
+<audio id="voice-count-1" src="proposal-src/voice-count-1.mp3" preload="auto"></audio>
+<audio id="voice-count-2" src="proposal-src/voice-count-2.mp3" preload="auto"></audio>
+<audio id="voice-count-3" src="proposal-src/voice-count-3.mp3" preload="auto"></audio>
+<audio id="voice-count-4" src="proposal-src/voice-count-4.mp3" preload="auto"></audio>
+<audio id="voice-count-5" src="proposal-src/voice-count-5.mp3" preload="auto"></audio>
+<audio id="voice-count-6" src="proposal-src/voice-count-6.mp3" preload="auto"></audio>
+<audio id="voice-count-7" src="proposal-src/voice-count-7.mp3" preload="auto"></audio>
+<audio id="voice-count-8" src="proposal-src/voice-count-8.mp3" preload="auto"></audio>
+<audio id="voice-count-9" src="proposal-src/voice-count-9.mp3" preload="auto"></audio>
+<audio id="voice-count-10" src="proposal-src/voice-count-10.mp3" preload="auto"></audio>
+<audio id="voice-count-open" src="proposal-src/voice-count-open.mp3" preload="auto"></audio>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/bodymovin/5.12.2/lottie.min.js"></script>
 <script src="kidq-hifive-anim.js"></script>
