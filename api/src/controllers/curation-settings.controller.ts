@@ -27,7 +27,7 @@ function isValidDailySchedule(value: unknown): value is DailySchedule {
 
 export async function getSettings(req: Request, res: Response) {
   const childId = req.params.childId;
-  const child = await assertChildOwnedBy(childId, req.identity!.uid);
+  const child = await assertChildOwnedBy(childId, req.user!.id);
   if (!child) return res.status(404).json({ error: "Child not found" });
 
   const settings = await getCurationSettings(childId);
@@ -36,7 +36,7 @@ export async function getSettings(req: Request, res: Response) {
 
 export async function putSettings(req: Request, res: Response) {
   const childId = req.params.childId;
-  const child = await assertChildOwnedBy(childId, req.identity!.uid);
+  const child = await assertChildOwnedBy(childId, req.user!.id);
   if (!child) return res.status(404).json({ error: "Child not found" });
 
   const body = req.body as Partial<CurationSettings>;

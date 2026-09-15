@@ -1,14 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { fetchSessionRouting, signInWithGoogle } from "@/services/auth";
-import { isFirebaseConfigured } from "@/lib/firebase";
+import { signInWithGoogle, isAuthConfigured } from "@/services/auth";
 import { GoogleIcon } from "@/components/GoogleIcon";
 import { Card } from "@/components/Card";
 
 export default function LoginPage() {
-  const router = useRouter();
   const [status, setStatus] = useState<"idle" | "signing-in" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -16,9 +13,9 @@ export default function LoginPage() {
     setStatus("signing-in");
     setErrorMessage(null);
     try {
-      const user = await signInWithGoogle();
-      const routing = await fetchSessionRouting(user);
-      router.push(routing.onboardingComplete ? "/session" : "/onboarding/consent");
+      await signInWithGoogle();
+      // Supabase redirects the browser to Google and back to this app; the root page
+      // (app/page.tsx) picks up the new session via onAuthChange and routes from there.
     } catch (error) {
       setStatus("error");
       setErrorMessage(error instanceof Error ? error.message : "Sign-in failed");
@@ -48,7 +45,7 @@ export default function LoginPage() {
 
         <button
           onClick={handleSignIn}
-          disabled={status === "signing-in" || !isFirebaseConfigured}
+          disabled={status === "signing-in" || !isAuthConfigured}
           style={{
             display: "flex",
             alignItems: "center",
@@ -62,7 +59,7 @@ export default function LoginPage() {
             fontFamily: "var(--kq-font-display)",
             fontWeight: 700,
             fontSize: 16,
-            cursor: isFirebaseConfigured ? "pointer" : "not-allowed",
+            cursor: isAuthConfigured ? "pointer" : "not-allowed",
             opacity: status === "signing-in" ? 0.7 : 1,
           }}
         >
@@ -70,7 +67,7 @@ export default function LoginPage() {
           {status === "signing-in" ? "Signing in…" : "Continue with Google"}
         </button>
 
-        {!isFirebaseConfigured && (
+        {!isAuthConfigured && (
           <p style={{ color: "var(--kq-terracotta)", fontSize: "var(--kq-text-caption)" }}>
             Google Sign-In isn&apos;t configured yet for this environment (see web/.env.example).
           </p>

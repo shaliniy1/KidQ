@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { User } from "firebase/auth";
+import type { KidQUser } from "@/services/auth";
 import { onAuthChange, fetchSessionRouting } from "@/services/auth";
 import { getMyVideos, removeVideo, simulateAdminDecision } from "@/services/my-videos";
 import type { LibraryEntry } from "@/types/library";
@@ -26,7 +26,7 @@ export default function MyVideosPage() {
   const [parentName, setParentName] = useState<string | null>(null);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const userRef = useRef<User | null>(null);
+  const userRef = useRef<KidQUser | null>(null);
 
   useEffect(() => {
     const unsubscribe = onAuthChange(async (user) => {

@@ -1,9 +1,9 @@
 import { Router } from "express";
 import { getSyncStatusForChild, postStartSession, postSyncAck } from "../controllers/session.controller";
-import { requireAuth } from "../middleware/require-auth";
+import { requireRole } from "../http/auth";
 
 const router = Router();
-router.post("/children/:childId/session", requireAuth, postStartSession);
-router.post("/children/:childId/sync-ack", requireAuth, postSyncAck);
-router.get("/children/:childId/sync-status", requireAuth, getSyncStatusForChild);
+router.post("/children/:childId/session", requireRole("parent", "admin"), postStartSession);
+router.post("/children/:childId/sync-ack", requireRole("parent", "admin"), postSyncAck);
+router.get("/children/:childId/sync-status", requireRole("parent", "admin"), getSyncStatusForChild);
 export default router;

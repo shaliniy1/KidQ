@@ -10,7 +10,7 @@ import { DURATION_OPTIONS } from "../types/curation-settings";
 
 export async function postStartSession(req: Request, res: Response) {
   const childId = req.params.childId;
-  const child = await assertChildOwnedBy(childId, req.identity!.uid);
+  const child = await assertChildOwnedBy(childId, req.user!.id);
   if (!child) return res.status(404).json({ error: "Child not found" });
 
   const durationMinutes = req.body?.durationMinutes;
@@ -55,7 +55,7 @@ export async function postStartSession(req: Request, res: Response) {
 /** Called by the child device once it has actually received/loaded the queue. */
 export async function postSyncAck(req: Request, res: Response) {
   const childId = req.params.childId;
-  const child = await assertChildOwnedBy(childId, req.identity!.uid);
+  const child = await assertChildOwnedBy(childId, req.user!.id);
   if (!child) return res.status(404).json({ error: "Child not found" });
 
   const sessionId = typeof req.body?.sessionId === "string" ? req.body.sessionId : "";
@@ -71,7 +71,7 @@ export async function postSyncAck(req: Request, res: Response) {
 /** No UI consumes this yet — available for a future status indicator (spec Section 9). */
 export async function getSyncStatusForChild(req: Request, res: Response) {
   const childId = req.params.childId;
-  const child = await assertChildOwnedBy(childId, req.identity!.uid);
+  const child = await assertChildOwnedBy(childId, req.user!.id);
   if (!child) return res.status(404).json({ error: "Child not found" });
 
   const record = await getSyncStatus(childId);

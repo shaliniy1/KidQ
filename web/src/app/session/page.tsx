@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { User } from "firebase/auth";
+import type { KidQUser } from "@/services/auth";
 import { onAuthChange } from "@/services/auth";
 import { getChildren } from "@/services/child-profile";
 import { startSession } from "@/services/session";
@@ -53,7 +53,7 @@ export default function StartSessionPage() {
   const [mode, setMode] = useState<TimeBandMode>("auto");
   const [micState, setMicState] = useState<MicState>("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const userRef = useRef<User | null>(null);
+  const userRef = useRef<KidQUser | null>(null);
 
   useEffect(() => {
     const unsubscribe = onAuthChange(async (user) => {

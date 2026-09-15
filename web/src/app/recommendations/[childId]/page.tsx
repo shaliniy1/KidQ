@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import type { User } from "firebase/auth";
+import type { KidQUser } from "@/services/auth";
 import { onAuthChange } from "@/services/auth";
 import { addToLibrary, getRecommendations } from "@/services/recommendations";
 import type { RecommendationCard } from "@/types/recommendation";
@@ -24,7 +24,7 @@ export default function RecommendationsPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const userRef = useRef<User | null>(null);
+  const userRef = useRef<KidQUser | null>(null);
 
   useEffect(() => {
     const unsubscribe = onAuthChange(async (user) => {

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { User } from "firebase/auth";
+import type { KidQUser } from "@/services/auth";
 import { onAuthChange } from "@/services/auth";
 import { getAgeBandDefaults } from "@/services/parent-config";
 import { submitProfile } from "@/services/child-profile";
@@ -38,7 +38,7 @@ export default function ChildProfilePage() {
   const [parentName, setParentName] = useState("");
   const [children, setChildren] = useState<DraftChild[]>([newChild(0)]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const userRef = useRef<User | null>(null);
+  const userRef = useRef<KidQUser | null>(null);
 
   useEffect(() => {
     const unsubscribe = onAuthChange(async (user) => {

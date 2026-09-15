@@ -1,8 +1,8 @@
 import { Router } from "express";
 import { getInbox, postMarkRead } from "../controllers/inbox.controller";
-import { requireAuth } from "../middleware/require-auth";
+import { requireRole } from "../http/auth";
 
 const router = Router();
-router.get("/inbox", requireAuth, getInbox);
-router.post("/inbox/:notificationId/read", requireAuth, postMarkRead);
+router.get("/inbox", requireRole("parent", "admin"), getInbox);
+router.post("/inbox/:notificationId/read", requireRole("parent", "admin"), postMarkRead);
 export default router;

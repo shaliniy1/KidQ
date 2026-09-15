@@ -1,8 +1,8 @@
 import { Router } from "express";
 import { getSettings, putSettings } from "../controllers/curation-settings.controller";
-import { requireAuth } from "../middleware/require-auth";
+import { requireRole } from "../http/auth";
 
 const router = Router();
-router.get("/children/:childId/curation", requireAuth, getSettings);
-router.put("/children/:childId/curation", requireAuth, putSettings);
+router.get("/children/:childId/curation", requireRole("parent", "admin"), getSettings);
+router.put("/children/:childId/curation", requireRole("parent", "admin"), putSettings);
 export default router;

@@ -1,4 +1,4 @@
-import type { User } from "firebase/auth";
+import type { KidQUser } from "./auth";
 import { apiFetch } from "./api";
 import type { AssembledSession, TimeBandMode } from "@/types/session";
 
@@ -9,7 +9,7 @@ export interface StartSessionResult {
 }
 
 export async function startSession(
-  user: User,
+  user: KidQUser,
   childId: string,
   durationMinutes: number,
   timeBandMode: TimeBandMode
@@ -28,7 +28,7 @@ export async function startSession(
  * "the device has the queue" is implicitly true the moment that screen
  * successfully renders the session data.
  */
-export async function acknowledgeSync(user: User, childId: string, sessionId: string): Promise<void> {
+export async function acknowledgeSync(user: KidQUser, childId: string, sessionId: string): Promise<void> {
   const idToken = await user.getIdToken();
   await apiFetch(`/children/${childId}/sync-ack`, {
     method: "POST",

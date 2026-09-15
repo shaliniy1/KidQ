@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { User } from "firebase/auth";
+import type { KidQUser } from "@/services/auth";
 import { onAuthChange } from "@/services/auth";
 import { addVideo, detectVideo } from "@/services/my-videos";
 import { getCategories } from "@/services/parent-config";
@@ -28,7 +28,7 @@ export default function AddVideoPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [categories, setCategories] = useState<string[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const userRef = useRef<User | null>(null);
+  const userRef = useRef<KidQUser | null>(null);
 
   useEffect(() => {
     const unsubscribe = onAuthChange((user) => {

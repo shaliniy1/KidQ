@@ -1,4 +1,4 @@
-import type { User } from "firebase/auth";
+import type { KidQUser } from "./auth";
 import { apiFetch } from "./api";
 
 export interface NluCurationResult {
@@ -8,7 +8,7 @@ export interface NluCurationResult {
   regulationGoals: string[];
 }
 
-export async function extractCurationTags(user: User, transcript: string): Promise<NluCurationResult> {
+export async function extractCurationTags(user: KidQUser, transcript: string): Promise<NluCurationResult> {
   const idToken = await user.getIdToken();
   return apiFetch<NluCurationResult>("/nlu/curation", {
     method: "POST",

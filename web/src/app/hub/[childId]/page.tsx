@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import type { User } from "firebase/auth";
+import type { KidQUser } from "@/services/auth";
 import { onAuthChange } from "@/services/auth";
 import { getCategories } from "@/services/parent-config";
 import { getCurationSettings, saveCurationSettings } from "@/services/curation-settings";
@@ -102,7 +102,7 @@ export default function HubPage() {
   const [draft, setDraft] = useState<Draft | null>(null);
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const userRef = useRef<User | null>(null);
+  const userRef = useRef<KidQUser | null>(null);
 
   useEffect(() => {
     const unsubscribe = onAuthChange(async (user) => {

@@ -1,8 +1,8 @@
 import { Router } from "express";
 import { getFeedback, postFeedback } from "../controllers/feedback.controller";
-import { requireAuth } from "../middleware/require-auth";
+import { requireRole } from "../http/auth";
 
 const router = Router();
-router.post("/feedback", requireAuth, postFeedback);
-router.get("/feedback", requireAuth, getFeedback);
+router.post("/feedback", requireRole("parent", "admin"), postFeedback);
+router.get("/feedback", requireRole("parent", "admin"), getFeedback);
 export default router;

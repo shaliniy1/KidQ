@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { User } from "firebase/auth";
+import type { KidQUser } from "@/services/auth";
 import { onAuthChange } from "@/services/auth";
 import { getChildren } from "@/services/child-profile";
 import { getCurationSettings, saveCurationSettings } from "@/services/curation-settings";
@@ -23,7 +23,7 @@ export default function SettingsPage() {
   const [selectedChildId, setSelectedChildId] = useState<string | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const userRef = useRef<User | null>(null);
+  const userRef = useRef<KidQUser | null>(null);
 
   useEffect(() => {
     const unsubscribe = onAuthChange(async (user) => {

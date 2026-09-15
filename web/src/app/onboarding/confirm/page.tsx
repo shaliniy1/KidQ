@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { User } from "firebase/auth";
+import type { KidQUser } from "@/services/auth";
 import { onAuthChange } from "@/services/auth";
 import { getChildren } from "@/services/child-profile";
 import type { ChildProfile } from "@/types/child-profile";
@@ -20,7 +20,7 @@ export default function ConfirmPage() {
   const [phase, setPhase] = useState<"loading" | "ready" | "error">("loading");
   const [children, setChildren] = useState<ChildProfile[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const userRef = useRef<User | null>(null);
+  const userRef = useRef<KidQUser | null>(null);
 
   useEffect(() => {
     const unsubscribe = onAuthChange(async (user) => {

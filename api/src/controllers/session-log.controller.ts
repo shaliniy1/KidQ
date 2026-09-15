@@ -19,7 +19,7 @@ function buildThinPoolDisclosure(usedFallback: boolean, fallbackCategory: string
  */
 export async function postSessionLog(req: Request, res: Response) {
   const childId = req.params.childId;
-  const child = await assertChildOwnedBy(childId, req.identity!.uid);
+  const child = await assertChildOwnedBy(childId, req.user!.id);
   if (!child) return res.status(404).json({ error: "Child not found" });
 
   const { durationMinutes, watched, outcome, usedFallback, fallbackCategory } = req.body ?? {};
@@ -40,7 +40,7 @@ export async function postSessionLog(req: Request, res: Response) {
     durationSeconds: Number(w.durationSeconds ?? 0),
   }));
 
-  const log = await createSessionLog(req.identity!.uid, childId, {
+  const log = await createSessionLog(req.user!.id, childId, {
     durationMinutes,
     watched: watchedEntries,
     outcome,
@@ -48,7 +48,7 @@ export async function postSessionLog(req: Request, res: Response) {
     fallbackCategory: fallbackCategory ?? null,
   });
 
-  const notification = await addNotification(req.identity!.uid, "session_complete", {
+  const notification = await addNotification(req.user!.id, "session_complete", {
     childId,
     durationMinutes: log.durationMinutes,
     watched: watchedEntries.map((w) => ({ title: w.title, durationSeconds: w.durationSeconds })),
@@ -62,9 +62,9 @@ export async function postSessionLog(req: Request, res: Response) {
 /** P8 Handoff / Insight log — the same factual watched-content log ticket 09 ingests. */
 export async function getWatchedLog(req: Request, res: Response) {
   const childId = req.params.childId;
-  const child = await assertChildOwnedBy(childId, req.identity!.uid);
+  const child = await assertChildOwnedBy(childId, req.user!.id);
   if (!child) return res.status(404).json({ error: "Child not found" });
 
-  const logs = await listSessionLogs(req.identity!.uid, childId);
+  const logs = await listSessionLogs(req.user!.id, childId);
   return res.json({ logs });
 }

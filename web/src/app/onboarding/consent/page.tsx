@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { User } from "firebase/auth";
+import type { KidQUser } from "@/services/auth";
 import { onAuthChange } from "@/services/auth";
 import { getConsentStatus, recordConsent } from "@/services/consent";
 import { Button } from "@/components/Button";
@@ -18,7 +18,7 @@ export default function ConsentGatePage() {
   const [phase, setPhase] = useState<"loading" | "ready" | "submitting" | "error">("loading");
   const [checked, setChecked] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const userRef = useRef<User | null>(null);
+  const userRef = useRef<KidQUser | null>(null);
   const hasRouted = useRef(false);
 
   useEffect(() => {

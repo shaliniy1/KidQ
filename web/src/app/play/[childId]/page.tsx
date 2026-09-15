@@ -14,7 +14,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import type { User } from "firebase/auth";
+import type { KidQUser } from "@/services/auth";
 import { onAuthChange } from "@/services/auth";
 import { logSessionOutcome } from "@/services/inbox";
 import { acknowledgeSync } from "@/services/session";
@@ -29,7 +29,7 @@ export default function ChildPlayerStub() {
   const [session, setSession] = useState<AssembledSession | null>(null);
   const [outsideScheduledWindow, setOutsideScheduledWindow] = useState(false);
   const [logging, setLogging] = useState(false);
-  const userRef = useRef<User | null>(null);
+  const userRef = useRef<KidQUser | null>(null);
 
   useEffect(() => {
     const unsubscribe = onAuthChange((user) => {

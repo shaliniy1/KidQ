@@ -36,7 +36,7 @@ export async function createProfile(req: Request, res: Response) {
     });
   }
 
-  const uid = req.identity!.uid;
+  const uid = req.user!.id;
   const createdChildren = await createChildren(uid, children);
   await completeOnboarding(uid, parentName);
 
@@ -44,6 +44,6 @@ export async function createProfile(req: Request, res: Response) {
 }
 
 export async function getChildren(req: Request, res: Response) {
-  const children = await listChildren(req.identity!.uid);
+  const children = await listChildren(req.user!.id);
   return res.json({ children });
 }

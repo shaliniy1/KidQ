@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import type { User } from "firebase/auth";
+import type { KidQUser } from "@/services/auth";
 import { onAuthChange } from "@/services/auth";
 import { getChildren } from "@/services/child-profile";
 import { excludeFromChild, getFeedback, getWatchedLog, setFeedback } from "@/services/watched-log";
@@ -45,7 +45,7 @@ export default function WatchedLogPage() {
   const [sentiments, setSentiments] = useState<Record<string, Sentiment>>({});
   const [excluded, setExcluded] = useState<Set<string>>(new Set());
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const userRef = useRef<User | null>(null);
+  const userRef = useRef<KidQUser | null>(null);
 
   useEffect(() => {
     const unsubscribe = onAuthChange(async (user) => {

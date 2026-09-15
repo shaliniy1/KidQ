@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import type { User } from "firebase/auth";
+import type { KidQUser } from "@/services/auth";
 import { onAuthChange } from "@/services/auth";
 import { extractCurationTags } from "@/services/curation-nlu";
 import { writeHubDraftPatch } from "@/lib/hub-draft-bridge";
@@ -49,7 +49,7 @@ export default function VoiceCapturePage() {
   const [transcript, setTranscript] = useState("");
   const [phase, setPhase] = useState<"ready" | "submitting" | "error">("ready");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const userRef = useRef<User | null>(null);
+  const userRef = useRef<KidQUser | null>(null);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
 
   useEffect(() => {

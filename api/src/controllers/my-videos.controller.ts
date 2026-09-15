@@ -49,7 +49,7 @@ export async function postDetectVideo(req: Request, res: Response) {
 }
 
 export async function getMyVideos(req: Request, res: Response) {
-  const entries = await listLibrary(req.identity!.uid);
+  const entries = await listLibrary(req.user!.id);
   return res.json({ entries });
 }
 
@@ -72,7 +72,7 @@ export async function postAddVideo(req: Request, res: Response) {
 
   const resolvedVisibility: LibraryVisibility = visibility === "public" ? "public" : "private";
 
-  const [created] = await addToLibrary(req.identity!.uid, [
+  const [created] = await addToLibrary(req.user!.id, [
     {
       contentId,
       title,
@@ -93,7 +93,7 @@ export async function postAddVideo(req: Request, res: Response) {
 }
 
 export async function deleteVideo(req: Request, res: Response) {
-  const removed = await removeFromLibrary(req.identity!.uid, req.params.entryId);
+  const removed = await removeFromLibrary(req.user!.id, req.params.entryId);
   if (!removed) return res.status(404).json({ error: "Library entry not found" });
   return res.status(204).send();
 }
@@ -108,7 +108,7 @@ export async function deleteVideo(req: Request, res: Response) {
  * lets the P9b/P9b-reject notification path be verified end-to-end now.
  */
 export async function postSimulateAdminDecision(req: Request, res: Response) {
-  const entry = await getLibraryEntry(req.identity!.uid, req.params.entryId);
+  const entry = await getLibraryEntry(req.user!.id, req.params.entryId);
   if (!entry) return res.status(404).json({ error: "Library entry not found" });
   if (entry.submissionStatus !== "pending") {
     return res.status(400).json({ error: "This entry has no pending public submission" });
@@ -118,7 +118,7 @@ export async function postSimulateAdminDecision(req: Request, res: Response) {
   const updated = await setSubmissionStatus(entry.id, approved ? "approved" : "rejected");
 
   const notification = await addNotification(
-    req.identity!.uid,
+    req.user!.id,
     approved ? "submission_approved" : "submission_rejected",
     { title: entry.title }
   );

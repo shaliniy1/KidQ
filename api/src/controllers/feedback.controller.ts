@@ -12,11 +12,11 @@ export async function postFeedback(req: Request, res: Response) {
     return res.status(400).json({ error: `sentiment must be one of ${VALID_SENTIMENTS.join(", ")}` });
   }
 
-  const entry = await setFeedback(req.identity!.uid, contentId, sentiment);
+  const entry = await setFeedback(req.user!.id, contentId, sentiment);
   return res.json({ feedback: entry });
 }
 
 export async function getFeedback(req: Request, res: Response) {
-  const entries = await listFeedback(req.identity!.uid);
+  const entries = await listFeedback(req.user!.id);
   return res.json({ feedback: entries });
 }

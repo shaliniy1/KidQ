@@ -1,8 +1,8 @@
 import { Router } from "express";
 import { getWatchedLog, postSessionLog } from "../controllers/session-log.controller";
-import { requireAuth } from "../middleware/require-auth";
+import { requireRole } from "../http/auth";
 
 const router = Router();
-router.post("/children/:childId/session-log", requireAuth, postSessionLog);
-router.get("/children/:childId/watched-log", requireAuth, getWatchedLog);
+router.post("/children/:childId/session-log", requireRole("parent", "admin"), postSessionLog);
+router.get("/children/:childId/watched-log", requireRole("parent", "admin"), getWatchedLog);
 export default router;

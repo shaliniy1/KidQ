@@ -1,20 +1,20 @@
-import type { User } from "firebase/auth";
+import type { KidQUser } from "./auth";
 import { apiFetch } from "./api";
 import type { InboxNotification, SessionOutcome } from "@/types/inbox";
 import type { AssembledSession } from "@/types/session";
 
-async function authHeaders(user: User): Promise<HeadersInit> {
+async function authHeaders(user: KidQUser): Promise<HeadersInit> {
   return { Authorization: `Bearer ${await user.getIdToken()}`, "Content-Type": "application/json" };
 }
 
-export async function getInbox(user: User): Promise<InboxNotification[]> {
+export async function getInbox(user: KidQUser): Promise<InboxNotification[]> {
   const { notifications } = await apiFetch<{ notifications: InboxNotification[] }>("/inbox", {
     headers: await authHeaders(user),
   });
   return notifications;
 }
 
-export async function markNotificationRead(user: User, notificationId: string): Promise<void> {
+export async function markNotificationRead(user: KidQUser, notificationId: string): Promise<void> {
   await apiFetch(`/inbox/${notificationId}/read`, { method: "POST", headers: await authHeaders(user) });
 }
 
@@ -24,7 +24,7 @@ export async function markNotificationRead(user: User, notificationId: string): 
  * the real Child Player is out of scope here.
  */
 export async function logSessionOutcome(
-  user: User,
+  user: KidQUser,
   childId: string,
   session: AssembledSession,
   outcome: SessionOutcome

@@ -1,13 +1,13 @@
-import type { User } from "firebase/auth";
+import type { KidQUser } from "./auth";
 import { apiFetch } from "./api";
 import type { ChildProfile, CreateChildInput } from "@/types/child-profile";
 
-async function authHeaders(user: User): Promise<HeadersInit> {
+async function authHeaders(user: KidQUser): Promise<HeadersInit> {
   return { Authorization: `Bearer ${await user.getIdToken()}`, "Content-Type": "application/json" };
 }
 
 export async function submitProfile(
-  user: User,
+  user: KidQUser,
   parentName: string,
   children: CreateChildInput[]
 ): Promise<ChildProfile[]> {
@@ -19,7 +19,7 @@ export async function submitProfile(
   return created;
 }
 
-export async function getChildren(user: User): Promise<ChildProfile[]> {
+export async function getChildren(user: KidQUser): Promise<ChildProfile[]> {
   const { children } = await apiFetch<{ children: ChildProfile[] }>("/children", {
     headers: await authHeaders(user),
   });
