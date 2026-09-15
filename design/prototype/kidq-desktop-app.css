@@ -538,7 +538,87 @@ button{font-family:inherit; -webkit-tap-highlight-color:transparent}
   color:var(--ink-soft); opacity:.72; min-height:1em}
 /* pop() (js) adds .tapped; every screen scopes its own rule for it (the
    established per-screen pattern, css:394/481) - each break-count host
-   screen adds its own `#screen-X .kq-breakcount-big.tapped{...}` line. */
+   screen adds its own `#screen-X .kq-digitballoon.tapped{...}` line (moved
+   from `.kq-breakcount-big` onto the balloon wrapper below, so the WHOLE
+   balloon - not just the bare glyph - carries the entrance motion). The
+   trail stays a bare `.kq-breakcount-big`-less span, untouched by any of
+   this - no balloon there (clutter, not a count aid).
+
+   ---------- break-count digit BALLOON (shared, user request 2026-09-15:
+   "make them like coming on balloon") ----------
+   Balloon over ball: the splash's own KidQ letters (css:89-141) are already
+   glossy inflating balloons - an established brand vocabulary, not a new
+   shape to teach. Same 5-stop radial-gradient RECIPE, same four hues in the
+   same order the splash uses (teal->gold->coral->dusk), cycling once per
+   digit change - `hue-<name>` on `.kq-digitballoon`, swapped in JS
+   (setBalloonHue, kidq-desktop-app.js).
+   The gradient's SIZE is the one deliberate departure from the splash's own
+   default farthest-corner sizing: an explicit `circle calc(var(--cnt) *
+   .729)` instead. The splash can use the default because its balloons ARE
+   the letters, filling their own glyph outline edge-to-edge; a small round
+   badge's own CENTRE - where the digit sits - only reaches t~0.3 of the
+   default gradient (still inside the near-white highlight/lower-highlight
+   band), which is why an early pass measured cream failing on teal/coral
+   too, not just gold. Shrinking the radius moves the badge's centre to
+   t~0.55 - the recipe's own literal MID-tone, past the 36/40% "true hue"
+   stop, short of the 62/66% deep one - without touching a single colour
+   value. Measured there (brand.md §5; `scratchpad/balloon-sweep-t.js` this
+   session), against the two text colours brand.md §12 already uses
+   everywhere else (cream `--cream`, ink `--ink`):
+     teal  #258776  cream 4.00:1  ink 3.25:1  -> cream (both pass; cream wins)
+     gold  #F6B43B  cream 1.66:1  ink 7.83:1  -> ink (cream fails outright)
+     coral #D0604C  cream 3.52:1  ink 3.69:1  -> cream (per the design brief;
+                                                  both pass, margin is close)
+     dusk  #7C67B6  cream 4.28:1  ink 3.04:1  -> cream (both pass; cream wins)
+   All eight combinations clear the 3:1 AA large-text floor; gold is the one
+   hue that needs ink, matching the sun-gold-vs-cream failure this app has
+   measured everywhere else it appears (css:521-530). The digit swaps colour
+   on the SAME `hue-gold` class the body's gradient swaps on - one class,
+   two effects, never drifts.
+   Knot: a small solid triangle in the SAME hue's own 100% (deepest) recipe
+   stop - the shape's own shadow colour, not a new one. String: a short,
+   plain, slightly-tilted thread in `--ink-soft` - neutral across all four
+   hues (real balloon string doesn't recolour with the balloon), and SHORT
+   on purpose (spec: "a short string" - a long one is more rigging than
+   read, at this badge scale). */
+.kq-digitballoon{position:relative; display:block;
+  width:calc(var(--cnt) * 1.15); height:calc(var(--cnt) * 1.505); flex-shrink:0}
+.kq-balloon-body{position:absolute; top:0; left:0; width:100%;
+  height:calc(var(--cnt) * 1.32); border-radius:50%;
+  filter:drop-shadow(0 3px 5px rgba(46,42,36,.28))}
+.kq-balloon-knot{position:absolute; left:50%; top:calc(var(--cnt) * 1.28);
+  width:calc(var(--cnt) * .16); height:calc(var(--cnt) * .1);
+  transform:translateX(-50%); clip-path:polygon(50% 100%, 12% 0, 88% 0)}
+.kq-balloon-string{position:absolute; left:50%; top:calc(var(--cnt) * 1.36);
+  width:1.5px; height:calc(var(--cnt) * .16); background:var(--ink-soft);
+  opacity:.5; transform:translateX(-50%) rotate(-4deg); transform-origin:top center}
+/* The digit glyph itself: same element JS already writes to
+   (`#tree-count-big`/`#count-big`, class `kq-breakcount-big`, unchanged) -
+   these rules only override its position/size/colour when it lives inside
+   a balloon; font-family/weight/line-height still come from the base rule
+   above. Higher specificity (two classes) beats that base rule outright,
+   so the override holds regardless of source order. */
+.kq-digitballoon .kq-breakcount-big{position:absolute; inset:0 0 auto 0;
+  height:calc(var(--cnt) * 1.32); display:flex; align-items:center;
+  justify-content:center; font-size:calc(var(--cnt) * .78); color:var(--cream)}
+.kq-digitballoon.hue-gold .kq-breakcount-big{color:var(--ink)}
+
+.kq-digitballoon.hue-teal .kq-balloon-body{background-image:radial-gradient(
+  circle calc(var(--cnt) * .729) at 32% 24%,
+  #EFFFFA 0%, #9ADEC9 9%, #35A98F 36%, #1F7A6D 62%, #123F37 100%)}
+.kq-digitballoon.hue-teal .kq-balloon-knot{background:#123F37}
+.kq-digitballoon.hue-gold .kq-balloon-body{background-image:radial-gradient(
+  circle calc(var(--cnt) * .729) at 32% 24%,
+  #FFFBEA 0%, #FFE29A 9%, #FFC64D 40%, #F0A72E 66%, #8F5C12 100%)}
+.kq-digitballoon.hue-gold .kq-balloon-knot{background:#8F5C12}
+.kq-digitballoon.hue-coral .kq-balloon-body{background-image:radial-gradient(
+  circle calc(var(--cnt) * .729) at 32% 24%,
+  #FFF1EC 0%, #F5A897 9%, #E2705E 40%, #C2543F 66%, #6E2818 100%)}
+.kq-digitballoon.hue-coral .kq-balloon-knot{background:#6E2818}
+.kq-digitballoon.hue-dusk .kq-balloon-body{background-image:radial-gradient(
+  circle calc(var(--cnt) * .729) at 32% 24%,
+  #F6F1FF 0%, #C4B2EA 9%, #8E79C9 40%, #6F5AA8 66%, #382A66 100%)}
+.kq-digitballoon.hue-dusk .kq-balloon-knot{background:#382A66}
 
 /* ---------- MOVE: stand like a tree ---------- */
 /* She is the hero - largest element, centred, bounded (the follow lesson:
@@ -628,9 +708,13 @@ button{font-family:inherit; -webkit-tap-highlight-color:transparent}
 /* the count is spent once she's celebrating - an empty gold chip would read
    as unfinished rather than as "done" */
 #screen-tree.celebrate .kq-breakcount{display:none}
-/* pop() (js) adds .tapped to the chip on every digit change - see the
-   shared break-count digit pattern above. */
-#screen-tree .kq-breakcount-big.tapped{animation:pop .55s ease-out}
+/* pop() (js) adds .tapped to the BALLOON (not the bare glyph) on every
+   digit change - see the shared break-count digit balloon above. The whole
+   balloon - body, knot, string, digit - squash-stretches in together as one
+   unit, since transform on the wrapper carries every absolutely-positioned
+   child with it. Energetic, like the splash's own inflate - user's own
+   framing for this entrance. */
+#screen-tree .kq-digitballoon.tapped{animation:pop .55s ease-out}
 
 /* ---------- SETTLE: count to ten, eyes closed ----------
    Donor (spec 2026-09-15 kidq-count-to-ten-break-design.md §2): copy
@@ -660,13 +744,20 @@ button{font-family:inherit; -webkit-tap-highlight-color:transparent}
    120ms - do not fight it with transition:none, which loses to that
    !important regardless of specificity. */
 #screen-count.dim .kq-duskveil{opacity:.25}
-/* Digit entrance, quieter than tree's pop() (spec §1: "the entrance is a
-   slow pulse, not a bounce" - count is the settle game, not a MOVE break).
-   A soft scale-up, ~300ms, no squash-stretch. Reduced motion needs no
-   special-casing: the global rule (css:997-999) crushes animation-duration
-   to .001ms, same reasoning as pop() itself gets (css:566-568). */
-@keyframes kq-countpulse{0%{transform:scale(.82); opacity:.55}100%{transform:scale(1); opacity:1}}
-#screen-count .kq-breakcount-big.pulse{animation:kq-countpulse .3s ease-out}
+/* Balloon entrance, quieter than tree's pop() (spec §1: "the entrance is a
+   slow pulse, not a bounce" - count is the settle game, not a MOVE break) -
+   and quieter again than the balloon design brief's own tree variant
+   (2026-09-15): "drifting gently up into place... slow float, no bounce".
+   A plain translateY + fade, no scale, no squash-stretch - replaces the
+   earlier kq-countpulse (a scale-up pulse on the bare digit); same wrapper,
+   same .pulse trigger class, same remove/reflow/add re-trigger helper
+   below. 0%/100% match the wrapper's own unanimated rest state
+   (transform:none, opacity:1 by default) exactly, same as pop() itself, so
+   reduced motion's blanket crush to .001ms (css:997-999) never leaves the
+   balloon stuck mid-float - it simply snaps to the same rest state a
+   completed animation would have reached anyway. */
+@keyframes kq-balloonfloat{0%{transform:translateY(14px); opacity:.4}100%{transform:translateY(0); opacity:1}}
+#screen-count .kq-digitballoon.pulse{animation:kq-balloonfloat .45s ease-out}
 /* Count's trail can run to NINE numbers (vs tree's four) - the width risk
    spec §1 names explicitly ("one orphaned '· 10' away from wrapping" at the
    390px tier), measured explicitly per spec §8.1: the worst case (big="10",

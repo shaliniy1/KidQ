@@ -333,11 +333,18 @@
             </div>
           </div>
         </div>
-        <!-- break-count digit pattern (brand.md): the live count is out of
-             aria-live spam - the headline above is the sole accessible
-             carrier, this whole cluster is aria-hidden. -->
+        <!-- break-count digit balloon pattern (brand.md §5): the live count is
+             out of aria-live spam - the headline above is the sole accessible
+             carrier, this whole cluster is aria-hidden. The balloon (body/
+             knot/string) is pure decoration around the digit - the digit text
+             itself is what the pattern actually counts on. -->
         <div class="kq-breakcount" id="tree-count" aria-hidden="true">
-          <span class="kq-breakcount-big" id="tree-count-big">5</span>
+          <span class="kq-digitballoon hue-teal" id="tree-count-balloon">
+            <span class="kq-balloon-body"></span>
+            <span class="kq-balloon-knot"></span>
+            <span class="kq-balloon-string"></span>
+            <span class="kq-breakcount-big" id="tree-count-big">5</span>
+          </span>
           <span class="kq-breakcount-trail" id="tree-count-trail">4 · 3 · 2 · 1</span>
         </div>
         <div class="kq-bdots" id="tree-dots" aria-hidden="true"><i></i><i></i></div>
@@ -364,11 +371,18 @@
             <path d="M24.5 34.5 Q30 39 35.5 34.5" fill="none" stroke="#2E2A24" stroke-width="2.2" stroke-linecap="round"/>
           </svg>
         </div>
-        <!-- break-count digit pattern (brand.md §5): walked-through numbers
-             trail behind the current big one, dimmed - aria-hidden, the
-             headline above carries the accessible experience (spec §1). -->
+        <!-- break-count digit balloon pattern (brand.md §5): walked-through
+             numbers trail behind the current big one, dimmed - aria-hidden,
+             the headline above carries the accessible experience (spec §1).
+             The balloon floats in per tick (no bounce - this is the settle
+             game); it's pure decoration around the digit. -->
         <div class="kq-breakcount" id="count-count" aria-hidden="true">
-          <span class="kq-breakcount-big" id="count-big">1</span>
+          <span class="kq-digitballoon hue-teal" id="count-balloon">
+            <span class="kq-balloon-body"></span>
+            <span class="kq-balloon-knot"></span>
+            <span class="kq-balloon-string"></span>
+            <span class="kq-breakcount-big" id="count-big">1</span>
+          </span>
           <span class="kq-breakcount-trail" id="count-trail"></span>
         </div>
       </div>
