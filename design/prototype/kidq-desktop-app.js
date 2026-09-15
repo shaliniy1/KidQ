@@ -1125,8 +1125,11 @@
     KidQData.whatsNext.forEach((item) => {
       const card = document.createElement("div");
       card.className = "wn-card" + (item.picked ? " wn-pick" : "");
+      // the pick's caption reuses the heart-line vocabulary (beating coral heart
+      // + "who picked" text) from the pitch's badge, re-skinned calm: no pill,
+      // no floating hearts - same rule as every port from the proposal file
       card.innerHTML = `<div class="scene">${SCENES[item.scene] || ""}</div><span>${item.label}</span>` +
-        (item.picked ? `<svg class="wn-pick-heart" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 17 C4 12 2 8.5 4.2 6.2 A3.4 3.4 0 0 1 10 7.4 A3.4 3.4 0 0 1 15.8 6.2 C18 8.5 16 12 10 17 Z" fill="#E2705E"/></svg>` : "");
+        (item.picked ? `<span class="wn-pick-tag"><svg class="kq-mheart" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 17 C4 12 2 8.5 4.2 6.2 A3.4 3.4 0 0 1 10 7.4 A3.4 3.4 0 0 1 15.8 6.2 C18 8.5 16 12 10 17 Z" fill="#E2705E"/></svg>${item.pickedBy || "Mumma & Papa"}'s pick</span>` : "");
       row.appendChild(card);
     });
     showScreen("screen-all-done");
