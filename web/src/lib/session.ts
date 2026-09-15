@@ -40,7 +40,8 @@ export async function signInWithGoogle(): Promise<void> {
 
 /** Local dev only (no Supabase project configured): stores a dev bearer token. */
 export function devSignIn(): void {
-  window.localStorage.setItem(DEV_TOKEN_KEY, `dev:parent:${crypto.randomUUID()}`);
+  const fixed = process.env.NEXT_PUBLIC_DEV_PARENT_TOKEN;
+  window.localStorage.setItem(DEV_TOKEN_KEY, fixed ?? `dev:parent:${crypto.randomUUID()}`);
 }
 
 export async function signOut(): Promise<void> {
