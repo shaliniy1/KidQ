@@ -76,11 +76,20 @@ export default function WatchedLogPage() {
 
   async function handleThumb(contentId: string, sentiment: Sentiment) {
     if (!userRef.current) return;
+    const previous = sentiments[contentId];
     setSentiments((current) => ({ ...current, [contentId]: sentiment })); // optimistic
     try {
       await setFeedback(userRef.current, contentId, sentiment);
     } catch {
-      // best-effort: the optimistic state just stays as-is on failure for this prototype
+      setSentiments((current) => {
+        const next = { ...current };
+        if (previous === undefined) {
+          delete next[contentId];
+        } else {
+          next[contentId] = previous;
+        }
+        return next;
+      });
     }
   }
 

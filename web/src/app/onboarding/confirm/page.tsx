@@ -60,6 +60,14 @@ export default function ConfirmPage() {
   return (
     <main style={{ minHeight: "100vh", display: "flex", justifyContent: "center", padding: "24px" }}>
       <div style={{ maxWidth: 480, width: "100%", display: "flex", flexDirection: "column", gap: 20 }}>
+        <button
+          onClick={() => router.push("/onboarding/profile")}
+          aria-label="Back"
+          style={{ alignSelf: "flex-start", background: "none", border: "none", color: "var(--kq-text-secondary)", cursor: "pointer", padding: 4 }}
+        >
+          ← Back
+        </button>
+
         {children.map((child) => (
           <Card key={child.id} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>

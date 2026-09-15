@@ -211,3 +211,41 @@ the real implementation needs to satisfy**, and **what swapping it in requires**
 - **To swap in:** Get a YouTube Data API v3 key (Google Cloud Console → enable "YouTube
   Data API v3" → Credentials → API key) and set `YOUTUBE_DATA_API_KEY` in `api/.env`. No
   code changes — `fetchYouTubeMetadata` picks it up automatically.
+
+## 8. Analytics CSV export — no separate Admin auth model exists in this repo
+
+- **Ticket:** T12 (Analytics summary + Admin CSV export, P8b)
+- **File/module:** `api/src/routes/analytics.routes.ts` (`GET /analytics/export.csv`).
+- **What's faked and why:** Spec Table B #13 calls this an Admin-facing endpoint, but this
+  build is Parent-Experience-only — there is no Admin account/identity system anywhere in
+  this repo to gate it behind. The endpoint is instead gated behind the same `requireAuth`
+  as every other parent endpoint, and returns only the *requesting account's own* aggregated
+  data (all of its children, all-time) — not a cross-family Admin export. Disclosed in the
+  T12 commit message as a phase-1 simplification; added here per this doc's own policy of
+  tracking every such stand-in, not just mentioning it in a commit.
+- **Real contract:** Whatever Admin identity/auth model the Admin flow settles on needs its
+  own middleware (parallel to `requireAuth`) that this endpoint (or a genuinely separate
+  Admin-flow-owned endpoint) authenticates against, with a query surface that spans families,
+  not just the caller's own.
+- **To swap in:** Once an Admin auth model exists, add an Admin-scoped route (or middleware)
+  and decide whether `/analytics/export.csv` moves behind it as-is or a new cross-family
+  export endpoint is added alongside it.
+
+## 9. "% KidQ-reviewed" — computed from library source tags, not a scoring-engine join
+
+- **Ticket:** T12 (Analytics summary + Admin CSV export, P8b)
+- **File/module:** `api/src/services/analytics.ts` (`percentKidqReviewed`).
+- **What's faked and why:** Spec Section 11 #19 and this ticket's AC3 describe this stat as
+  a join against the scoring engine's badge/pass-fail result per watched video — that data
+  doesn't exist yet (same gap as INTEGRATION_NOTES.md #5). Rather than block the metric on
+  it, `percentKidqReviewed` is computed from each watched video's real library source tag
+  (`kidq_recommended` + `admin_approved_from_submission` vs. `picked_by_parent`; a video not
+  in the library at all — i.e. it came straight from Session Assembly, never explicitly
+  added — defaults to `kidq_recommended`). This is real data, not a fabricated number, but it
+  answers a related-but-different question ("was this from KidQ's curated source?" vs. "did
+  this specific video pass the scoring engine's checks?") than the spec literally describes.
+- **Real contract:** Once the scoring engine exposes a per-video pass/fail result (see
+  INTEGRATION_NOTES.md #5's real contract), `percentKidqReviewed` could either switch to that
+  join, or the two could become two distinct stats if both remain useful.
+- **To swap in:** Add the scoring-engine join once callable; decide whether it replaces or
+  supplements the current source-tag-based stat.
