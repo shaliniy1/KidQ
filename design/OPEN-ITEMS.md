@@ -1698,33 +1698,67 @@ sun` is the identical `.kq-sun` component riding the same arc one screen
 after watching, and leaving it out would have made the sun's look flicker
 between consecutive screens.
 
-`.kq-daybar` (`css:381-383`) gets `box-shadow:inset 0 0 0 1px
-rgba(107,100,89,.5)` at class level (not per responsive tier, so it
-survives the base/tablet/wide position-and-size overrides at `css:1191,
-1218, 1282` without duplication — confirmed via a live stylesheet-rule
-walk that none of those three re-declare `box-shadow`). `.kq-daybar .knob`'s
-box-shadow gained a matching ink-soft ring: `0 2px 6px rgba(46,42,36,.45), 0
-0 0 1px rgba(107,100,89,.4)` (its existing white ring is unchanged).
+`.kq-daybar` originally got `box-shadow:inset 0 0 0 1px rgba(107,100,89,.5)`
+directly on the class, at class level (not per responsive tier). Alpha was
+tuned upward from the originally-mocked .28 (measured ~1.46:1 against the
+page background) toward the .45–.55 range the user asked for, by eye on the
+live screen at .28/.5/.72: .5 read as a clear, deliberate step up in
+definition while still sitting quietly against the bar; .72 started reading
+as a visible dark border, which would have undone the "melt kept" decision
+above. Landed on **.5**.
 
-Alpha was tuned upward from the originally-mocked .28 (measured ~1.46:1
-against the page background) toward the .45–.55 range the user asked for,
-by eye on the live screen at .28/.5/.72: .5 reads as a clear, deliberate
-step up in definition while still sitting quietly against the bar; .72
-starts reading as a visible dark border, which would undo the "melt kept"
-decision above. Landed on **.5**. A small Python contrast script
-(WCAG relative-luminance formula, ink-soft `rgba(107,100,89,.5)` alpha-
-composited over each background) measured:
-- vs. the page background `#FAF4E8`: blended ≈ `#B2ACA0`, **2.06:1**
-- vs. the track's lightest stop `#F7EBD2`: blended ≈ `#B1A896`, **2.00:1**
+**Compositing bug caught in Opus review, fixed same day.** An inset
+`box-shadow` on `.kq-daybar` paints as part of the element's own background
+layer — UNDER its children in paint order. `.veil` (the "time remaining"
+overlay, `rgba(250,244,232,.78)`) ships at `width:100%` at session start and
+exactly covers the bar's own box, so the ring was fully hidden behind it in
+the bar's default, most-common state: reviewer-measured **1.065–1.145:1**
+across the bar at session start, i.e. effectively invisible exactly when a
+freshly-started session needs it most. The unveiled (elapsed) stretch was
+never affected — nothing paints over it there — so this only ever showed up
+once a video was actually playing and the veil covered most or all of the
+track.
 
-Both fall short of the 3:1 non-text-UI floor — ink-soft's own ceiling
-against these backgrounds only clears 3:1 past ≈alpha .72, which the by-eye
-check above already ruled out as too heavy a border for this treatment. So
-this is a considered, incomplete-by-the-numbers compromise, not a miss:
-findability here is deliberately carried by shadow/hairline definition
-*and* by the formal accessible indicators that never depended on colour or
-edge contrast at all — the "N min left" text pill and the "video x of y"
-line (see `brand.md`'s new note, cross-referenced from item 35 below).
+**Fix:** moved the ring off `.kq-daybar` itself onto a `.kq-daybar::after`
+overlay (`content:""; position:absolute; inset:0; border-radius:99px;
+box-shadow:inset 0 0 0 1px …; pointer-events:none`). Generated content is
+appended last, so — all three of `.veil`/`.knob`/`::after` being
+`position:absolute` with no explicit stacking otherwise — `::after` now
+paints ABOVE both by default. `.kq-daybar .knob` got `z-index:1` alongside
+this, since without it `::after`'s own paint-order edge would draw a thin
+line straight across the knob's face wherever the two overlap. Same alpha
+(.5), same class-level placement (still confirmed via a live stylesheet-rule
+walk that none of the three responsive-tier overrides at `css:1206, 1233,
+1297` re-declare any shadow of their own) — only the painting mechanism
+changed, not the visual target.
+
+**While in there:** per the same review, the three new rgba literals (plus
+the pre-existing `rgba(46,42,36,.45)` on the knob) were re-expressed as
+`color-mix(in srgb, var(--ink-soft) 50%, transparent)` / `40%` / `65%` (sun)
+and `color-mix(in srgb, var(--ink) 45%, transparent)`, matching the file's
+existing precedent at `css:553`. Confirmed via `getComputedStyle` that each
+resolves to the exact same colour as its rgba literal before swapping (e.g.
+`color(srgb 0.419608 0.392157 0.34902 / 0.5)` = `rgb(107,100,89)` at .5 —
+bit-for-bit the same as `rgba(107,100,89,.5)`), so no visual delta anywhere
+this pass touched.
+
+Re-measured post-fix with the veil in its session-start (100%) state, across
+the gradient's four stops composited under the veil (WCAG relative-luminance
+formula, ink-soft ring alpha-composited over veil-over-stop):
+- cream 0% `#F7EBD2` → veiled `#F9F2E3`, ringed `#B2AB9E`, **2.05:1**
+- gold 34% `#FFC64D` → veiled `#FBEAC6`, ringed `#B3A78F`, **2.00:1**
+- dusk 68% `#C9B8E8` → veiled `#EFE7E8`, ringed `#ADA5A0`, **1.98:1**
+- night 100% `#2B2955` → veiled `#CCC7C8`, ringed `#9C9690`, **1.76:1**
+
+(Independently re-derived, not copied — matches the reviewer's own numbers.)
+All four still fall short of the 3:1 non-text-UI floor — ink-soft's own
+ceiling against these backgrounds only clears 3:1 past ≈alpha .72, which the
+earlier by-eye check already ruled out as too heavy a border for this
+treatment. So this stays a considered, incomplete-by-the-numbers compromise,
+not a miss: findability here is deliberately carried by shadow/hairline
+definition *and* by the formal accessible indicators that never depended on
+colour or edge contrast at all — the "N min left" text pill and the "video x
+of y" line (see `brand.md`'s new note, cross-referenced from item 35 below).
 
 **Relation to item 35:** item 35 flags that `brand.md`'s contrast reasoning
 only covers ink-on-fill and asks for a note on the outlined-gold-hero's
@@ -1741,3 +1775,16 @@ new selectors cannot reach them; the all-done and night-light screens'
 moon (`.kq-nlmoon`) is untouched — no moon rule was touched by this pass.
 Console clean throughout, including with reduced-motion forced on (the
 change is a static shadow either way).
+
+**Post-fix re-verification (port 9531, fresh server for the review round):**
+confirmed via `getComputedStyle` that `.kq-daybar`'s own `box-shadow` is now
+`none` and the ring lives on `::after` instead; screenshotted the bar at
+session start (`watch-veil` width 100%, video 1 of 4) and the hairline is
+now visibly present the whole way across, top and bottom — the exact state
+the bug report called out as broken; screenshotted a partial-veil state
+(veil 40%, knob 60%) and the ring reads consistently across both the
+unveiled (elapsed, raw-gradient) and veiled (remaining) stretches, matching
+the originally-approved look with no regression on the part that was always
+working; zoomed on the knob specifically and confirmed its face is clean,
+not crossed by the ring, with `z-index:1` in place. Console clean throughout
+this round too. Screenshots saved to disk (paths in this session's report).
