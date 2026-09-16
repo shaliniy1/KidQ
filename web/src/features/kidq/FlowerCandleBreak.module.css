@@ -1,0 +1,242 @@
+/* Flower & candle break — ported from design/prototype/kidq-desktop-app.css
+   (#screen-flower-candle) and index.html's matching markup, spec 2026-09-16
+   kidq-flower-candle-break-design.md. Scoped entirely under .flowerCandleBreak
+   so nothing here can leak onto / inherit from any other screen. Colours and
+   timings are copied 1:1 from the prototype rather than re-derived. */
+
+.flowerCandleBreak {
+  --fc-ink: #2e2a24;
+  --fc-sun: #ffc64d;
+  --fc-sun-deep: #f0a72e;
+  position: relative;
+  min-height: 100vh;
+  overflow: hidden;
+  container-type: inline-size;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(180deg, #fdf8ec 0%, #f7ebd2 58%, #f1e2c4 100%);
+}
+
+.pill {
+  position: absolute;
+  top: 24px;
+  right: 20px;
+  font: 700 13px "Baloo 2", var(--kq-font-display, sans-serif);
+  color: var(--fc-ink);
+  background: var(--fc-sun);
+  padding: 3px 14px;
+  border-radius: 999px;
+}
+
+.centerCol {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 22px;
+  padding: 0 30px;
+  text-align: center;
+}
+
+.headline {
+  font-family: "Baloo 2", var(--kq-font-display, sans-serif);
+  font-weight: 800;
+  font-size: 30px;
+  line-height: 1.15;
+  color: var(--fc-ink);
+  text-wrap: balance;
+  min-height: 1.2em;
+  margin: 0;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(18px, 6cqw, 90px);
+}
+
+/* ---------- flower + candle props ----------
+   Sizing (spec §3): props are the heroes here, sun stays a notch smaller -
+   base/tablet/wide tiers below mirror the prototype's three container-query
+   breakpoints (phone / 601px / 1100px). */
+.prop {
+  width: min(22cqw, 78px);
+  flex-shrink: 0;
+}
+
+/* Petals (spec §3) - scale(.55) closed bud at rest, scale(1) full bloom on
+   smell. transform-origin is the flower-head centre in the 86x104 viewBox. */
+.petals {
+  transform-origin: 43px 38px;
+  transform: scale(0.55);
+  transition: transform 3.15s ease-in-out;
+}
+.flowerCandleBreak[data-phase="smell"] .petals {
+  transform: scale(1);
+}
+
+/* Centre disc + face live OUTSIDE .petals (Opus diff review, 2026-09-16) so
+   they stay full-scale while the petals bloom/close around them - siblings
+   rendered immediately after the petals group, not children of it. */
+.flowerFace {
+  pointer-events: none;
+}
+
+/* Flame choreography (spec §3, amended 2026-09-16 - the flame carries no
+   face; only the flower does). Fades ~600ms into the blow phase so the fade
+   follows the voice cue rather than racing it; smoke curls in underneath the
+   fade. Relight (next round's smell) fades back in quicker than the fade-out. */
+.flame {
+  transform-origin: 43px 46px;
+  animation: fcFlick 1.3s ease-in-out infinite;
+  transition: opacity 0.4s ease;
+}
+.smoke {
+  opacity: 0;
+}
+.flowerCandleBreak[data-phase="blow"] .flame {
+  opacity: 0;
+  transition: opacity 0.5s ease 0.6s;
+}
+.flowerCandleBreak[data-phase="blow"] .smoke {
+  animation: fcSmokeUp 1.6s ease-out 0.75s;
+}
+.flowerCandleBreak[data-phase="smell"] .flame {
+  opacity: 1;
+  transition: opacity 0.4s ease;
+}
+
+/* ---------- sun ---------- */
+.sunWrap {
+  position: relative;
+  width: min(26cqw, 92px);
+  aspect-ratio: 1;
+  flex-shrink: 0;
+}
+.halo {
+  position: absolute;
+  inset: -30px;
+  border-radius: 50%;
+  pointer-events: none;
+  background: radial-gradient(circle, rgba(255, 198, 77, 0.45) 0%, rgba(255, 198, 77, 0) 68%);
+  transform: scale(1);
+  transition: transform 3.15s ease-in-out;
+}
+.flowerCandleBreak[data-phase="smell"] .halo {
+  transform: scale(1.22);
+}
+.ring1 {
+  position: absolute;
+  inset: 8px;
+  border-radius: 50%;
+  border: 3px solid var(--fc-sun);
+  opacity: 0;
+  pointer-events: none;
+}
+.flowerCandleBreak[data-phase="celebrate"] .ring1 {
+  animation: fcRingOut 0.9s ease-out;
+}
+.sun {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: block;
+  transform: scale(0.96);
+  transition: transform 3.15s ease-in-out;
+}
+.flowerCandleBreak[data-phase="smell"] .sun {
+  transform: scale(1.16);
+}
+.rays line {
+  stroke: var(--fc-sun-deep);
+  stroke-width: 3.4;
+  stroke-linecap: round;
+  animation: fcRayRipple 2.6s ease-in-out infinite;
+}
+.eye {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: fcEyeBlink 5.6s ease-in-out infinite;
+}
+.eyesClosed {
+  opacity: 0;
+}
+.flowerCandleBreak[data-phase="smell"] .eyesClosed {
+  opacity: 1;
+}
+.flowerCandleBreak[data-phase="smell"] .eyesOpen {
+  opacity: 0;
+}
+.mouthO {
+  opacity: 0;
+}
+.flowerCandleBreak[data-phase="blow"] .mouthO {
+  opacity: 1;
+}
+.flowerCandleBreak[data-phase="blow"] .mouthSmile {
+  opacity: 0;
+}
+
+/* ---------- round dots ---------- */
+.dots {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+.dots i {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: rgba(46, 42, 36, 0.16);
+  transition: background 0.4s ease;
+  font-style: normal;
+}
+.dots i.on {
+  background: var(--fc-sun-deep);
+}
+
+@keyframes fcFlick {
+  0%, 100% { transform: scale(1) rotate(-2deg); }
+  50% { transform: scale(1.1, 1.26) rotate(2deg); }
+}
+@keyframes fcSmokeUp {
+  0% { opacity: 0; transform: translateY(0); }
+  25% { opacity: 0.75; }
+  100% { opacity: 0; transform: translateY(-18px); }
+}
+@keyframes fcRingOut {
+  0% { transform: scale(0.7); opacity: 0.95; }
+  100% { transform: scale(2.1); opacity: 0; }
+}
+@keyframes fcRayRipple {
+  0%, 100% { stroke-width: 3.4; opacity: 0.75; }
+  50% { stroke-width: 5; opacity: 1; }
+}
+@keyframes fcEyeBlink {
+  0%, 93%, 100% { transform: scaleY(1); }
+  96% { transform: scaleY(0.15); }
+}
+
+/* tablet tier (spec §3: props toward the ~120-160px-tall desktop target) */
+@container (min-width: 601px) {
+  .headline { font-size: 34px; }
+  .prop { width: min(22cqw, 112px); }
+  .sunWrap { width: min(26cqw, 102px); }
+}
+
+/* wide tier */
+@container (min-width: 1100px) {
+  .headline { font-size: 38px; }
+  .prop { width: min(22cqw, 132px); }
+  .sunWrap { width: min(26cqw, 120px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flowerCandleBreak * {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.12s !important;
+  }
+}

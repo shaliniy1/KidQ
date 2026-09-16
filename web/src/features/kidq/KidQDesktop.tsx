@@ -20,8 +20,9 @@ import { getStory, type Story } from "@/services/story";
 import { KidQPlayer, KidQStoryReader } from "@kidq/player";
 import { BreathingBreak, FindColoursBreak, FollowSunBreak } from "./BreakGames";
 import { CountBreak } from "./CountBreak";
+import FlowerCandleBreak from "./FlowerCandleBreak";
 
-type Stage = "profile" | "library" | "sunrise" | "watching" | "timedBreak" | "playtime" | "breathing" | "follow" | "find" | "count" | "choice" | "end" | "noSession" | "night" | "cast";
+type Stage = "profile" | "library" | "sunrise" | "watching" | "timedBreak" | "playtime" | "breathing" | "follow" | "find" | "count" | "flowerCandle" | "choice" | "end" | "noSession" | "night" | "cast";
 type SlotItem = AssembledSession["slots"][number]["items"][number];
 type QueueEntry = { slotIndex: number; isLastInSlot: boolean; item: SlotItem };
 type BreakActivity = AssembledSession["slots"][number]["break_activity"];
@@ -217,7 +218,7 @@ function SplashScreen({ onDone }: { onDone: () => void }) {
   );
 }
 
-type LiveActivityStage = "breathing" | "follow" | "find" | "count";
+type LiveActivityStage = "breathing" | "follow" | "find" | "count" | "flowerCandle";
 type ActivityDefinition = {
   key: string;
   aliases: readonly string[];
@@ -234,6 +235,7 @@ const ACTIVITY_DEFINITIONS: readonly ActivityDefinition[] = [
   { key: "follow", aliases: ["follow", "sun"], title: "Follow the sun", stage: "follow", live: true },
   { key: "breathe", aliases: ["breathe", "breath"], title: "Breathe with Sun", stage: "breathing", live: true },
   { key: "count", aliases: ["count", "ten"], title: "Count to 10", stage: "count", live: true },
+  { key: "flower_candle", aliases: ["flower", "candle"], title: "Flower & candle", stage: "flowerCandle", live: true },
   { key: "tree", aliases: ["tree"], title: "Tree pose", live: false },
   { key: "butterfly_wings", aliases: ["butterfly"], title: "Butterfly wings", live: false },
   { key: "puddle_jump", aliases: ["puddle"], title: "Puddle jump", live: false },
@@ -253,7 +255,7 @@ function sunArcPosition(p: number): { left: string; top: string } {
   return { left: `${(bx / 1000) * 100}%`, top: `${(by / 220) * 100}%` };
 }
 
-function activityScreen(activity: BreakActivity): "breathing" | "follow" | "find" | "count" | "playtime" {
+function activityScreen(activity: BreakActivity): "breathing" | "follow" | "find" | "count" | "flowerCandle" | "playtime" {
   const searchable = `${activity?.key ?? ""} ${activity?.title ?? ""}`.toLowerCase();
   const definition = ACTIVITY_DEFINITIONS.find((item) =>
     item.live && [item.key, ...item.aliases].some((alias) => searchable.includes(alias)),
@@ -460,6 +462,7 @@ export default function KidQDesktop() {
   if (stage === "follow") return <FollowSunBreak onComplete={() => setStage("choice")} />;
   if (stage === "find") return <FindColoursBreak onComplete={() => setStage("choice")} />;
   if (stage === "count") return <CountBreak onDone={() => setStage("choice")} />;
+  if (stage === "flowerCandle") return <FlowerCandleBreak onDone={() => setStage("choice")} />;
   if (stage === "choice") return <ChoiceScreen childName={childName} hasNext={current < queue.length} onNext={() => current >= queue.length ? setStage("end") : startWatching(current)} onPick={(index) => startWatching(index)} items={queue} />;
   if (stage === "end") return <EndScreen childName={childName} onNight={() => setStage("night")} />;
   if (stage === "noSession") return <NoSession onBack={() => setStage("profile")} onReplay={handleReplay} />;
