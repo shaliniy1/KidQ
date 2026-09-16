@@ -290,6 +290,7 @@ export default function KidQDesktop() {
   const [completedSeconds, setCompletedSeconds] = useState(0);
   const [currentPlaybackSeconds, setCurrentPlaybackSeconds] = useState(0);
   const [paused, setPaused] = useState(false);
+  const [dayEnding, setDayEnding] = useState(false);
   // Prototype's #screen-watching starts with the "wide" class already present
   // in its static markup (design/prototype/index.html), i.e. the bigger-player
   // layout is the default and the expand button's first tap shrinks it — mirrored
@@ -470,6 +471,21 @@ export default function KidQDesktop() {
     }
   }
 
+  // The child's own "done for today" choice, distinct from finishVideo: it
+  // stops the whole day, not just the video in front of them, and the video
+  // in progress is EXITED (partial watch) rather than COMPLETED. Kicks off
+  // the bird's fly-off animation immediately; the actual stage change waits
+  // for that animation's onAnimationEnd so the child sees the bird leave
+  // before the screen changes underneath them.
+  function endToday() {
+    setDayEnding(true);
+    const entry = currentEntry;
+    if (session && entry) {
+      recordItemOutcome(session.id, entry.item.id, { outcome: "EXITED", watched_seconds: Math.round(currentPlaybackSeconds) }).catch(() => undefined);
+      endSession(session.id, "EXITED").catch(() => undefined);
+    }
+  }
+
   const breakSlot = session?.slots.find((item) => item.slot === breakSlotIndex);
   const breakActivity = breakSlot?.break_activity ?? null;
 
@@ -506,7 +522,7 @@ export default function KidQDesktop() {
   const avatarIndex = Math.max(children.findIndex((item) => item.id === activeChild?.id), 0);
   const avatarColour = CHILD_COLOURS[avatarIndex % CHILD_COLOURS.length];
   const avatarFace = FACE_INK[avatarIndex % FACE_INK.length];
-  return <Shell label={`${childName}'s session`}><section className={`${styles.world} ${progress >= 96 ? styles.end : ""} ${wide ? styles.wide : ""}`}><div className={styles.cloudOne} /><div className={styles.cloudTwo} /><div className={styles.arc}><svg viewBox="0 0 1000 220" preserveAspectRatio="none" aria-hidden="true"><path d="M30 215 Q500 5 970 215" fill="none" stroke="#E4D6B8" strokeWidth="3" strokeDasharray="1 11" strokeLinecap="round" /><line x1="30" y1="215" x2="970" y2="215" stroke="#E4D6B8" strokeWidth="3" strokeLinecap="round" /></svg><div className={styles.sun} style={sunPosition} aria-label="Session progress"><span className={styles.halo} /><Sun /></div></div><span className={styles.timeLeft}>{remaining} min left</span><div className={styles.childHeader}><span className={styles.faceWrap} style={{ width: 46, height: 46 }}><span className={`${styles.faceHalo} ${styles.faceHaloSmall}`} style={{ animationDelay: `${-(avatarIndex % 2) * 2.2}s` }} /><AvatarFace disc={avatarColour} face={avatarFace} /></span><div><h2>{childName}&apos;s watch time</h2><p>video {current + 1} of {queue.length}</p></div></div><div className={styles.content}><div className={isStorybook ? styles.storyFrame : `${styles.player} ${paused ? styles.playerPaused : ""}`}>{isStorybook ? (story ? <KidQStoryReader title={story.title} pages={story.pages} credits={story.credits} attribution={story.attribution} onFinished={() => void finishVideo()} /> : <div className={styles.playerArt}><span>{video.title}</span><small>Loading the book…</small></div>) : <>
+  return <Shell label={`${childName}'s session`}><section className={`${styles.world} ${progress >= 96 ? styles.end : ""} ${wide ? styles.wide : ""}`}><div className={styles.cloudOne} /><div className={styles.cloudTwo} /><div className={`${styles.dayBirdWrap} ${dayEnding ? styles.dayBirdLeaving : ""}`}><button type="button" className={styles.dayBird} onClick={endToday} disabled={dayEnding} onAnimationEnd={() => { if (dayEnding) setStage("end"); }} aria-label="Touch the bird to end your day"><Bird /></button><span className={styles.dayBirdHint} aria-hidden="true">Touch the bird<br />to end your day</span></div><div className={styles.arc}><svg viewBox="0 0 1000 220" preserveAspectRatio="none" aria-hidden="true"><path d="M30 215 Q500 5 970 215" fill="none" stroke="#E4D6B8" strokeWidth="3" strokeDasharray="1 11" strokeLinecap="round" /><line x1="30" y1="215" x2="970" y2="215" stroke="#E4D6B8" strokeWidth="3" strokeLinecap="round" /></svg><div className={styles.sun} style={sunPosition} aria-label="Session progress"><span className={styles.halo} /><Sun /></div></div><span className={styles.timeLeft}>{remaining} min left</span><div className={styles.childHeader}><span className={styles.faceWrap} style={{ width: 46, height: 46 }}><span className={`${styles.faceHalo} ${styles.faceHaloSmall}`} style={{ animationDelay: `${-(avatarIndex % 2) * 2.2}s` }} /><AvatarFace disc={avatarColour} face={avatarFace} /></span><div><h2>{childName}&apos;s watch time</h2><p>video {current + 1} of {queue.length}</p></div></div><div className={styles.content}><div className={isStorybook ? styles.storyFrame : `${styles.player} ${paused ? styles.playerPaused : ""}`}>{isStorybook ? (story ? <KidQStoryReader title={story.title} pages={story.pages} credits={story.credits} attribution={story.attribution} onFinished={() => void finishVideo()} /> : <div className={styles.playerArt}><span>{video.title}</span><small>Loading the book…</small></div>) : <>
   <KidQPlayer ref={playerRef} player={currentEntry.item.card.player} title={video.title} poster={currentEntry.item.card.thumbnail_url} attribution={currentEntry.item.card.attribution} onPlayback={(event) => {
     if (event.type === "time") checkTimedBreakpoint(event.position);
     else if (event.type === "playing") setPaused(false);
@@ -571,6 +587,10 @@ function AvatarFace({ disc, face }: { disc: string; face: string }) {
   </svg>;
 }
 function Heart() { return <svg className={styles.heart} viewBox="0 0 20 20" aria-hidden="true"><path d="M10 17 C4 12 2 8.5 4.2 6.2 A3.4 3.4 0 0 1 10 7.4 A3.4 3.4 0 0 1 15.8 6.2 C18 8.5 16 12 10 17 Z" fill="#E2705E" /></svg>; }
+// Single-stroke wing silhouette, same minimal-line treatment as Sun's rays — no
+// body/eye detail, so it reads as one more sky shape next to the clouds rather
+// than a new illustrated character.
+function Bird() { return <svg viewBox="0 0 64 40" aria-hidden="true"><path d="M4 26 C16 4 26 4 32 20 C38 4 48 4 60 26" fill="none" stroke="currentColor" strokeWidth="7" strokeLinecap="round" /></svg>; }
 
 // Gap 2 (player pause/expand overlay): icon paths copied verbatim from
 // design/prototype/index.html's #watch-pause / #watch-expand inline SVGs

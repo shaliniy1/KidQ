@@ -26,6 +26,23 @@
 .cloudOne, .cloudTwo { position: absolute; background: #fff; border-radius: 50%; opacity: .8; }
 .cloudOne { top: 36px; left: 7%; width: 100px; height: 24px; box-shadow: 28px -6px 0 -4px #fff; }
 .cloudTwo { top: 90px; right: 10%; width: 70px; height: 20px; box-shadow: 20px -5px 0 -4px #fff; }
+/* A child-initiated "done for today" exit, separate from finishing an
+   individual video. Kept deliberately small/quiet (not a button in the
+   usual UI-chrome sense) since this is the child's own choice to make,
+   not something the layout should push toward. */
+/* Perched above .cloudTwo (right side) rather than .cloudOne (left) — the
+   left side is already claimed by .childHeader's avatar+name row, which
+   would otherwise overlap this at narrow widths. */
+.dayBirdWrap { position: absolute; top: 62px; right: 8%; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.dayBird { border: 0; background: transparent; padding: 0; cursor: pointer; width: 46px; height: 30px; color: #6b6459; animation: birdFlap 2.4s ease-in-out infinite; transform-origin: 50% 70%; }
+.dayBird svg { width: 100%; height: 100%; display: block; }
+.dayBird:focus-visible { outline: 3px solid #16594f; outline-offset: 4px; border-radius: 50%; }
+.dayBirdWrap.dayBirdLeaving .dayBird { animation: birdFlyOff 1.3s ease-in forwards; pointer-events: none; }
+.dayBirdHint { margin: 0; font: 600 11px/1.25 Mukta, system-ui; color: #6b6459; text-align: center; white-space: nowrap; }
+.dayBirdWrap.dayBirdLeaving .dayBirdHint { animation: birdHintFade .4s ease-out forwards; }
+@keyframes birdFlap { 0%, 100% { transform: translateY(0) scaleY(1); } 50% { transform: translateY(-2px) scaleY(.85); } }
+@keyframes birdFlyOff { to { transform: translate(240px, -160px) scale(.35); opacity: 0; } }
+@keyframes birdHintFade { to { opacity: 0; } }
 .arc { position: absolute; inset: 0 0 auto; height: 220px; top: 0; }
 .arc svg { width: 100%; height: 100%; }
 .sun { position: absolute; width: 92px; height: 92px; transform: translate(-50%, -50%); z-index: 1; transition: left 1.25s cubic-bezier(.3,.7,.3,1), top 1.25s cubic-bezier(.3,.7,.3,1); }
@@ -68,12 +85,21 @@
 @media (max-width: 900px) { .page { padding: 24px 14px 50px; }.productBar { flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }.headerActions { width: 100%; justify-content: flex-end; margin-left: 0; }.navButton { min-height: 36px; padding: 7px 12px; }.pageHeader { align-items: flex-start; flex-direction: column; margin-bottom: 24px; }.controls { flex-wrap: wrap; }.world { height: 700px; border-radius: 10px; }.timeLeft { top: 95px; right: 24px; }.childHeader { top: 18px; left: 26px; }.content { top: 156px; padding: 18px 24px 20px; }.player, .dayBar { max-width: 420px; }.sun { width: 70px; height: 70px; }.footer { font-size: 12px; } }
 @media (prefers-reduced-motion: reduce) {
   .sun, .halo { transition: none; animation: none; }
+  /* Idle wing-flap is purely decorative and safe to fully disable — but only
+     while NOT leaving: an `animation: none` here would also strip the
+     one-shot fly-off's animation-name, and since that animation's `onEnd`
+     is what actually advances the child out of the watching screen, killing
+     it outright would leave a reduced-motion user stuck after tapping. */
+  .dayBirdWrap:not(.dayBirdLeaving) .dayBird { animation: none; }
   /* Splash + sky motion: crush to near-instant rather than disabling outright,
      so one-shot entrance animations (opacity 0 -> 1) still land on their final
      state instead of freezing invisible at their `from` keyframe — the same
      technique design/prototype/kidq-desktop-app.css uses (its blanket
-     `.reduce-motion` rule crushes duration, it never sets animation:none). */
-  .splashScreen *, .skyStar, .skyCloud, .skyCloudSmall {
+     `.reduce-motion` rule crushes duration, it never sets animation:none).
+     The fly-off's onAnimationEnd-driven stage change relies on the same
+     crush-not-disable treatment, for the reason above. */
+  .splashScreen *, .skyStar, .skyCloud, .skyCloudSmall,
+  .dayBirdWrap.dayBirdLeaving .dayBird, .dayBirdWrap.dayBirdLeaving .dayBirdHint {
     animation-duration: .001ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: .001ms !important;
