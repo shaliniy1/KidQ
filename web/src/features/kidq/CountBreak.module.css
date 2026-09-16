@@ -1,0 +1,228 @@
+/* Count to 10 — SETTLE break, ported from design/prototype/kidq-desktop-app.css
+   (search "#screen-count", ".kq-breakcount") + kidq-desktop-app.js (search
+   "TEN_"). Full-bleed, no product-bar chrome — matches the prototype's own
+   #screen-count, which carries none either, and keeps this file free of any
+   dependency on KidQDesktop.module.css's Shell-only classes. Class names are
+   all countBreak-prefixed on purpose (this file is new, edited independently
+   of three sibling break-game builds landing in the same PR). */
+
+.countBreak {
+  position: relative;
+  min-height: 100vh;
+  overflow: hidden;
+  container-type: inline-size;
+  background: linear-gradient(180deg, #fdf8ec 0%, #f7ebd2 58%, #f1e2c4 100%);
+  font-family: "Mukta", "Segoe UI", system-ui, sans-serif;
+}
+
+.countBreakDuskveil {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 1.4s ease;
+  background: linear-gradient(180deg, #9f8ccb 0%, #c9b8e8 40%, #f3b583 100%);
+}
+/* Sky dims + the sun's eyes close together, one state class — mirrors the
+   prototype's #screen-count.dim pairing (css:836-850). */
+.countBreak.countBreakDim .countBreakDuskveil {
+  opacity: 0.25;
+}
+
+.countBreakCenter {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 26px;
+  padding: 0 30px;
+  text-align: center;
+}
+
+.countBreakHeadline {
+  font-family: "Baloo 2", "Trebuchet MS", system-ui, sans-serif;
+  font-weight: 800;
+  font-size: 30px;
+  line-height: 1.15;
+  color: #2e2a24;
+  text-wrap: balance;
+  min-height: 1.2em;
+  margin: 0;
+}
+
+.countBreakSunWrap {
+  position: relative;
+  width: min(40cqw, 190px);
+  aspect-ratio: 1;
+  flex-shrink: 0;
+}
+.countBreakHalo {
+  position: absolute;
+  inset: -30px;
+  border-radius: 50%;
+  pointer-events: none;
+  background: radial-gradient(circle, rgba(255, 198, 77, 0.45) 0%, rgba(255, 198, 77, 0) 68%);
+  animation: countBreakHalopulse 3.4s ease-in-out infinite;
+}
+@keyframes countBreakHalopulse {
+  0%, 100% { transform: scale(1); opacity: 0.85; }
+  50% { transform: scale(1.08); opacity: 1; }
+}
+.countBreakSun {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.countBreakRays line {
+  stroke: #f0a72e;
+  stroke-width: 3.4;
+  stroke-linecap: round;
+}
+/* Eyes default open. Donor: breathing's own .bsun dual-group eye markup —
+   the only sun in the prototype with a working eye toggle (js comment,
+   kidq-desktop-app.js:1188-1192). */
+.countBreakEyesClosed {
+  opacity: 0;
+}
+.countBreak.countBreakDim .countBreakEyesOpen {
+  opacity: 0;
+}
+.countBreak.countBreakDim .countBreakEyesClosed {
+  opacity: 1;
+}
+.countBreak.countBreakCelebrate .countBreakSunWrap {
+  animation: countBreakPop 0.55s ease-out;
+}
+
+/* ---------- break-count digit pattern (ported from the shared prototype
+   component at kidq-desktop-app.css:609-725) ---------- */
+.countBreakCount {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  --cnt: 36px;
+}
+.countBreakBig {
+  font-family: "Baloo 2", "Trebuchet MS", system-ui, sans-serif;
+  font-weight: 800;
+  font-size: var(--cnt);
+  color: #1f7a6d;
+  line-height: 1;
+}
+.countBreakTrail {
+  font-family: "Baloo 2", "Trebuchet MS", system-ui, sans-serif;
+  font-weight: 700;
+  font-size: calc(var(--cnt) * 0.48);
+  color: #6b6459;
+  opacity: 0.72;
+  min-height: 1em;
+  font-variant-numeric: tabular-nums;
+}
+
+.countBreakBalloon {
+  position: relative;
+  display: block;
+  width: calc(var(--cnt) * 1.15);
+  height: calc(var(--cnt) * 1.505);
+  flex-shrink: 0;
+}
+/* Quieter than the tree game's pop() — a slow float-in, not a bounce; this is
+   the settle game (js comment, kidq-desktop-app.js:1239-1250). Applied only
+   from the first real tick onward (CountBreak.tsx: not on the pre-count
+   initial paint) and retriggered on every later tick by remounting this
+   element with a fresh `key` — the React-native equivalent of the
+   prototype's own remove/reflow/add re-trigger dance. */
+.countBreakBalloon.countBreakPulse {
+  animation: countBreakBalloonFloat 0.45s ease-out;
+}
+@keyframes countBreakBalloonFloat {
+  0% { transform: translateY(14px); opacity: 0.4; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+.countBreakBalloonBody {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: calc(var(--cnt) * 1.32);
+  border-radius: 50%;
+  filter: drop-shadow(0 3px 5px rgba(46, 42, 36, 0.28));
+}
+.countBreakBalloonKnot {
+  position: absolute;
+  left: 50%;
+  top: calc(var(--cnt) * 1.28);
+  width: calc(var(--cnt) * 0.16);
+  height: calc(var(--cnt) * 0.1);
+  transform: translateX(-50%);
+  clip-path: polygon(50% 100%, 12% 0, 88% 0);
+}
+.countBreakBalloonString {
+  position: absolute;
+  left: 50%;
+  top: calc(var(--cnt) * 1.36);
+  width: 1.5px;
+  height: calc(var(--cnt) * 0.16);
+  background: #6b6459;
+  opacity: 0.5;
+  transform: translateX(-50%) rotate(-4deg);
+  transform-origin: top center;
+}
+.countBreakBalloon .countBreakBig {
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: calc(var(--cnt) * 1.32);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(var(--cnt) * 0.78);
+  color: #faf4e8;
+}
+.countBreakHueTeal .countBreakBalloonBody { background-image: linear-gradient(135deg, #7db2aa 0%, #1f7a6d 65%); }
+.countBreakHueTeal .countBreakBalloonKnot { background: #11433c; }
+.countBreakHueRose .countBreakBalloonBody { background-image: linear-gradient(135deg, #cd9aab 0%, #a8506e 65%); }
+.countBreakHueRose .countBreakBalloonKnot { background: #5c2c3d; }
+.countBreakHueCoral .countBreakBalloonBody { background-image: linear-gradient(135deg, #dc9c90 0%, #c2543f 65%); }
+.countBreakHueCoral .countBreakBalloonKnot { background: #6b2e23; }
+.countBreakHueDusk .countBreakBalloonBody { background-image: linear-gradient(135deg, #ab9fcd 0%, #6f5aa8 65%); }
+.countBreakHueDusk .countBreakBalloonKnot { background: #3d325c; }
+
+/* Celebration — the count is spent once celebrating, same as every other
+   break screen in the prototype (kidq-desktop-app.css:876-878). */
+.countBreak.countBreakCelebrate .countBreakHeadline {
+  animation: countBreakPop 0.7s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes countBreakPop {
+  0% { transform: scale(1); }
+  30% { transform: scale(1.22, 0.82); }
+  55% { transform: scale(0.92, 1.14); }
+  75% { transform: scale(1.06, 0.96); }
+  100% { transform: scale(1); }
+}
+
+@container (min-width: 601px) {
+  .countBreakSunWrap { width: min(40cqw, 214px); }
+  .countBreakCount { --cnt: 44px; }
+  .countBreakHeadline { font-size: 34px; }
+}
+@container (min-width: 1100px) {
+  .countBreakSunWrap { width: min(40cqw, 240px); }
+  .countBreakCount { --cnt: 54px; }
+  .countBreakHeadline { font-size: 38px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .countBreakHalo,
+  .countBreakBalloon,
+  .countBreakSunWrap,
+  .countBreakHeadline,
+  .countBreakDuskveil {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.12s !important;
+  }
+}
