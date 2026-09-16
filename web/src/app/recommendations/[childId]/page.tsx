@@ -177,9 +177,11 @@ export default function RecommendationsPage() {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
                 <div style={{ width: "100%", aspectRatio: "16 / 9", height: "auto", borderRadius: "var(--kq-radius-control)", background: card.thumbnail_url ? `url(${card.thumbnail_url}) center / contain no-repeat` : "var(--kq-card-mint)" }} aria-label={`${card.title} thumbnail`} />
               <div>
-                  <p style={{ fontWeight: 700, color: "var(--kq-charcoal)" }}>{card.title}</p>
+                  <p style={{ fontWeight: 700, color: "var(--kq-charcoal)", display: "-webkit-box", WebkitBoxOrient: "vertical", WebkitLineClamp: 2, overflow: "hidden" }}>{card.title}</p>
                   <p style={{ fontSize: "var(--kq-text-caption)", color: "var(--kq-text-secondary)" }}>
-                    {card.category} · {card.duration_seconds ? Math.round(card.duration_seconds / 60) : "?"} min · age {ageLabel}
+                    {/* Math.max(1, ...) matches the Q-total calculation just below (totalMinutes) — a
+                        real sub-minute duration would otherwise round down to a misleading "0 min". */}
+                    {card.category} · {card.duration_seconds ? Math.max(1, Math.round(card.duration_seconds / 60)) : "?"} min · age {ageLabel}
                   </p>
                 </div>
                 <span style={{ fontSize: 20 }}>{isSelected ? "✅" : "⬜"}</span>

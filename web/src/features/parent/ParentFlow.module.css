@@ -13,3 +13,8 @@
 @media(max-width:1100px){.shellFrame{display:block}.desktopSidebar{display:none}}
 @media(min-width:1101px){.loginTerms{padding:28px 30px;border-radius:20px}.loginTerms>b{font-size:29px}.loginTerms p{font-size:16px;line-height:1.65;margin:14px 0 22px}.loginTerms .check{font-size:16px;line-height:1.4}}
 .uploadBox::before{content:"Upload PDF";display:inline-block;border:0;border-radius:12px;background:#0e7a69;color:#fff;padding:11px 16px;margin-right:10px;font-weight:800}
+/* Ingested titles (e.g. long, all-caps YouTube titles) can run far past a card's width; clamp
+   instead of letting them push the layout or read as a wall of unedited text. */
+.recTitle{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;word-break:break-word}
+.libraryThumb{width:64px;height:64px;flex:none;border-radius:12px;object-fit:cover;background:#fdebd8}
+.libraryIcon{width:64px;height:64px;flex:none;border-radius:12px;background:#fdebd8;display:grid;place-items:center;font-size:25px}
