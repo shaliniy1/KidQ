@@ -327,7 +327,7 @@ export default function KidQDesktop() {
   const video = currentEntry?.item?.card
     ? {
         title: currentEntry.item.card.title,
-        minutes: currentEntry.item.card.duration_seconds ? Math.round(currentEntry.item.card.duration_seconds / 60) : 0,
+        minutes: currentEntry.item.card.duration_seconds ? Math.max(1, Math.round(currentEntry.item.card.duration_seconds / 60)) : 0,
         pickedBy: "Mumma & Papa",
         colour: QUEUE_COLOURS[current % QUEUE_COLOURS.length],
       }
