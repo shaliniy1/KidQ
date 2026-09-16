@@ -3829,6 +3829,8 @@ export interface paths {
                         mode?: "AUTO" | "MORNING" | "DAYTIME" | "BEDTIME";
                         /** @description "Today, lean toward…": a parent category key for this session only; never saved */
                         lean_toward?: string;
+                        /** @description Build today's session from exactly these library items instead of the whole ADDED library */
+                        content_item_ids?: string[];
                     };
                 };
             };

@@ -8210,6 +8210,15 @@
                     "type": "string",
                     "maxLength": 60,
                     "description": "\"Today, lean toward…\": a parent category key for this session only; never saved"
+                  },
+                  "content_item_ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "minItems": 1,
+                    "description": "Build today's session from exactly these library items instead of the whole ADDED library"
                   }
                 },
                 "required": [
