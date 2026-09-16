@@ -479,6 +479,11 @@ export const sessionStartBody = z.object({
   minutes: z.number().int().min(15).max(180).describe("15, 30, 45, 60 or 90; any other length snaps to 30-minute blocks"),
   mode: z.enum(SESSION_MODES).optional().describe("Session mode; remembered as this child's default. Omit to use the remembered one"),
   lean_toward: z.string().max(60).optional().describe("\"Today, lean toward…\": a parent category key for this session only; never saved"),
+  content_item_ids: z
+    .array(z.uuid())
+    .min(1)
+    .optional()
+    .describe("Build today's session from exactly these library items instead of the whole ADDED library"),
 });
 export const sessionItemBody = z
   .object({

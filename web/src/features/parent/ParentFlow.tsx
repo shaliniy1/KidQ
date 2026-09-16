@@ -22,6 +22,7 @@ type Child = { id: string; name: string; age: string; color: string; duration: n
 // snap to the nearest valid value rather than widen the API's own enum for this fix.
 const SESSION_MINUTES_OPTIONS = [15, 30, 45, 60, 90] as const;
 const nearestSessionMinutes = (value: number) => SESSION_MINUTES_OPTIONS.reduce((best, option) => (Math.abs(option - value) < Math.abs(best - value) ? option : best));
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const RECOMMENDATION_COUNT = 5;
 const RECOMMENDATION_VIDEO_COUNT = 3;
 const RECOMMENDATION_STORY_COUNT = 2;
@@ -335,10 +336,11 @@ export default function ParentFlow() {
     try {
       await Promise.all(chosen.map((item) => addToLibrary(child.id, item.id).catch(() => undefined)));
       // Adding to the library alone leaves nothing "live" for the child to open — start today's
-      // session now so what the parent just picked is what /kid actually shows, not a picker
-      // over the whole accumulated library.
+      // session now, restricted to exactly this round's confirmed ids so the queue is what the
+      // parent just picked, not everything ever added to the library over time.
       const mode = timeMode === "Auto" ? undefined : (timeMode.toUpperCase() as "MORNING" | "DAYTIME" | "BEDTIME");
-      await beginSession(child.id, duration, mode).catch(() => undefined);
+      const chosenContentIds = chosen.map((item) => item.id).filter((id) => UUID_RE.test(id));
+      await beginSession(child.id, duration, mode, chosenContentIds.length > 0 ? chosenContentIds : undefined).catch(() => undefined);
     } finally {
       setPlaylist(chosen);
       navigateScreen("planReady");
