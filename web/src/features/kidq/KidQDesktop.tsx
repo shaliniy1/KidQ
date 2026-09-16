@@ -238,10 +238,13 @@ const ACTIVITY_DEFINITIONS: readonly ActivityDefinition[] = [
   { key: "count", aliases: ["count", "ten"], title: "Count to 10", stage: "count", live: true },
   { key: "flower_candle", aliases: ["flower", "candle"], title: "Flower & candle", stage: "flowerCandle", live: true },
   { key: "tree", aliases: ["tree"], title: "Tree pose", stage: "tree", live: true },
-  { key: "butterfly_wings", aliases: ["butterfly"], title: "Butterfly wings", live: false },
-  { key: "puddle_jump", aliases: ["puddle"], title: "Puddle jump", live: false },
-  { key: "cloud_reach", aliases: ["cloud"], title: "Cloud reach", live: false },
-  { key: "sleepy_stretch", aliases: ["sleepy", "stretch"], title: "Sleepy stretch", live: false },
+  // These 4 backend break_type keys (api/db/migrations/016) have no prototype
+  // design of their own, so each falls back to a live game in the same
+  // MOVEMENT/QUIET bucket rather than the generic 3-click placeholder.
+  { key: "butterfly_wings", aliases: ["butterfly"], title: "Butterfly wings", stage: "tree", live: true },
+  { key: "puddle_jump", aliases: ["puddle"], title: "Puddle jump", stage: "tree", live: true },
+  { key: "cloud_reach", aliases: ["cloud"], title: "Cloud reach", stage: "tree", live: true },
+  { key: "sleepy_stretch", aliases: ["sleepy", "stretch"], title: "Sleepy stretch", stage: "breathing", live: true },
   { key: "firefly_count", aliases: ["firefly"], title: "Firefly count", live: false },
 ];
 
