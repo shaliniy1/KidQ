@@ -323,6 +323,7 @@ function friendlyWhy(taxonomy: Taxonomy, card: ContentCard, ranked: ReturnType<t
   const label = (kind: TaxonomyKind, key: string) => taxonomy[kind].find((term) => term.key === key)?.label ?? key;
   const list = (kind: TaxonomyKind, keys: string[]) => keys.map((key) => label(kind, key)).join(", ");
   const why: string[] = [];
+  if (ranked.pinned) why.push("Featured pick");
   if (ranked.coldStart) why.push(`A top-rated pick for age ${Math.floor(ageYears)}`);
   if (ranked.matched.interests.length) why.push(`Matches interests: ${list("interest", ranked.matched.interests)}`);
   if (ranked.matched.developmentGoals.length) why.push(`Supports: ${list("development_goal", ranked.matched.developmentGoals)}`);
@@ -335,10 +336,19 @@ function friendlyWhy(taxonomy: Taxonomy, card: ContentCard, ranked: ReturnType<t
   return why;
 }
 
+// Featured picks: always lead every family's recommendations with these, regardless of age or
+// language, ahead of the normally-ranked list. Content still has to be admin-approved and scored —
+// this only skips the personalization filters, never the safety gate.
+const FEATURED_CONTENT_IDS = [
+  "807cb0b5-5936-492f-b19f-dfc673b1f58b", // Andy: A Dog's Tale
+  "4a11bd9b-be1a-479a-8d17-56ab4e97caa3", // Margo and Froggy: A Game of Hide and Seek - Ep 7
+  "afac3d84-ce14-4244-bbd6-525a1006578a", // Fun and Adventures with the Puffins! | Puffin Rock Compilation | CBeebies
+];
+
 async function rankFor(db: Db, profile: ChildProfileInput, excluded: Set<string>, limit: number, offset: number) {
   const [config, rows, taxonomy] = await Promise.all([getActiveRankingConfig(db), listApprovedCardRows(db), listTaxonomy(db)]);
   const byId = new Map(rows.map((row) => [row.id as string, row]));
-  const ranked = recommend(profile, rows.map(toCandidate), config, excluded, { limit, offset });
+  const ranked = recommend(profile, rows.map(toCandidate), config, excluded, { limit, offset, pinnedIds: FEATURED_CONTENT_IDS });
   return {
     items: ranked.map((item) => {
       const card = toCard(byId.get(item.contentId) as Row);
