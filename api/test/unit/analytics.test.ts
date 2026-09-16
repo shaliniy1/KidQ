@@ -73,6 +73,19 @@ describe("summarize", () => {
     expect(summary.insights).toEqual(["Seems to be engaging most with Science this week.", "Finished 2 of the 3 videos they started."]);
   });
 
+  it("keeps \"screen time\" and \"vs previous\" consistent with what the daily bars sum to", () => {
+    // Each day is 620s = 10 min 20 sec, which rounds down to 10 minutes on its own bar. Three of
+    // them add up to exactly 31 raw minutes, so rounding the total directly (the old behavior)
+    // disagreed with the three visible 10-minute bars by a minute.
+    const day = (date: string, seconds: number) =>
+      play({ itemId: `v-${date}`, day: date, activeSeconds: seconds, parts: { MORNING: seconds, AFTERNOON: 0, EVENING: 0, OTHER: 0 } });
+    const summary = week([day("2026-09-11", 620), day("2026-09-12", 620), day("2026-09-13", 620), day("2026-08-31", 900)]);
+    const dailySum = summary.daily.reduce((sum, entry) => sum + entry.minutes, 0);
+    expect(summary.daily.filter((entry) => entry.minutes > 0).map((entry) => entry.minutes)).toEqual([10, 10, 10]);
+    expect(summary.overview.screen_minutes).toBe(dailySum);
+    expect(summary.overview.vs_previous).toMatchObject({ minutes_diff: dailySum - 15, compared_with: "the week before" });
+  });
+
   it("splits videos from activities, and activity time isn't screen time", () => {
     const summary = week([play(), play({ kind: "ACTIVITY", itemId: "a1", category: "art_craft", activeSeconds: 900 })]);
     expect(summary.split).toEqual({ video_minutes: 5, activity_minutes: 15, video_percent: 25, activity_percent: 75 });

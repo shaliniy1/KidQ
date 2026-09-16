@@ -58,6 +58,11 @@ const adminDetailSchema = z.object({
   raw_metadata: z.unknown(),
   story: z.union([storySchema, z.null()]),
 });
+
+const validateScoreSchema = adminDetailSchema.extend({
+  validated: z.boolean().describe("True when the AI produced a fresh score this call"),
+  message: z.union([z.string(), z.null()]).describe("Why AI scoring did not run or could not finish, when validated is false"),
+});
 const queued = z.object({ queued: z.boolean() });
 
 async function detailOr404(id: string) {
@@ -162,6 +167,12 @@ defineRoute(
   adminRouter,
   { method: "post", path: "/content-items/:id/reanalyze", summary: "Queue AI scoring again, ignoring the AI cache (rule checks re-run only if the source metadata changed)", tag: "Scoring", roles, params: idParams, response: queued, status: 202 },
   async ({ params }) => admin.reanalyze(params.id),
+);
+
+defineRoute(
+  adminRouter,
+  { method: "post", path: "/content-items/:id/validate-score", summary: "Call the Gemini scoring agent for this one item right now, ignoring the AI cache", tag: "Scoring", roles, params: idParams, response: validateScoreSchema },
+  async ({ params }) => admin.validateScore(params.id),
 );
 
 defineRoute(
