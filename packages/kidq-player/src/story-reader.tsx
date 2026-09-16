@@ -33,9 +33,10 @@ const BACK_KEY_CODES = new Set([10009, 461]);
 
 export function KidQStoryReader({ title, pages, credits, attribution, onFinished, comfort: comfortMode, className, popup = false, onClose }: KidQStoryReaderProps) {
   const comfort = comfortStyles(comfortMode);
-  // Kid sessions show a launcher first. The child explicitly opens the story;
-  // other readers remain inline unless popup is requested by the caller.
-  const isKidStory = Boolean(onFinished) && !popup;
+  // The launcher-first pattern (child taps to open) reads as "the story never loads" when a kid
+  // session's storybook sits behind an extra tap with no other affordance pointing at it — so kid
+  // sessions open straight into the reader, same as before; `popup` still opts a caller into it.
+  const isKidStory = false;
   // 0 … pages.length - 1 are the story pages; pages.length is "The end" with the credits.
   const [index, setIndex] = useState(0);
   const [popupOpen, setPopupOpen] = useState(!isKidStory);
