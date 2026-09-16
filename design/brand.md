@@ -90,6 +90,42 @@ button. Green is a true green rather than a second teal, so game content never
 reads as the UI accent; red is deeper and less orange than the `heart` coral,
 which a 2–4 year old does not read as red.
 
+**Flower-and-candle prop colours (2026-09-16) — a new subsection, not an
+addition to the find-a-colour table above:** that table is scoped to
+find-a-colour's own three named hunt colours (line 69); the flower/candle
+break's props are hero-scale illustration, not a colour the child is asked
+to name, so they get their own entry. Promoted from the breathing screen's
+own offline-fallback SVG row (`docs/superpowers/specs/2026-09-16-kidq-
+flower-candle-break-design.md`), then recoloured for the sky/petal/rose
+adjacencies this hero scale actually needs:
+
+| Element | Hex | Contrast |
+|---|---|---|
+| Petals | `#A8506E` (rose, the already-verified balloon palette) | 4.07–4.91:1 vs the three day-sky stops |
+| Flower centre disc | `sun` `#FFC64D` (the token, not `sun-deep` — see below) | 3.33:1 vs the rose petals; face ink `#2E2A24` on it measures 9.12:1 |
+| Flame body | `sun-deep` `#F0A72E` (unchanged token) + a ~2px outline ring `#9C6A18` | 3.66–4.41:1 (the ring) vs the three day-sky stops |
+| Candle outline | `#6B6459` (`ink-soft`, unchanged token) | 4.57–5.52:1 vs the three day-sky stops |
+| Stem/leaf | `teal` `#1F7A6D` (unchanged token, reused as-is) | already covered above |
+
+The flame's ring is the **second live instance of the outlined-gold contrast
+mechanism** open item 35 asked this file to document: gold alone measures
+only 1.60–1.93:1 against this sky (the same structural failure the sun-
+button hero on the follow-the-sun break already worked around at
+3.9–4.7:1, task-7-report.md) — so rather than swap the hue a second time,
+the fill stays gold-as-illustrated and a darker rim of the same hue family
+carries the WCAG 1.4.11 non-text floor instead. This is now an established
+pattern in this app, not a one-off: **gold content keeps its hue and earns
+contrast from an outline ring**, everywhere gold has to sit on the day sky.
+
+**Resolved (2026-09-16, coordinator follow-up).** The centre disc first
+shipped as `sun-deep` `#F0A72E`, which measured only 2.54:1 against the
+rose petals — under this pairing's own 3:1 expectation, logged honestly
+rather than rounded up. Fix: swap to the `sun` token (`#FFC64D`) instead of
+inventing a new hex — 3.33:1 against the petals, clears the gate, and
+happens to match the centre sun's own disc colour as a bonus. Face ink
+stays legible on the lighter fill (9.12:1, more headroom than the gold
+pairing had). No open call remains on this adjacency.
+
 Supporting: arc/horizon stroke on day sky `#E4D6B8`; on sunrise sky
 `#FAF4E8` at 65% opacity; moon craters `#E4D6B8`; night cloud `#454179`.
 

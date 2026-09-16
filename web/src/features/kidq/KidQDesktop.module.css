@@ -134,6 +134,125 @@
   .sunButton { width: 124px; height: 124px; }
 }
 
+/* =========================================================================
+   Break games: real prototype ports (find 3 colours / breathe / follow).
+   Ported from design/prototype/kidq-desktop-app.css (#screen-breathing,
+   #screen-find, #screen-follow and their shared .bsun/.kq-bdots/.halo bits).
+   ========================================================================= */
+@keyframes kqHalopulse { 0%, 100% { transform: scale(1); opacity: .85; } 50% { transform: scale(1.08); opacity: 1; } }
+@keyframes kqRingout { 0% { transform: scale(.7); opacity: .95; } 100% { transform: scale(2.1); opacity: 0; } }
+@keyframes kqEyeBlink { 0%, 93%, 100% { transform: scaleY(1); } 96% { transform: scaleY(.15); } }
+@keyframes kqSmokeUp { 0% { opacity: 0; transform: translateY(0); } 25% { opacity: .75; } 100% { opacity: 0; transform: translateY(-18px); } }
+@keyframes kqFlick { 0%, 100% { transform: scale(1) rotate(-2deg); } 50% { transform: scale(1.1, 1.26) rotate(2deg); } }
+@keyframes kqRayRipple { 0%, 100% { stroke-width: 3.4; opacity: .75; } 50% { stroke-width: 5; opacity: 1; } }
+@keyframes kqSwatchIn { to { opacity: 1; transform: none; } }
+@keyframes kqPop { 0% { transform: scale(1); } 30% { transform: scale(1.22, .82); } 55% { transform: scale(.92, 1.14); } 75% { transform: scale(1.06, .96); } 100% { transform: scale(1); } }
+@keyframes kqCatchPulse { 0% { transform: scale(.85); opacity: 0; } 35% { opacity: .85; } 100% { transform: scale(1.3); opacity: 0; } }
+@keyframes kqRaysIn { 0% { transform: scale(.55); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+
+.breatheScreen, .findScreen, .followScreen {
+  min-height: calc(100vh - 130px); display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 22px; text-align: center; padding: 30px;
+  background: linear-gradient(180deg, #fdf8ec 0%, #f7ebd2 58%, #f1e2c4 100%); position: relative; overflow: hidden;
+}
+.breakHead { font: 800 clamp(28px, 4vw, 34px)/1.15 "Baloo 2", system-ui; color: #2e2a24; min-height: 1.2em; margin: 0; text-wrap: balance; }
+.breakSub { font-size: 16.5px; font-weight: 500; color: #6b6459; margin: 0; max-width: 480px; }
+.halo { position: absolute; border-radius: 50%; pointer-events: none; }
+.ring1 { position: absolute; inset: 8px; border-radius: 50%; border: 3px solid #ffc64d; opacity: 0; pointer-events: none; }
+.eye { transform-box: fill-box; transform-origin: center; animation: kqEyeBlink 5.6s ease-in-out infinite; }
+.bsunWrap { position: relative; width: min(50vw, 190px); aspect-ratio: 1; flex-shrink: 0; }
+.bsunWrap .halo { inset: -30px; background: radial-gradient(circle, rgba(255,198,77,.45) 0%, rgba(255,198,77,0) 68%); animation: kqHalopulse 3s ease-in-out -1.5s infinite; }
+.bsun { position: relative; width: 100%; height: 100%; display: block; transform: scale(.96); transition: transform 3.2s ease-in-out; }
+.bsun .rays line { animation: kqRayRipple 2.6s ease-in-out infinite; }
+.bsun .eyesClosed { opacity: 0; }
+.bsun .mouthO { opacity: 0; }
+
+/* ---------- breathing ---------- */
+.breatheScreen[data-phase="celebrate"] .ring1 { animation: kqRingout .9s ease-out; }
+.breatheScreen[data-phase="in"] .bsun { transform: scale(1.16); }
+.breatheScreen[data-phase="in"] .bsun .eyesClosed { opacity: 1; }
+.breatheScreen[data-phase="in"] .bsun .eyesOpen { opacity: 0; }
+.breatheScreen[data-phase="out"] .bsun .mouthO { opacity: 1; }
+.breatheScreen[data-phase="out"] .bsun .mouthSmile { opacity: 0; }
+.breatheRow { display: flex; align-items: center; justify-content: center; gap: clamp(18px, 6vw, 90px); }
+.prop { width: min(20vw, 86px); flex-shrink: 0; }
+.petalsB { transform-origin: 43px 38px; transform: scale(.55); transition: transform 3s ease-in-out; }
+.breatheScreen[data-phase="in"] .petalsB { transform: scale(1); }
+.flameB { transform-origin: 43px 46px; animation: kqFlick 1.3s ease-in-out infinite; transition: opacity .3s ease; }
+.breatheScreen[data-phase="out"] .flameB { opacity: 0; transition-delay: 1.2s; }
+.smokeB { opacity: 0; }
+.breatheScreen[data-phase="out"] .smokeB { animation: kqSmokeUp 1.6s ease-out 1.35s; }
+.breatheLottie { display: none; width: min(88vw, 460px); }
+.breatheLottie[data-visible="true"] { display: block; }
+.breatheDots, .followDots { display: flex; gap: 10px; justify-content: center; }
+.breatheDots i, .followDots i { width: 12px; height: 12px; border-radius: 50%; background: rgba(46,42,36,.16); transition: background .4s ease; display: block; }
+.breatheDots i[data-on="true"], .followDots i[data-on="true"] { background: #f0a72e; }
+
+/* ---------- find 3 colours ---------- */
+.findScreen[data-celebrate="true"] .breakHead { animation: kqPop .7s cubic-bezier(.34,1.56,.64,1); }
+.findSun {
+  position: relative; width: min(30vw, 132px); aspect-ratio: 1; border: none; background: none; padding: 0;
+  cursor: pointer; display: block; margin: 0 auto; transition: transform .22s cubic-bezier(.34,1.56,.64,1);
+}
+.findSun:hover:not(:disabled) { transform: translateY(-3px) scale(1.04); }
+.findSun:active:not(:disabled) { transform: scale(.94); }
+.findSun:focus-visible { outline: 3px solid #16594f; outline-offset: 6px; border-radius: 50%; }
+.findSun:disabled { cursor: default; }
+.findSun[data-tapped="true"] .bsun { animation: kqPop .55s ease-out; }
+.findHalo {
+  position: absolute; inset: -18px; border-radius: 50%; pointer-events: none;
+  background: radial-gradient(circle, color-mix(in srgb, var(--find-colour, #ffc64d) 55%, transparent) 0%, transparent 70%);
+}
+.swatchRow { display: flex; gap: 16px; justify-content: center; margin-top: 4px; }
+.swatchRow i {
+  width: 48px; height: 48px; border-radius: 50%; display: block; background: var(--find-colour, #f0a72e);
+  border: 2px solid rgba(46,42,36,.1); opacity: 0; transform: translateY(6px); animation: kqSwatchIn .5s ease-out forwards;
+}
+.swatchRow i:nth-child(2) { animation-delay: .1s; }
+.swatchRow i:nth-child(3) { animation-delay: .2s; }
+
+/* ---------- follow the sun ---------- */
+.followScreen { --px-per-deg: 36; --ball: 72px; }
+.followField { flex: 0 0 auto; align-self: stretch; width: min(680px, 92vw); height: min(64vw, calc(var(--px-per-deg) * 9.2px)); max-height: 360px; position: relative; margin: 0 auto; }
+.followHero {
+  position: absolute; left: 0; top: 0; border-radius: 50%; width: var(--ball); height: var(--ball); padding: 0;
+  cursor: default; display: flex; align-items: center; justify-content: center; gap: calc(var(--ball) * .15);
+  background: radial-gradient(circle at 32% 24%, #ffe3a1 0%, #ffc64d 34%, #f5b03a 66%, #f0a72e 84%, #db921f 100%);
+  border: max(2px, calc(var(--ball) * .07)) solid color-mix(in srgb, #f0a72e 50%, #2e2a24);
+  box-shadow: 0 0 0 calc(var(--ball) * .10) color-mix(in srgb, #f0a72e 16%, transparent),
+              0 0 calc(var(--ball) * .42) calc(var(--ball) * .10) color-mix(in srgb, #f0a72e 20%, transparent);
+  transition: translate var(--sweep, 2s) ease-in-out, opacity .3s ease; will-change: translate;
+}
+.followEye { width: calc(var(--ball) * .12); height: calc(var(--ball) * .12); border-radius: 50%; background: #2e2a24; margin-top: calc(var(--ball) * -.10); }
+.followHero::after {
+  content: ""; position: absolute; left: 50%; top: 54%; width: calc(var(--ball) * .38); height: calc(var(--ball) * .19);
+  transform: translateX(-50%); border: 0 solid #2e2a24; border-bottom-width: calc(var(--ball) * .06);
+  border-radius: 0 0 50% 50% / 0 0 100% 100%;
+}
+.followHero[data-gone="true"] { opacity: 0; }
+.followHero[data-jump="true"] { transition: none !important; }
+.followRays { display: none; position: absolute; inset: calc(var(--ball) * -.4); pointer-events: none; }
+.followRays .rays line { animation: none; stroke: #f0a72e; stroke-width: 3.4; stroke-linecap: round; }
+.followHero[data-landed="true"] .followRays, .followScreen[data-celebrate="true"] .followRays { display: block; animation: kqRaysIn .3s ease-out; }
+.followRing { position: absolute; inset: -12%; border-radius: 50%; border: 3px solid #ffc64d; opacity: 0; pointer-events: none; }
+.followHero[data-landed="true"] { cursor: pointer; }
+.followHero:focus-visible { outline: 3px solid #16594f; outline-offset: 6px; }
+.followHero[data-landed="true"] .followRays { pointer-events: auto; }
+.followHero[data-landed="true"] .followRing { animation: kqCatchPulse 1.4s ease-out infinite; }
+.followScreen[data-celebrate="true"] .followHero, .followHero[data-tapped="true"] { animation: kqPop .55s ease-out; }
+.followScreen[data-celebrate="true"] .followRing { animation: kqRingout .9s ease-out; }
+
+/* "Where's the sun?" / "Find it each time it hops" swap under reduced motion */
+.mReduced { display: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .breatheScreen *, .findScreen *, .followScreen * {
+    animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .12s !important;
+  }
+  .mFull { display: none; }
+  .mReduced { display: inline; }
+}
+
 /* =====================================================================
    Splash screen + enriched predawn sky, ported from
    design/prototype/index.html (#screen-splash, #screen-login) and
