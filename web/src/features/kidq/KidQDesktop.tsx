@@ -18,8 +18,9 @@ import { getLibrary, type LibraryEntry } from "@/services/my-videos";
 import { getActivities, type ParentActivity } from "@/services/activity-breaks";
 import { getStory, type Story } from "@/services/story";
 import { KidQPlayer, KidQStoryReader } from "@kidq/player";
+import FlowerCandleBreak from "./FlowerCandleBreak";
 
-type Stage = "profile" | "library" | "sunrise" | "watching" | "timedBreak" | "playtime" | "breathing" | "follow" | "find" | "choice" | "end" | "noSession" | "night" | "cast";
+type Stage = "profile" | "library" | "sunrise" | "watching" | "timedBreak" | "playtime" | "breathing" | "follow" | "find" | "flowerCandle" | "choice" | "end" | "noSession" | "night" | "cast";
 type SlotItem = AssembledSession["slots"][number]["items"][number];
 type QueueEntry = { slotIndex: number; isLastInSlot: boolean; item: SlotItem };
 type BreakActivity = AssembledSession["slots"][number]["break_activity"];
@@ -27,7 +28,7 @@ type BreakActivity = AssembledSession["slots"][number]["break_activity"];
 const CHILD_COLOURS = ["#1F7A6D", "#E2705E", "#2B2955", "#F0A72E", "#16594F"];
 const QUEUE_COLOURS = ["#D8C89C", "#B9A574", "#C9B8E8", "#F0A72E", "#7FD8C8", "#E2705E"];
 
-type LiveActivityStage = "breathing" | "follow" | "find";
+type LiveActivityStage = "breathing" | "follow" | "find" | "flowerCandle";
 type ActivityDefinition = {
   key: string;
   aliases: readonly string[];
@@ -43,6 +44,7 @@ const ACTIVITY_DEFINITIONS: readonly ActivityDefinition[] = [
   { key: "find", aliases: ["find"], title: "Find 3 colours", stage: "find", live: true },
   { key: "follow", aliases: ["follow", "sun"], title: "Follow the sun", stage: "follow", live: true },
   { key: "breathe", aliases: ["breathe", "breath"], title: "Breathe with Sun", stage: "breathing", live: true },
+  { key: "flower_candle", aliases: ["flower", "candle"], title: "Flower & candle", stage: "flowerCandle", live: true },
   { key: "tree", aliases: ["tree"], title: "Tree pose", live: false },
   { key: "butterfly_wings", aliases: ["butterfly"], title: "Butterfly wings", live: false },
   { key: "puddle_jump", aliases: ["puddle"], title: "Puddle jump", live: false },
@@ -51,7 +53,7 @@ const ACTIVITY_DEFINITIONS: readonly ActivityDefinition[] = [
   { key: "firefly_count", aliases: ["firefly"], title: "Firefly count", live: false },
 ];
 
-function activityScreen(activity: BreakActivity): "breathing" | "follow" | "find" | "playtime" {
+function activityScreen(activity: BreakActivity): "breathing" | "follow" | "find" | "flowerCandle" | "playtime" {
   const searchable = `${activity?.key ?? ""} ${activity?.title ?? ""}`.toLowerCase();
   const definition = ACTIVITY_DEFINITIONS.find((item) =>
     item.live && [item.key, ...item.aliases].some((alias) => searchable.includes(alias)),
@@ -240,6 +242,7 @@ export default function KidQDesktop() {
   if (stage === "breathing") return <BreakScreen title={breaths < 3 ? "Breathe in…" : "Lovely breathing!"} body={`Three big slow breaths with the sun · ${breaths} of 3`} action={breaths < 3 ? "Breathe in and out" : "Continue"} onClick={() => breaths < 3 ? setBreaths((value) => value + 1) : setStage("choice")} />;
   if (stage === "follow") return <BreakScreen title={followCatches < 3 ? "Follow the sun!" : "You did it! ✨"} body={followCatches < 3 ? `Follow the sun with your eyes and catch it · ${followCatches} of 3` : "A gentle break is complete."} action={followCatches < 3 ? "Catch the sun" : "Continue"} onClick={() => followCatches < 3 ? setFollowCatches((value) => value + 1) : setStage("choice")} />;
   if (stage === "find") return <BreakScreen title={found < 3 ? `Find ${3 - found} red thing${found === 2 ? "" : "s"}!` : "Break complete!"} body="Look around the room. This is time away from the screen." action={found < 3 ? "I found one" : "Choose what is next"} onClick={() => found < 3 ? setFound((value) => value + 1) : setStage("choice")} />;
+  if (stage === "flowerCandle") return <FlowerCandleBreak onDone={() => setStage("choice")} />;
   if (stage === "choice") return <ChoiceScreen childName={childName} hasNext={current < queue.length} onNext={() => current >= queue.length ? setStage("end") : startWatching(current)} onPick={(index) => startWatching(index)} items={queue} />;
   if (stage === "end") return <EndScreen childName={childName} onNight={() => setStage("night")} />;
   if (stage === "noSession") return <NoSession onBack={() => setStage("profile")} onReplay={handleReplay} />;
