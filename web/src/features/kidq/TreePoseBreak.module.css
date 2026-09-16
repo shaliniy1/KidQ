@@ -1,0 +1,272 @@
+/* Tree pose break — ported from design/prototype/kidq-desktop-app.css
+   (#screen-tree and its kq-tree-prefixed, kq-digitballoon and kq-bdots
+   rules). Scoped to this CSS module; class names below correspond 1:1 to
+   the prototype's own selectors (see comments) so this file can be
+   diffed against the source of truth easily. */
+
+.screen {
+  position: relative;
+  min-height: calc(100vh - 130px);
+  overflow: hidden;
+  container-type: inline-size;
+}
+
+.sky {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: linear-gradient(180deg, #fdf8ec 0%, #f7ebd2 58%, #f1e2c4 100%);
+}
+
+.pill {
+  position: absolute;
+  right: 20px;
+  top: 20px;
+  font-weight: 700;
+  font-size: 13px;
+  color: #2e2a24;
+  background: #ffc64d;
+  padding: 6px 14px;
+  border-radius: 999px;
+  z-index: 2;
+}
+
+/* side trees (kq-sidetree) */
+.sideTree {
+  position: absolute;
+  top: calc(50% + 54px);
+  width: min(13cqw, 70px);
+  height: auto;
+  opacity: 0.62;
+  transform-origin: 50% 96%;
+  animation: sidetreesway 5.2s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 0;
+}
+.sideTreeLeft { left: 2%; }
+.sideTreeRight { right: 2%; }
+@keyframes sidetreesway {
+  0%, 100% { transform: rotate(-2.4deg); }
+  50% { transform: rotate(2.6deg); }
+}
+.screen.celebrate .sideTree { animation: sidetreerustle 0.7s ease-in-out 2; }
+@keyframes sidetreerustle {
+  0%, 100% { transform: rotate(-4deg); }
+  50% { transform: rotate(5deg); }
+}
+
+/* kq-centercol */
+.centerCol {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 0 30px;
+  text-align: center;
+}
+
+/* kq-treehead (shared kq-*head font recipe) */
+.headline {
+  font-family: "Baloo 2", "Trebuchet MS", system-ui, sans-serif;
+  font-weight: 800;
+  font-size: 30px;
+  line-height: 1.15;
+  color: #2e2a24;
+  margin: 0;
+}
+.screen.celebrate .headline { animation: pop 0.7s cubic-bezier(0.34, 1.56, 0.64, 1); }
+
+/* kq-treescene / kq-treestage */
+.scene {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+.stage {
+  position: relative;
+  width: min(46cqw, 196px);
+  aspect-ratio: 1;
+  transition: transform 0.45s ease-out;
+  animation: treewobble 4.4s ease-in-out infinite;
+}
+@keyframes treewobble {
+  0%, 100% { transform: rotate(-1.6deg); }
+  50% { transform: rotate(1.8deg); }
+}
+.stage.flipping { animation: treeflip 0.9s cubic-bezier(0.34, 1.56, 0.64, 1); }
+@keyframes treeflip {
+  0% { transform: translateY(0); }
+  40% { transform: translateY(-14px); }
+  100% { transform: translateY(0); }
+}
+.stage.crossfade .lottieMount { transition: opacity 0.3s ease; opacity: 0; }
+.stage.settle { animation: none; transform: rotate(0); }
+.screen.celebrate .stage { animation: pop 0.55s ease-out; }
+
+/* kq-treelottie */
+.lottieMount {
+  width: 100%;
+  height: 100%;
+  transition: transform 0.3s ease;
+}
+.lottieMount.mirrored { transform: scaleX(-1); }
+
+/* kq-treesun (kq-bsunwrap kq-treesun) */
+.sunWrap {
+  position: absolute;
+  left: -8%;
+  bottom: 2%;
+  width: min(18cqw, 78px);
+  z-index: 1;
+}
+.halo {
+  position: absolute;
+  inset: -16px;
+  border-radius: 50%;
+  pointer-events: none;
+  background: radial-gradient(circle, rgba(255, 198, 77, 0.4) 0%, rgba(255, 198, 77, 0) 68%);
+  animation: halopulse 3.6s ease-in-out -1s infinite;
+}
+@keyframes halopulse {
+  0%, 100% { transform: scale(1); opacity: 0.85; }
+  50% { transform: scale(1.08); opacity: 1; }
+}
+.bsun {
+  position: relative;
+  width: 100%;
+  display: block;
+  animation: treewobble 3.6s ease-in-out -0.6s infinite;
+  transition: transform 0.45s ease-out;
+}
+.screen.celebrate .bsun { animation: pop 0.55s ease-out; }
+.bsun .rays line { stroke: #f0a72e; stroke-width: 3.4; stroke-linecap: round; opacity: 0.55; }
+.eye { transform-box: fill-box; transform-origin: center; animation: eyeblink 5.6s ease-in-out infinite; }
+@keyframes eyeblink {
+  0%, 93%, 100% { transform: scaleY(1); }
+  96% { transform: scaleY(0.15); }
+}
+
+@keyframes pop {
+  0% { transform: scale(1); }
+  30% { transform: scale(1.22, 0.82); }
+  55% { transform: scale(0.92, 1.14); }
+  75% { transform: scale(1.06, 0.96); }
+  100% { transform: scale(1); }
+}
+
+/* kq-breakcount + kq-digitballoon (break-count digit balloon, brand.md §5) */
+.breakCount {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  --cnt: 36px;
+}
+.breakCount.hidden { display: none; }
+.breakCountBig {
+  font-family: "Baloo 2", "Trebuchet MS", system-ui, sans-serif;
+  font-weight: 800;
+  font-size: var(--cnt);
+  color: #1f7a6d;
+  line-height: 1;
+}
+.breakCountTrail {
+  font-family: "Baloo 2", "Trebuchet MS", system-ui, sans-serif;
+  font-weight: 700;
+  font-size: calc(var(--cnt) * 0.48);
+  color: #6b6459;
+  opacity: 0.72;
+  min-height: 1em;
+}
+
+.digitBalloon {
+  position: relative;
+  display: block;
+  width: calc(var(--cnt) * 1.15);
+  height: calc(var(--cnt) * 1.505);
+  flex-shrink: 0;
+}
+.digitBalloon.tapped { animation: pop 0.55s ease-out; }
+.balloonBody {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: calc(var(--cnt) * 1.32);
+  border-radius: 50%;
+  filter: drop-shadow(0 3px 5px rgba(46, 42, 36, 0.28));
+}
+.balloonKnot {
+  position: absolute;
+  left: 50%;
+  top: calc(var(--cnt) * 1.28);
+  width: calc(var(--cnt) * 0.16);
+  height: calc(var(--cnt) * 0.1);
+  transform: translateX(-50%);
+  clip-path: polygon(50% 100%, 12% 0, 88% 0);
+}
+.balloonString {
+  position: absolute;
+  left: 50%;
+  top: calc(var(--cnt) * 1.36);
+  width: 1.5px;
+  height: calc(var(--cnt) * 0.16);
+  background: #6b6459;
+  opacity: 0.5;
+  transform: translateX(-50%) rotate(-4deg);
+  transform-origin: top center;
+}
+.digitBalloon .breakCountBig {
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: calc(var(--cnt) * 1.32);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(var(--cnt) * 0.78);
+  color: #faf4e8;
+}
+.hueTeal .balloonBody { background-image: linear-gradient(135deg, #7db2aa 0%, #1f7a6d 65%); }
+.hueTeal .balloonKnot { background: #11433c; }
+.hueRose .balloonBody { background-image: linear-gradient(135deg, #cd9aab 0%, #a8506e 65%); }
+.hueRose .balloonKnot { background: #5c2c3d; }
+.hueCoral .balloonBody { background-image: linear-gradient(135deg, #dc9c90 0%, #c2543f 65%); }
+.hueCoral .balloonKnot { background: #6b2e23; }
+.hueDusk .balloonBody { background-image: linear-gradient(135deg, #ab9fcd 0%, #6f5aa8 65%); }
+.hueDusk .balloonKnot { background: #3d325c; }
+
+/* kq-bdots */
+.dots { display: flex; gap: 10px; justify-content: center; }
+.dots i { width: 12px; height: 12px; border-radius: 50%; background: rgba(46, 42, 36, 0.16); display: block; }
+.dots i.on { background: #f0a72e; }
+
+@container (min-width: 601px) {
+  .headline { font-size: 34px; }
+  .stage { width: min(46cqw, 228px); }
+  .breakCount { --cnt: 44px; }
+}
+@container (min-width: 1100px) {
+  .headline { font-size: 38px; }
+  .stage { width: min(46cqw, 264px); }
+  .sunWrap { width: min(16cqw, 96px); }
+  .breakCount { --cnt: 54px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stage,
+  .bsun,
+  .halo,
+  .sideTree,
+  .headline,
+  .digitBalloon,
+  .lottieMount,
+  .eye {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
