@@ -88,9 +88,10 @@ export default function KidQDesktop() {
   const playerRef = useRef<React.ElementRef<typeof KidQPlayer>>(null);
   const [handledBreakpoints, setHandledBreakpoints] = useState<Set<number>>(new Set());
   const [story, setStory] = useState<Story | null>(null);
+  const [childrenLoaded, setChildrenLoaded] = useState(false);
 
   useEffect(() => {
-    getChildren().then(setChildren).catch(() => setChildren([]));
+    getChildren().then(setChildren).catch(() => setChildren([])).finally(() => setChildrenLoaded(true));
     getActivities().then((catalogue) => setActivities([...catalogue.moving, ...catalogue.calmer])).catch(() => setActivities([]));
   }, []);
 
@@ -243,8 +244,8 @@ export default function KidQDesktop() {
     setStage(activityScreen(breakActivity));
   };
 
-  if (stage === "profile") return <Shell label="Who's watching today?"><section className={styles.profileScreen}><div className={styles.profileStars} /><h1>Who&apos;s watching<br />today?</h1><div className={styles.profileChoices}>{children.map((item, index) => <button key={item.id} onClick={() => chooseChild(item)}><span style={{ background: CHILD_COLOURS[index % CHILD_COLOURS.length] }}>{item.nickname[0]}</span><b>{item.nickname}</b><small>Start my day</small></button>)}</div><p className={styles.noLogin}>No child login needed — a parent sets up the profile.</p>{children[0] && <button className={styles.demoLink} onClick={() => chooseChild(children[0], true)}>Show no-session state</button>}</section></Shell>;
-  if (stage === "library") return <LibraryPicker childName={childName} items={libraryItems} selected={selectedLibraryIds} toggle={(id) => setSelectedLibraryIds((current) => current.has(id) ? new Set() : new Set([id]))} start={startSelectedLibrarySession} onBack={() => setStage("profile")} />;
+  if (stage === "profile") return <Shell label="Who's watching today?"><section className={styles.profileScreen}><div className={styles.profileStars} /><h1>Who&apos;s watching<br />today?</h1>{children.length > 0 ? <div className={styles.profileChoices}>{children.map((item, index) => <button key={item.id} onClick={() => chooseChild(item)}><span style={{ background: CHILD_COLOURS[index % CHILD_COLOURS.length] }}>{item.nickname[0]}</span><b>{item.nickname}</b><small>Start my day</small></button>)}</div> : childrenLoaded && <div className={styles.noProfiles}><p>No child profiles yet.</p><Link href="/parent">Set up a child profile in Parent view</Link></div>}<p className={styles.noLogin}>No child login needed — a parent sets up the profile.</p>{children[0] && <button className={styles.demoLink} onClick={() => chooseChild(children[0], true)}>Show no-session state</button>}</section></Shell>;
+  if (stage === "library") return <LibraryPicker childName={childName} items={libraryItems} selected={selectedLibraryIds} toggle={(id) => setSelectedLibraryIds((current) => { const next = new Set(current); if (next.has(id)) next.delete(id); else next.add(id); return next; })} start={startSelectedLibrarySession} onBack={() => setStage("profile")} />;
   if (stage === "sunrise") return <Shell label={`${childName}'s session`}><section className={styles.sunriseScreen}><div className={styles.sunriseSky}><span className={styles.sunriseStars} /><div className={styles.sunriseCenter}><h1>Hi,<br />{childName}!</h1><button className={styles.sunButton} onClick={() => startWatching(0)} aria-label="Start today's watching session"><Sun /></button><p>Tap the sun to start your day</p><p className={styles.heartLine}>♥ <b>Mumma &amp; Papa picked {queue.length} video{queue.length === 1 ? "" : "s"}</b> · {plannedMinutes} min</p></div></div></section></Shell>;
   if (stage === "playtime") return <BreakScreen title={breakActivity?.title ?? "Time to play!"} body={breakActivity?.instruction ?? "The sun is coming down for a little break away from the screen."} action="Start the break" onClick={beginBreak} />;
   if (stage === "timedBreak") return <BreakScreen title={timedBreak?.title ?? "Time for an activity"} body={timedBreak?.instruction ?? "Take a little break away from the screen."} action="Resume video" onClick={() => { setTimedBreak(null); setStage("watching"); playerRef.current?.play(); }} />;

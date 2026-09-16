@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
-import { api, friendlyError, unwrap, type Dashboard } from "@/lib/api";
+import { api, friendlyError, simpleStatus, unwrap, type AdminContent, type Dashboard } from "@/lib/api";
 import { ageRange, useTaxonomy } from "@/lib/useTaxonomy";
 
 type Run = Record<string, unknown> & { ingestion_run_id: string; status: string };
@@ -44,16 +44,21 @@ export default function AddContentPage() {
     void loadSummary().catch(() => undefined);
   }, [loadRecent, loadSummary]);
 
-  // Poll the active run until the worker finishes it (this also keeps a sleeping QA API awake).
+  // Poll the active run until the worker finishes it (this also keeps a sleeping QA API awake), then a
+  // few more times to catch AI scoring finishing just after, so the score shown below isn't stuck on
+  // "Scoring…" from a page the admin never revisits.
+  const scorePollsLeft = useRef(0);
   useEffect(() => {
-    if (!current || !ACTIVE.has(current.status)) return;
+    if (!current) return;
+    if (ACTIVE.has(current.status)) scorePollsLeft.current = 5;
+    else if (scorePollsLeft.current <= 0) return;
     const timer = setInterval(async () => {
       const run = unwrap(await api.GET("/ingestion-runs/{id}", { params: { path: { id: current.ingestion_run_id } } }));
       setCurrent(run as Run);
-      if (!ACTIVE.has(run.status)) {
-        void loadRecent();
-        void loadSummary();
-      }
+      if (ACTIVE.has(run.status)) return;
+      void loadRecent();
+      void loadSummary();
+      scorePollsLeft.current -= 1;
     }, 2000);
     return () => clearInterval(timer);
   }, [current, loadRecent, loadSummary]);
@@ -183,6 +188,27 @@ export default function AddContentPage() {
           {Array.isArray(current.errors) && current.errors.length > 0 && (
             <ul className="muted">
               {(current.errors as Array<{ message: string }>).slice(0, 5).map((item, index) => <li key={index}>{item.message}</li>)}
+            </ul>
+          )}
+          {Array.isArray(current.created_items) && current.created_items.length > 0 && (
+            <ul className="added-items stack" aria-label="Items just added, with their KidQ score">
+              {(current.created_items as AdminContent[]).map((item) => {
+                const status = simpleStatus(item);
+                const score = item.content_score;
+                return (
+                  <li key={item.id} className="added-item row">
+                    {item.thumbnail_url ? <img className="thumb" src={item.thumbnail_url} alt="" /> : <div className="thumb" aria-hidden="true" />}
+                    <div>
+                      <Link href={`/content/${item.id}`} className="content-title">{item.title}</Link>
+                      <div className="muted" style={{ fontSize: 13 }}>
+                        <span className={`status status-${status.key}`}>{status.label}</span>
+                        {" · "}
+                        {score?.score != null ? `KidQ score ${Math.round(score.score)}` : status.key === "draft" || status.key === "review" ? "Scoring…" : "Not yet scored"}
+                      </div>
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </div>

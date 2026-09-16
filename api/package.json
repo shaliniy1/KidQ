@@ -16,6 +16,7 @@
     "seed:discover": "tsx scripts/seed-discover.ts",
     "seed:sample": "tsx scripts/sample-content.ts load",
     "seed:sample:export": "tsx scripts/sample-content.ts export",
+    "seed:sample:sync": "tsx scripts/sample-content.ts sync",
     "jobs:drain": "tsx scripts/drain-jobs.ts",
     "recurate": "tsx scripts/recurate.ts",
     "eval:scoring": "tsx scripts/eval-scoring.ts",

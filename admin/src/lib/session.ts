@@ -26,6 +26,13 @@ export async function getAccessToken(): Promise<string | null> {
   return readDevToken();
 }
 
+/** Supabase emails a reset link; dev login has no real password to reset. Never reveals whether the address has an account. */
+export async function sendPasswordReset(email: string): Promise<void> {
+  if (!supabase) throw new Error("Password reset isn't needed for local sign-in — enter any email to continue.");
+  const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${window.location.origin}/login` });
+  if (error) throw new Error(error.message);
+}
+
 export async function signIn(email: string, password: string): Promise<void> {
   if (supabase) {
     const { error } = await supabase.auth.signInWithPassword({ email, password });

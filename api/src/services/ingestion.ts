@@ -9,6 +9,7 @@ import type { ConnectorBatch, DiscoveryHints, DiscoveryQuery, ItemError, Normali
 import { fetchYouTubeVideos, parseYouTubeId } from "../connectors/youtube";
 import { getPool, withTransaction, type Db } from "../db/pool";
 import { prescreen } from "../domain/analysis/prescreen";
+import { getCardRows, toAdminCard } from "../repositories/content";
 import { enqueueJob } from "../repositories/jobs";
 
 export type IngestionQuery =
@@ -297,6 +298,13 @@ export async function upsertRecord(record: NormalizedRecord, runId: string | nul
 export async function getIngestionRun(db: Db, runId: string) {
   const run = (await db.query("SELECT * FROM ingestion_runs WHERE id = $1", [runId])).rows[0];
   if (!run) return null;
+  const createdIds = (
+    await db.query(
+      "SELECT DISTINCT content_item_id FROM source_records WHERE ingestion_run_id = $1 AND content_item_id IS NOT NULL",
+      [runId],
+    )
+  ).rows.map((row) => row.content_item_id as string);
+  const createdCards = await getCardRows(db, createdIds, { approvedOnly: false });
   const errors = (
     await db.query(
       `SELECT external_id, error_code AS code, redacted_message AS message, retryable, occurred_at
@@ -319,5 +327,9 @@ export async function getIngestionRun(db: Db, runId: string) {
     records_unchanged: run.records_unchanged,
     records_rejected_before_ai: run.records_rejected_before_ai,
     errors,
+    created_items: createdIds.flatMap((id) => {
+      const row = createdCards.get(id);
+      return row ? [toAdminCard(row)] : [];
+    }),
   };
 }

@@ -2124,6 +2124,12 @@
                           "retryable"
                         ]
                       }
+                    },
+                    "created_items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/AdminContent"
+                      }
                     }
                   },
                   "required": [
@@ -2138,7 +2144,8 @@
                     "records_updated",
                     "records_unchanged",
                     "records_rejected_before_ai",
-                    "errors"
+                    "errors",
+                    "created_items"
                   ]
                 }
               }
@@ -2371,6 +2378,12 @@
                           "retryable"
                         ]
                       }
+                    },
+                    "created_items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/AdminContent"
+                      }
                     }
                   },
                   "required": [
@@ -2385,7 +2398,8 @@
                     "records_updated",
                     "records_unchanged",
                     "records_rejected_before_ai",
-                    "errors"
+                    "errors",
+                    "created_items"
                   ]
                 }
               }
