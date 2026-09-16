@@ -7,7 +7,7 @@ import styles from "./ParentFlow.module.css";
 import { getMockRecommendations, type ParentRecommendation } from "./recommendationService";
 import { devSignIn, hasSession, signInWithGoogle, usingDevLogin } from "@/lib/session";
 import { fetchSessionRouting } from "@/services/auth";
-import { createChild, getMe, submitOnboarding, type ChildProfile, type OnboardingChild } from "@/services/child-profile";
+import { createChild, getMe, submitOnboarding, updateChild, type ChildProfile, type OnboardingChild } from "@/services/child-profile";
 import { getRecommendations as fetchRecommendations, addToLibrary, type Recommendation } from "@/services/recommendations";
 import { getLibrary, removeFromLibrary, submitVideo } from "@/services/my-videos";
 import { getCurationSettings, saveCurationSettings, type CurationSettings } from "@/services/curation-settings";
@@ -17,6 +17,10 @@ import { getParentAnalytics, type ParentAnalytics, type Period } from "@/service
 type Screen = "login" | "home" | "profile" | "addChild" | "confirmation" | "preferences" | "interests" | "content" | "regulation" | "screentime" | "voice" | "guided" | "recommendation" | "playlist" | "addContent" | "planReady" | "preview" | "session" | "complete" | "details" | "insights" | "library" | "add" | "settings";
 type Child = { id: string; name: string; age: string; color: string; duration: number };
 
+// The picker offers 15/20/30/45/60; the API's session_minutes only accepts 15/30/45/60/90 —
+// snap to the nearest valid value rather than widen the API's own enum for this fix.
+const SESSION_MINUTES_OPTIONS = [15, 30, 45, 60, 90] as const;
+const nearestSessionMinutes = (value: number) => SESSION_MINUTES_OPTIONS.reduce((best, option) => (Math.abs(option - value) < Math.abs(best - value) ? option : best));
 const RECOMMENDATION_COUNT = 5;
 const DEFAULT_SELECTED_COUNT = 3;
 const AGE_BAND_LABELS: Record<string, string> = { "0_2": "0–2", "2_3": "2–3", "3_4": "3–4", "4_5": "4–5", "5_6": "5–6" };
@@ -218,12 +222,20 @@ export default function ParentFlow() {
   }
 
   const chooseChild = (index: number) => { setActive(index); setDuration(children[index].duration); };
-  const saveDuration = (value: number = duration) => setChildren((current) => current.map((item, index) => index === active ? { ...item, duration: value } : item));
+  // The ranking engine only fits recommendations to a duration it actually knows — persist the
+  // parent's pick immediately so "5 videos based on the time" isn't stuck on a stale value.
+  const saveDuration = (value: number = duration) => {
+    setChildren((current) => current.map((item, index) => index === active ? { ...item, duration: value } : item));
+    if (child) updateChild(child.id, { session_minutes: nearestSessionMinutes(value) }).catch(() => undefined);
+  };
 
   async function loadRecommendations() {
     if (!child || busy) return;
     setBusy(true);
     try {
+      // Wait for the duration to actually land before ranking — a tap-then-immediately-fetch
+      // race must not leave recommendations built against the previous session length.
+      await updateChild(child.id, { session_minutes: nearestSessionMinutes(duration) }).catch(() => undefined);
       const [real, libraryEntries] = await Promise.all([
         fetchRecommendations(child.id, RECOMMENDATION_COUNT),
         getLibrary(child.id).catch(() => []),
