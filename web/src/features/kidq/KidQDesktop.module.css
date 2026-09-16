@@ -125,8 +125,10 @@
 @keyframes kqSmokeUp { 0% { opacity: 0; transform: translateY(0); } 25% { opacity: .75; } 100% { opacity: 0; transform: translateY(-18px); } }
 @keyframes kqFlick { 0%, 100% { transform: scale(1) rotate(-2deg); } 50% { transform: scale(1.1, 1.26) rotate(2deg); } }
 @keyframes kqRayRipple { 0%, 100% { stroke-width: 3.4; opacity: .75; } 50% { stroke-width: 5; opacity: 1; } }
+@keyframes kqSwatchIn { to { opacity: 1; transform: none; } }
+@keyframes kqPop { 0% { transform: scale(1); } 30% { transform: scale(1.22, .82); } 55% { transform: scale(.92, 1.14); } 75% { transform: scale(1.06, .96); } 100% { transform: scale(1); } }
 
-.breatheScreen {
+.breatheScreen, .findScreen {
   min-height: calc(100vh - 130px); display: flex; flex-direction: column; align-items: center;
   justify-content: center; gap: 22px; text-align: center; padding: 30px;
   background: linear-gradient(180deg, #fdf8ec 0%, #f7ebd2 58%, #f1e2c4 100%); position: relative; overflow: hidden;
@@ -164,8 +166,31 @@
 .breatheDots i { width: 12px; height: 12px; border-radius: 50%; background: rgba(46,42,36,.16); transition: background .4s ease; display: block; }
 .breatheDots i[data-on="true"] { background: #f0a72e; }
 
+/* ---------- find 3 colours ---------- */
+.findScreen[data-celebrate="true"] .breakHead { animation: kqPop .7s cubic-bezier(.34,1.56,.64,1); }
+.findSun {
+  position: relative; width: min(30vw, 132px); aspect-ratio: 1; border: none; background: none; padding: 0;
+  cursor: pointer; display: block; margin: 0 auto; transition: transform .22s cubic-bezier(.34,1.56,.64,1);
+}
+.findSun:hover:not(:disabled) { transform: translateY(-3px) scale(1.04); }
+.findSun:active:not(:disabled) { transform: scale(.94); }
+.findSun:focus-visible { outline: 3px solid #16594f; outline-offset: 6px; border-radius: 50%; }
+.findSun:disabled { cursor: default; }
+.findSun[data-tapped="true"] .bsun { animation: kqPop .55s ease-out; }
+.findHalo {
+  position: absolute; inset: -18px; border-radius: 50%; pointer-events: none;
+  background: radial-gradient(circle, color-mix(in srgb, var(--find-colour, #ffc64d) 55%, transparent) 0%, transparent 70%);
+}
+.swatchRow { display: flex; gap: 16px; justify-content: center; margin-top: 4px; }
+.swatchRow i {
+  width: 48px; height: 48px; border-radius: 50%; display: block; background: var(--find-colour, #f0a72e);
+  border: 2px solid rgba(46,42,36,.1); opacity: 0; transform: translateY(6px); animation: kqSwatchIn .5s ease-out forwards;
+}
+.swatchRow i:nth-child(2) { animation-delay: .1s; }
+.swatchRow i:nth-child(3) { animation-delay: .2s; }
+
 @media (prefers-reduced-motion: reduce) {
-  .breatheScreen * {
+  .breatheScreen *, .findScreen * {
     animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .12s !important;
   }
 }

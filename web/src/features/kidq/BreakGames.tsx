@@ -12,7 +12,7 @@ import { useEffect, useRef, useState, type CSSProperties } from "react";
 import styles from "./KidQDesktop.module.css";
 import { Shell } from "./KidQDesktop";
 import breatheAnimData from "./assets/breathe-anim.json";
-import { hushSpeech, speak } from "./speech";
+import { hushSpeech, safePlay, speak } from "./speech";
 import type { AnimationItem, AnimationSegment } from "lottie-web";
 
 function prefersReducedMotion(): boolean {
@@ -213,6 +213,87 @@ export function BreathingBreak({ onComplete }: { onComplete: () => void }) {
         <div className={styles.breatheDots} aria-hidden="true">
           {[0, 1, 2].map((i) => <i key={i} data-on={i < dotsOn ? "true" : "false"} />)}
         </div>
+      </section>
+    </Shell>
+  );
+}
+
+/* =========================================================================
+   MOVE: find three things of a colour
+   Ported from kidq-desktop-app.js lines ~753-812. The only break that sends
+   the child away from the screen: one honest "I found them!" tap brings
+   them back. The colour rotates (not random) so consecutive breaks don't
+   repeat, matching the prototype's module-level rotation counter.
+   ========================================================================= */
+const FIND_COLOURS = [
+  { name: "red", hex: "#CC4C40" },
+  { name: "blue", hex: "#217AD8" },
+  { name: "green", hex: "#049640" },
+] as const;
+
+let findRotation = Math.floor(Math.random() * FIND_COLOURS.length);
+
+export function FindColoursBreak({ onComplete }: { onComplete: () => void }) {
+  const [colour] = useState(() => {
+    const picked = FIND_COLOURS[findRotation % FIND_COLOURS.length];
+    findRotation += 1;
+    return picked;
+  });
+  const [celebrating, setCelebrating] = useState(false);
+  const [tapped, setTapped] = useState(false);
+  const chimeRef = useRef<HTMLAudioElement>(null);
+  const onCompleteRef = useRef(onComplete);
+  useEffect(() => { onCompleteRef.current = onComplete; }, [onComplete]);
+
+  useEffect(() => {
+    const reducedMotion = prefersReducedMotion();
+    const id = window.setTimeout(
+      () => speak(`Find 3 ${colour.name} things. Look around the room, and touch the sun when you find them.`),
+      reducedMotion ? 200 : 600,
+    );
+    return () => {
+      window.clearTimeout(id);
+      hushSpeech();
+    };
+    // colour is fixed for the lifetime of this component (picked once above)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function handleFound() {
+    if (celebrating) return;
+    setCelebrating(true);
+    setTapped(true);
+    window.setTimeout(() => setTapped(false), 950);
+    speak("You found them!"); // kept short: the next screen arrives in 1.9s
+    safePlay(chimeRef.current);
+    const reducedMotion = prefersReducedMotion();
+    window.setTimeout(() => onCompleteRef.current(), reducedMotion ? 200 : 1900);
+  }
+
+  return (
+    <Shell label="Playtime">
+      <section
+        className={styles.findScreen}
+        data-celebrate={celebrating ? "true" : "false"}
+        style={{ "--find-colour": colour.hex } as CSSProperties}
+      >
+        <audio ref={chimeRef} src="/kid-prototype/proposal-src/sunset-chime.mp3" preload="auto" />
+        <h1 className={styles.breakHead} aria-live="polite">
+          {celebrating ? "You found them! ✨" : `Find 3 ${colour.name} things!`}
+        </h1>
+        <button
+          type="button"
+          className={styles.findSun}
+          aria-label="I found them"
+          disabled={celebrating}
+          data-tapped={tapped ? "true" : "false"}
+          onClick={handleFound}
+        >
+          <span className={styles.findHalo} aria-hidden="true" />
+          <FaceSun style={{ transform: "none" }} />
+        </button>
+        <div className={styles.swatchRow} aria-hidden="true"><i /><i /><i /></div>
+        <p className={styles.breakSub}>{celebrating ? "Great looking." : "Look around the room. Touch the sun when you find them."}</p>
       </section>
     </Shell>
   );
