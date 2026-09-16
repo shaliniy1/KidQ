@@ -287,6 +287,11 @@ export default function KidQDesktop() {
   const [completedSeconds, setCompletedSeconds] = useState(0);
   const [currentPlaybackSeconds, setCurrentPlaybackSeconds] = useState(0);
   const [paused, setPaused] = useState(false);
+  // Prototype's #screen-watching starts with the "wide" class already present
+  // in its static markup (design/prototype/index.html), i.e. the bigger-player
+  // layout is the default and the expand button's first tap shrinks it — mirrored
+  // here by defaulting to true rather than false.
+  const [wide, setWide] = useState(true);
   const [breakSlotIndex, setBreakSlotIndex] = useState<number | null>(null);
   const [timedBreak, setTimedBreak] = useState<ParentActivity | null>(null);
   const [activities, setActivities] = useState<ParentActivity[]>([]);
@@ -444,6 +449,9 @@ export default function KidQDesktop() {
     const durationSeconds = entry.item.card.duration_seconds ?? 0;
     recordItemOutcome(session.id, entry.item.id, { outcome: "COMPLETED", watched_seconds: durationSeconds }).catch(() => undefined);
     setCompletedSeconds((value) => value + durationSeconds);
+    // The finishing video's full duration just landed in completedSeconds above —
+    // zero the live counter now (not on the next video's first "time" event) so
+    // progress never double-counts it for the one render in between.
     setCurrentPlaybackSeconds(0);
 
     const isLastOverall = current >= queue.length - 1;
@@ -495,7 +503,36 @@ export default function KidQDesktop() {
   const avatarIndex = Math.max(children.findIndex((item) => item.id === activeChild?.id), 0);
   const avatarColour = CHILD_COLOURS[avatarIndex % CHILD_COLOURS.length];
   const avatarFace = FACE_INK[avatarIndex % FACE_INK.length];
-  return <Shell label={`${childName}'s session`}><section className={`${styles.world} ${progress >= 96 ? styles.end : ""}`}><div className={styles.cloudOne} /><div className={styles.cloudTwo} /><div className={styles.arc}><svg viewBox="0 0 1000 220" preserveAspectRatio="none" aria-hidden="true"><path d="M30 215 Q500 5 970 215" fill="none" stroke="#E4D6B8" strokeWidth="3" strokeDasharray="1 11" strokeLinecap="round" /><line x1="30" y1="215" x2="970" y2="215" stroke="#E4D6B8" strokeWidth="3" strokeLinecap="round" /></svg><div className={styles.sun} style={sunPosition} aria-label="Session progress"><span className={styles.halo} /><Sun /></div></div><span className={styles.timeLeft}>{remaining} min left</span><div className={styles.childHeader}><span className={styles.faceWrap} style={{ width: 46, height: 46 }}><span className={`${styles.faceHalo} ${styles.faceHaloSmall}`} style={{ animationDelay: `${-(avatarIndex % 2) * 2.2}s` }} /><AvatarFace disc={avatarColour} face={avatarFace} /></span><div><h2>{childName}&apos;s watch time</h2><p>video {current + 1} of {queue.length}</p></div></div><div className={styles.content}><div className={isStorybook ? styles.storyFrame : styles.player}>{isStorybook ? (story ? <KidQStoryReader title={story.title} pages={story.pages} credits={story.credits} attribution={story.attribution} onFinished={() => void finishVideo()} /> : <div className={styles.playerArt}><span>{video.title}</span><small>Loading the book…</small></div>) : <KidQPlayer ref={playerRef} player={currentEntry.item.card.player} title={video.title} poster={currentEntry.item.card.thumbnail_url} attribution={currentEntry.item.card.attribution} onPlayback={(event) => { if (event.type === "time") checkTimedBreakpoint(event.position); }} onEnded={() => void finishVideo()} />}</div><div className={styles.dayBar} aria-label={`${progress}% of session elapsed`}><span style={{ width: `${100 - progress}%` }} /><b className={styles.progressSun} style={{ left: `${progress}%` }} aria-hidden="true"><Sun /></b></div><div className={styles.now}><h3>{paused ? "Paused for now" : video.title}</h3><p><Heart /><span><strong>Picked by {video.pickedBy}</strong> · {video.minutes} min</span></p></div><p className={styles.upNext}>Your session</p><div className={styles.queue}>{queue.map((entry, index) => <button key={entry.item.id} className={`${styles.queueCard} ${index === current ? styles.queueCurrent : ""}`} onClick={() => startWatching(index)}><span>{entry.item.card.title}</span></button>)}<button className={styles.endCard} onClick={finishVideo}>The End 🌙<small>Finish &amp; play</small></button></div><div className={styles.sessionActions}><button onClick={finishVideo}>{current === queue.length - 1 ? "Finish videos" : "Finish this video"}</button><button onClick={() => setStage("cast")}>Cast mode</button></div></div></section></Shell>;
+  return <Shell label={`${childName}'s session`}><section className={`${styles.world} ${progress >= 96 ? styles.end : ""} ${wide ? styles.wide : ""}`}><div className={styles.cloudOne} /><div className={styles.cloudTwo} /><div className={styles.arc}><svg viewBox="0 0 1000 220" preserveAspectRatio="none" aria-hidden="true"><path d="M30 215 Q500 5 970 215" fill="none" stroke="#E4D6B8" strokeWidth="3" strokeDasharray="1 11" strokeLinecap="round" /><line x1="30" y1="215" x2="970" y2="215" stroke="#E4D6B8" strokeWidth="3" strokeLinecap="round" /></svg><div className={styles.sun} style={sunPosition} aria-label="Session progress"><span className={styles.halo} /><Sun /></div></div><span className={styles.timeLeft}>{remaining} min left</span><div className={styles.childHeader}><span className={styles.faceWrap} style={{ width: 46, height: 46 }}><span className={`${styles.faceHalo} ${styles.faceHaloSmall}`} style={{ animationDelay: `${-(avatarIndex % 2) * 2.2}s` }} /><AvatarFace disc={avatarColour} face={avatarFace} /></span><div><h2>{childName}&apos;s watch time</h2><p>video {current + 1} of {queue.length}</p></div></div><div className={styles.content}><div className={isStorybook ? styles.storyFrame : `${styles.player} ${paused ? styles.playerPaused : ""}`}>{isStorybook ? (story ? <KidQStoryReader title={story.title} pages={story.pages} credits={story.credits} attribution={story.attribution} onFinished={() => void finishVideo()} /> : <div className={styles.playerArt}><span>{video.title}</span><small>Loading the book…</small></div>) : <>
+  <KidQPlayer ref={playerRef} player={currentEntry.item.card.player} title={video.title} poster={currentEntry.item.card.thumbnail_url} attribution={currentEntry.item.card.attribution} onPlayback={(event) => {
+    if (event.type === "time") checkTimedBreakpoint(event.position);
+    else if (event.type === "playing") setPaused(false);
+    else if (event.type === "paused") setPaused(true);
+  }} onEnded={() => void finishVideo()} />
+  <button type="button" className={styles.pause} aria-label={paused ? "Resume" : "Pause"} onClick={() => {
+    const next = !paused;
+    setPaused(next);
+    if (next) playerRef.current?.pause(); else playerRef.current?.play();
+  }}>{paused ? <PlayIcon /> : <PauseIcon />}</button>
+  <span className={styles.eq} aria-hidden="true"><i /><i /><i /></span>
+  <button type="button" className={styles.expand} aria-label={wide ? "Make the video smaller" : "Make the video bigger"} onClick={() => setWide((value) => !value)}>{wide ? <ShrinkIcon /> : <GrowIcon />}</button>
+</>}</div><div className={styles.dayBar} aria-label={`${progress}% of session elapsed`}><span style={{ width: `${100 - progress}%` }} /><b className={styles.progressSun} style={{ left: `${progress}%` }} aria-hidden="true"><Sun /></b></div><div className={styles.now}><h3>{paused ? "Paused for now" : video.title}</h3><p><Heart /><span><strong>Picked by {video.pickedBy}</strong> · {video.minutes} min</span></p></div><p className={styles.upNext}>Your session</p><div className={styles.queue}>{queue.map((entry, index) => {
+  // "Watched" has no dedicated tracking in this port (unlike the prototype's
+  // state.watched set) — videos before `current` in the flat queue have already
+  // played through to a finish (current only ever advances via finishVideo),
+  // so index-based is an equivalent, and the prototype's own suggested, proxy.
+  const isNow = index === current;
+  const isWatched = !isNow && index < current;
+  return <div key={entry.item.id} className={styles.queueCardWrap}>
+    <button
+      type="button"
+      className={`${styles.queueCard} ${isNow ? styles.queueCurrent : ""} ${isWatched ? styles.queueWatched : ""}`}
+      onClick={isNow ? undefined : () => startWatching(index)}
+      aria-label={isNow ? `Now playing: ${entry.item.card.title}` : `Play ${entry.item.card.title}`}
+    >{entry.item.card.thumbnail_url ? <img src={entry.item.card.thumbnail_url} alt="" className={styles.queueThumb} /> : <span>{entry.item.card.title}</span>}</button>
+    <p className={`${styles.queueLabel} ${isNow ? styles.queueLabelNow : ""}`}>{isNow ? "Now playing" : entry.item.card.title}</p>
+  </div>;
+})}<button className={styles.endCard} onClick={finishVideo}>The End 🌙<small>Finish &amp; play</small></button></div><div className={styles.sessionActions}><button onClick={finishVideo}>{current === queue.length - 1 ? "Finish videos" : "Finish this video"}</button><button onClick={() => setStage("cast")}>Cast mode</button></div></div></section></Shell>;
 }
 
 export function Shell({ children, label }: { children: React.ReactNode; label: string }) { return <main className={styles.page} aria-label={label}>{children}</main>; }
@@ -517,3 +554,12 @@ function AvatarFace({ disc, face }: { disc: string; face: string }) {
   </svg>;
 }
 function Heart() { return <svg className={styles.heart} viewBox="0 0 20 20" aria-hidden="true"><path d="M10 17 C4 12 2 8.5 4.2 6.2 A3.4 3.4 0 0 1 10 7.4 A3.4 3.4 0 0 1 15.8 6.2 C18 8.5 16 12 10 17 Z" fill="#E2705E" /></svg>; }
+
+// Gap 2 (player pause/expand overlay): icon paths copied verbatim from
+// design/prototype/index.html's #watch-pause / #watch-expand inline SVGs
+// (.ic-pause / .ic-play / .ic-grow / .ic-shrink), rendered one-at-a-time via
+// React state instead of the prototype's CSS-toggled dual-SVG markup.
+function PauseIcon() { return <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="1" width="4.5" height="14" rx="2" fill="currentColor" /><rect x="9.5" y="1" width="4.5" height="14" rx="2" fill="currentColor" /></svg>; }
+function PlayIcon() { return <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2.2 Q4 1.2 4.9 1.7 L13.3 7.1 Q14.2 7.6 13.3 8.2 L4.9 14.3 Q4 14.8 4 13.8 Z" fill="currentColor" /></svg>; }
+function GrowIcon() { return <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 2 H2 v4" /><path d="M10 14 h4 v-4" /></svg>; }
+function ShrinkIcon() { return <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M2 6 h4 V2" /><path d="M14 10 h-4 v4" /></svg>; }
