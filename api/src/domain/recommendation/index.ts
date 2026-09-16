@@ -183,9 +183,11 @@ function explain(candidate: CandidateInput, matched: Matched, coldStart: boolean
 
 /**
  * Variety: walks the ranked list and takes the best item that isn't the same category as the one
- * before it and isn't the same content type either — a run of all-STORYBOOK (or all-VIDEO) is as
- * repetitive as a run of one category, even across different topics — and whose creator hasn't
- * filled their share of the top window. Nothing is dropped; when no item qualifies, the best
+ * before it (preferring one that also isn't the same content type — a run of all-STORYBOOK or
+ * all-VIDEO is as repetitive as a run of one category, even across different topics) and whose
+ * creator hasn't filled their share of the top window. Content type is a preference, not a hard
+ * requirement: most pools are all one type, and category variety must not give way just because
+ * type variety is impossible. Nothing is dropped; when nothing qualifies at all, the best
  * remaining one goes next.
  */
 function arrange<T extends { id: string; creator: string | null; category: string | null; parentCategories?: string[]; contentType: string }>(
@@ -200,13 +202,12 @@ function arrange<T extends { id: string; creator: string | null; category: strin
   const perCreator = new Map<string, number>();
   const creatorOf = (item: T) => item.creator ?? `__unknown:${item.id}`;
   const withinCap = (item: T) => arranged.length >= window || (perCreator.get(creatorOf(item)) ?? 0) < maxPerCreator;
-  const repeats = (item: T) => {
-    if (arranged.length === 0) return false;
-    const previous = arranged[arranged.length - 1];
-    return rotationKey(previous) === rotationKey(item) || previous.contentType === item.contentType;
-  };
+  const sameCategory = (item: T) => arranged.length > 0 && rotationKey(arranged[arranged.length - 1]) === rotationKey(item);
+  const sameType = (item: T) => arranged.length > 0 && arranged[arranged.length - 1].contentType === item.contentType;
   while (remaining.length > 0) {
-    let index = remaining.findIndex((item) => withinCap(item) && !repeats(item));
+    // Best fit first, loosening one rule at a time: only the last still-unsatisfiable rule ever bites.
+    let index = remaining.findIndex((item) => withinCap(item) && !sameCategory(item) && !sameType(item));
+    if (index < 0) index = remaining.findIndex((item) => withinCap(item) && !sameCategory(item));
     if (index < 0) index = remaining.findIndex(withinCap);
     if (index < 0) index = 0;
     const [item] = remaining.splice(index, 1);
