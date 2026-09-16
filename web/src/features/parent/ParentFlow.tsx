@@ -17,6 +17,8 @@ import { getParentAnalytics, type ParentAnalytics, type Period } from "@/service
 type Screen = "login" | "home" | "profile" | "addChild" | "confirmation" | "preferences" | "interests" | "content" | "regulation" | "screentime" | "voice" | "guided" | "recommendation" | "playlist" | "addContent" | "planReady" | "preview" | "session" | "complete" | "details" | "insights" | "library" | "add" | "settings";
 type Child = { id: string; name: string; age: string; color: string; duration: number };
 
+const RECOMMENDATION_COUNT = 5;
+const DEFAULT_SELECTED_COUNT = 3;
 const AGE_BAND_LABELS: Record<string, string> = { "0_2": "0–2", "2_3": "2–3", "3_4": "3–4", "4_5": "4–5", "5_6": "5–6" };
 const AGE_BAND_KEYS: Record<string, OnboardingChild["age_band"]> = { "0–2": "0_2", "2–3": "2_3", "3–4": "3_4", "4–5": "4_5", "5–6": "5_6" };
 const MASCOT_COLORS = ["#1F7A6D", "#D9534F", "#008080", "#FF8C00", "#7C6BC4", "#F0A72E"];
@@ -223,7 +225,7 @@ export default function ParentFlow() {
     setBusy(true);
     try {
       const [real, libraryEntries] = await Promise.all([
-        fetchRecommendations(child.id),
+        fetchRecommendations(child.id, RECOMMENDATION_COUNT),
         getLibrary(child.id).catch(() => []),
       ]);
       const mapped = real.length > 0
@@ -238,12 +240,12 @@ export default function ParentFlow() {
       const byId = new Map([...mapped, ...saved, ...localAdded].map((item) => [item.id, item]));
       const merged = [...byId.values()];
       setRecommendations(merged);
-      setSelectedRecommendations(merged.map((item) => item.id));
+      setSelectedRecommendations(merged.slice(0, DEFAULT_SELECTED_COUNT).map((item) => item.id));
       navigateScreen("recommendation");
     } catch {
       const fallback = [...getMockRecommendations(child, duration), ...recommendations.filter((item) => /^(url|approved|saved|pdf)-/.test(item.id))];
       setRecommendations(fallback);
-      setSelectedRecommendations(fallback.map((item) => item.id));
+      setSelectedRecommendations(fallback.slice(0, DEFAULT_SELECTED_COUNT).map((item) => item.id));
       navigateScreen("recommendation");
     } finally {
       setBusy(false);
