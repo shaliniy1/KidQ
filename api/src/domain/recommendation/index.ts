@@ -72,6 +72,8 @@ export interface RankedRecommendation {
   coldStart: boolean;
   matched: Matched;
   why: string[];
+  /** A featured pick, led with regardless of the age/language/category filters. */
+  pinned: boolean;
 }
 
 const MAX_AGE = 6;
@@ -224,14 +226,31 @@ export function recommend(
   candidates: CandidateInput[],
   config: RankingConfig,
   excludedIds: Set<string>,
-  options: { limit?: number; offset?: number; /** false ranks items the parent already chose, without the age, language and category filters. */ hardFilters?: boolean } = {},
+  options: {
+    limit?: number;
+    offset?: number;
+    /** false ranks items the parent already chose, without the age, language and category filters. */
+    hardFilters?: boolean;
+    /**
+     * Always lead with these (in this order) for every child, skipping the age/language/category
+     * hard filters — still must be admin-approved, safe and scored. A featured slot, not a rank.
+     */
+    pinnedIds?: string[];
+  } = {},
 ): RankedRecommendation[] {
   const limit = options.limit ?? 20;
   const offset = options.offset ?? 0;
   const child = { ...profile, ageYears: Math.min(profile.ageYears, MAX_AGE) };
 
-  const scored = candidates
-    .filter((candidate) => isEligible(candidate) && !excludedIds.has(candidate.id) && (options.hardFilters === false || passesHardFilters(candidate, child)))
+  const eligible = candidates.filter((candidate) => isEligible(candidate) && !excludedIds.has(candidate.id));
+  const pinnedIds = options.pinnedIds ?? [];
+  const pinned = pinnedIds
+    .map((id) => eligible.find((candidate) => candidate.id === id))
+    .filter((candidate): candidate is CandidateInput => candidate !== undefined);
+  const pinnedIdSet = new Set(pinned.map((candidate) => candidate.id));
+
+  const scored = eligible
+    .filter((candidate) => !pinnedIdSet.has(candidate.id) && (options.hardFilters === false || passesHardFilters(candidate, child)))
     .map((candidate) => ({ ...candidate, result: scoreCandidate(candidate, child, config) }));
 
   type Scored = (typeof scored)[number];
@@ -243,7 +262,10 @@ export function recommend(
     config.params.topWindow,
   );
 
-  return ordered.slice(offset, offset + limit).map((item, index) => ({
+  const pinnedRanked = pinned.map((candidate) => ({ ...candidate, result: scoreCandidate(candidate, child, config) }));
+  const combined = [...pinnedRanked, ...ordered];
+
+  return combined.slice(offset, offset + limit).map((item, index) => ({
     contentId: item.id,
     rank: offset + index + 1,
     finalScore: round3(item.result.finalScore),
@@ -251,5 +273,6 @@ export function recommend(
     coldStart: !item.result.anyMatch,
     matched: item.result.matched,
     why: explain(item, item.result.matched, !item.result.anyMatch, child.ageYears),
+    pinned: pinnedIdSet.has(item.id),
   }));
 }
