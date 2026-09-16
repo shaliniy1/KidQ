@@ -4,8 +4,10 @@ import type { paths } from "@/lib/api-types";
 export type AssembledSession = paths["/children/{id}/sessions"]["post"]["responses"][201]["content"]["application/json"];
 export type SessionMode = NonNullable<NonNullable<paths["/children/{id}/sessions"]["post"]["requestBody"]>["content"]["application/json"]["mode"]>;
 
-export async function startSession(childId: string, minutes: number, mode?: SessionMode): Promise<AssembledSession> {
-  return unwrap(await api.POST("/children/{id}/sessions", { params: { path: { id: childId } }, body: { minutes, mode } }));
+export async function startSession(childId: string, minutes: number, mode?: SessionMode, contentItemIds?: string[]): Promise<AssembledSession> {
+  return unwrap(
+    await api.POST("/children/{id}/sessions", { params: { path: { id: childId } }, body: { minutes, mode, content_item_ids: contentItemIds } }),
+  );
 }
 
 export async function getCurrentSession(childId: string): Promise<AssembledSession | null> {

@@ -208,7 +208,7 @@ async function saveSession(
  * Builds the session and starts it at once: the child never sees a start button or a timer to change.
  * The clock (in IST) or the parent's session mode shapes which videos lead and how it winds down.
  */
-export async function startSession(user: AuthUser, childId: string, input: { minutes: number; mode?: SessionMode; lean_toward?: string }) {
+export async function startSession(user: AuthUser, childId: string, input: { minutes: number; mode?: SessionMode; lean_toward?: string; content_item_ids?: string[] }) {
   const child = toChild(await childRow(user, childId));
   const db = getPool();
   if (input.lean_toward) {
@@ -217,9 +217,14 @@ export async function startSession(user: AuthUser, childId: string, input: { min
       throw new ApiError(400, "UNKNOWN_TAXONOMY_KEY", `Unknown lean_toward: ${input.lean_toward}. Use a parent_category key from GET /taxonomy.`);
     }
   }
-  const libraryIds = (await db.query("SELECT content_item_id FROM library_items WHERE child_profile_id = $1 AND state = 'ADDED'", [childId])).rows.map(
-    (row) => row.content_item_id as string,
+  const addedIds = new Set(
+    (await db.query("SELECT content_item_id FROM library_items WHERE child_profile_id = $1 AND state = 'ADDED'", [childId])).rows.map(
+      (row) => row.content_item_id as string,
+    ),
   );
+  // Restrict to exactly what the parent just confirmed, not the whole accumulated library — still
+  // only from items actually in the library, never an arbitrary id from the request.
+  const libraryIds = input.content_item_ids ? input.content_item_ids.filter((id) => addedIds.has(id)) : [...addedIds];
   const [config, cards] = await Promise.all([getActiveRankingConfig(db), getCardRows(db, libraryIds, { approvedOnly: true })]);
   const rows = [...cards.values()];
   // The parent already chose these, so the child's age and category filters don't apply; ranking only orders them.
