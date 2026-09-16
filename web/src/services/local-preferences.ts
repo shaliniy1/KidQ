@@ -9,7 +9,7 @@ export interface LocalPreferences {
 }
 
 const DEFAULTS: LocalPreferences = {
-  autoplay: true,
+  autoplay: false,
   sensoryMode: false,
   dailySchedule: { enabled: false, startTime: "07:00", endTime: "19:00" },
 };
