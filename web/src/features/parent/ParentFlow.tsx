@@ -9,6 +9,7 @@ import { devSignIn, hasSession, signInWithGoogle, usingDevLogin } from "@/lib/se
 import { fetchSessionRouting } from "@/services/auth";
 import { createChild, getMe, submitOnboarding, updateChild, type ChildProfile, type OnboardingChild } from "@/services/child-profile";
 import { getRecommendations as fetchRecommendations, addToLibrary, type Recommendation } from "@/services/recommendations";
+import { startSession as beginSession } from "@/services/session";
 import { getLibrary, removeFromLibrary, submitVideo } from "@/services/my-videos";
 import { getCurationSettings, saveCurationSettings, type CurationSettings } from "@/services/curation-settings";
 import { getLocalPreferences, saveLocalPreferences, type LocalPreferences } from "@/services/local-preferences";
@@ -333,6 +334,11 @@ export default function ParentFlow() {
     setBusy(true);
     try {
       await Promise.all(chosen.map((item) => addToLibrary(child.id, item.id).catch(() => undefined)));
+      // Adding to the library alone leaves nothing "live" for the child to open — start today's
+      // session now so what the parent just picked is what /kid actually shows, not a picker
+      // over the whole accumulated library.
+      const mode = timeMode === "Auto" ? undefined : (timeMode.toUpperCase() as "MORNING" | "DAYTIME" | "BEDTIME");
+      await beginSession(child.id, duration, mode).catch(() => undefined);
     } finally {
       setPlaylist(chosen);
       navigateScreen("planReady");
