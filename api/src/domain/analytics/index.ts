@@ -78,12 +78,14 @@ const PERIOD_PHRASE: Record<Period, string> = { today: "today", "7d": "this week
 export function periodRange(period: Period, today: string) {
   const length = PERIOD_DAYS[period];
   const start = addDays(today, 1 - length);
+  const previousStart = addDays(start, -length);
   return {
     start,
     end: today,
-    previousStart: addDays(start, -length),
+    previousStart,
     previousEnd: addDays(start, -1),
     days: Array.from({ length }, (_, index) => addDays(start, index)),
+    previousDays: Array.from({ length }, (_, index) => addDays(previousStart, index)),
   };
 }
 
@@ -139,7 +141,16 @@ export function summarize(plays: Play[], options: { period: Period; today: strin
   const videos = current.filter((play) => play.kind === "VIDEO");
   const activities = current.filter((play) => play.kind === "ACTIVITY");
   const screenSeconds = total(videos);
-  const previousScreenSeconds = total(previous.filter((play) => play.kind === "VIDEO"));
+  const previousVideos = previous.filter((play) => play.kind === "VIDEO");
+  const previousScreenSeconds = total(previousVideos);
+  // Each day's minutes are rounded on their own for the chart; the totals below are summed from those
+  // same rounded days rather than rounded fresh from the raw seconds, so "screen time" and "vs previous"
+  // never disagree with what the daily bars actually show.
+  const minutesByDay = (subset: Play[], days: string[]) => days.map((day) => minutes(total(subset.filter((play) => play.day === day))));
+  const dailyMinutes = minutesByDay(videos, range.days);
+  const previousDailyMinutes = minutesByDay(previousVideos, range.previousDays);
+  const screenMinutes = dailyMinutes.reduce((sum, value) => sum + value, 0);
+  const previousScreenMinutes = previousDailyMinutes.reduce((sum, value) => sum + value, 0);
   const labelOf = (key: string) =>
     key === OTHER_CATEGORY ? "Other" : (options.labels[key] ?? key.replace(/_/g, " ").replace(/^./, (letter) => letter.toUpperCase()));
   const categoryOf = (play: Play) => play.category ?? OTHER_CATEGORY;
@@ -227,22 +238,22 @@ export function summarize(plays: Play[], options: { period: Period; today: strin
     range: { start: range.start, end: range.end },
     has_data: current.length > 0,
     overview: {
-      screen_minutes: minutes(screenSeconds),
+      screen_minutes: screenMinutes,
       videos_watched: distinct(videos.filter((play) => play.activeSeconds > 0)),
       activities_completed: activities.filter((play) => play.completed).length,
       vs_previous:
         screenSeconds > 0 && previousScreenSeconds > 0
-          ? { minutes_diff: minutes(screenSeconds) - minutes(previousScreenSeconds), compared_with: COMPARED_WITH[options.period] }
+          ? { minutes_diff: screenMinutes - previousScreenMinutes, compared_with: COMPARED_WITH[options.period] }
           : null,
     },
-    daily: range.days.map((day) => ({ date: day, minutes: minutes(total(videos.filter((play) => play.day === day))) })),
+    daily: range.days.map((day, index) => ({ date: day, minutes: dailyMinutes[index] })),
     categories: shown.map((entry) => ({ key: entry.key, label: labelOf(entry.key), minutes: minutes(entry.seconds), percent: percent(entry.seconds, allSeconds) })),
     engaged,
     top,
     completion,
     pattern: PARTS.map((part) => ({ part: part.key, label: part.label, hours: part.hours, minutes: minutes(partSeconds(videos, part.key)) })),
     split: {
-      video_minutes: minutes(screenSeconds),
+      video_minutes: screenMinutes,
       activity_minutes: minutes(activitySeconds),
       video_percent: percent(screenSeconds, screenSeconds + activitySeconds),
       activity_percent: activitySeconds > 0 ? 100 - percent(screenSeconds, screenSeconds + activitySeconds) : 0,
