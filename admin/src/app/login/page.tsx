@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
-import { signIn, usingDevLogin } from "@/lib/session";
+import { sendPasswordReset, signIn, usingDevLogin } from "@/lib/session";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -10,6 +10,8 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
+  const [resetBusy, setResetBusy] = useState(false);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -22,6 +24,23 @@ export default function LoginPage() {
       setError(failure instanceof Error ? failure.message : "Sign-in failed.");
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function requestReset() {
+    if (!email.trim()) {
+      setError("Enter your email above first, then select Forgot password.");
+      return;
+    }
+    setResetBusy(true);
+    setError(null);
+    try {
+      await sendPasswordReset(email.trim());
+      setResetSent(true);
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : "Could not send the reset email.");
+    } finally {
+      setResetBusy(false);
     }
   }
 
@@ -43,6 +62,12 @@ export default function LoginPage() {
             <input type="password" required autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} />
           </label>
         )}
+        {!usingDevLogin && !resetSent && (
+          <button type="button" className="link-button login-forgot" onClick={requestReset} disabled={resetBusy}>
+            {resetBusy ? "Sending reset email…" : "Forgot password?"}
+          </button>
+        )}
+        {resetSent && <p className="muted">If that email has an admin account, a reset link is on its way.</p>}
         {error && <p className="error">{error}</p>}
         <button className="btn primary login-button" disabled={busy}>
           {busy ? "Signing in…" : "Sign in"}
