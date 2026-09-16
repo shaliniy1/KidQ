@@ -4258,6 +4258,161 @@
         }
       }
     },
+    "/content-items/{id}/validate-score": {
+      "post": {
+        "summary": "Call the Gemini scoring agent for this one item right now, ignoring the AI cache",
+        "tags": [
+          "Scoring"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "content": {
+                      "$ref": "#/components/schemas/AdminContent"
+                    },
+                    "record": {
+                      "type": "object",
+                      "additionalProperties": {},
+                      "description": "README canonical content record (all required keys)"
+                    },
+                    "assessments": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": {}
+                      }
+                    },
+                    "decisions": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": {}
+                      }
+                    },
+                    "revisions": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": {}
+                      }
+                    },
+                    "rights": {
+                      "type": "object",
+                      "additionalProperties": {}
+                    },
+                    "transcript_status": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "raw_metadata": {},
+                    "story": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/Story"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "validated": {
+                      "type": "boolean",
+                      "description": "True when the AI produced a fresh score this call"
+                    },
+                    "message": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "Why AI scoring did not run or could not finish, when validated is false"
+                    }
+                  },
+                  "required": [
+                    "content",
+                    "record",
+                    "assessments",
+                    "decisions",
+                    "revisions",
+                    "rights",
+                    "transcript_status",
+                    "story",
+                    "validated",
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/content-items/bulk-reanalyze": {
       "post": {
         "summary": "Queue AI scoring for every item the AI hasn't reviewed yet (shortest first)",

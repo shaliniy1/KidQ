@@ -12,6 +12,7 @@ import { actorName, type AuthUser } from "../http/auth";
 import { ApiError, notFound } from "../http/errors";
 import type { ClassificationBody, EditorialBody } from "../http/schemas";
 import { insertAssessment, KEPT_PROMPT_ATTEMPT_SQL } from "../repositories/assessments";
+import { analyzeItem } from "./analysis";
 import { getAdminDetail, listApprovedCardRows } from "../repositories/content";
 import { recordDecision, type Decision } from "../repositories/decisions";
 import { enqueueJob, NIL_UUID } from "../repositories/jobs";
@@ -295,6 +296,25 @@ export async function reanalyze(id: string) {
   await pool.query("UPDATE content_items SET analysis_status = 'QUEUED', updated_at = now() WHERE id = $1", [id]);
   await enqueueJob(pool, { type: "ANALYZE", aggregateType: "content_item", aggregateId: id, payload: { force: true }, priority: 5, dedupeKey: `analyze:${id}` });
   return { queued: true };
+}
+
+/**
+ * Calls the Gemini scoring agent for one item right now, in this request, instead of queuing it for
+ * the daily backlog sweep. Spends AI quota only when an admin explicitly asks for it here.
+ */
+export async function validateScore(id: string) {
+  const pool = getPool();
+  const exists = (await pool.query("SELECT 1 FROM content_items WHERE id = $1", [id])).rowCount;
+  if (!exists) throw notFound("Content item");
+  if (!env.geminiApiKey) throw new ApiError(409, "AI_DISABLED", "AI scoring is off: set GEMINI_API_KEY on the API and restart it.");
+  const outcome = await analyzeItem(id, { force: true });
+  const message =
+    outcome.status === "DEFERRED"
+      ? outcome.reason
+      : outcome.status === "ANALYSIS_INCOMPLETE"
+        ? "The AI reviewer could not complete this check. See History below for what it reported."
+        : null;
+  return { ...(await detail(id)), validated: outcome.status === "ASSESSED", message };
 }
 
 /**

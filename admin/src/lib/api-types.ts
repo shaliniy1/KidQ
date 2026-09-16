@@ -1265,6 +1265,105 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/content-items/{id}/validate-score": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Call the Gemini scoring agent for this one item right now, ignoring the AI cache */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Success */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            content: components["schemas"]["AdminContent"];
+                            /** @description README canonical content record (all required keys) */
+                            record: {
+                                [key: string]: unknown;
+                            };
+                            assessments: {
+                                [key: string]: unknown;
+                            }[];
+                            decisions: {
+                                [key: string]: unknown;
+                            }[];
+                            revisions: {
+                                [key: string]: unknown;
+                            }[];
+                            rights: {
+                                [key: string]: unknown;
+                            };
+                            transcript_status: string | null;
+                            raw_metadata?: unknown;
+                            story: components["schemas"]["Story"] | null;
+                            /** @description True when the AI produced a fresh score this call */
+                            validated: boolean;
+                            /** @description Why AI scoring did not run or could not finish, when validated is false */
+                            message: string | null;
+                        };
+                    };
+                };
+                /** @description Validation failed */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not signed in */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Wrong role */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/content-items/bulk-reanalyze": {
         parameters: {
             query?: never;
