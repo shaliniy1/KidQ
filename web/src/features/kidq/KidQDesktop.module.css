@@ -113,3 +113,59 @@
   .sunriseCenter h1, .choiceScreen h1, .noSession h1, .nightLight h1 { font-size: clamp(32px, 10vw, 44px); }
   .sunButton { width: 124px; height: 124px; }
 }
+
+/* =========================================================================
+   Break games: real prototype ports (find 3 colours / breathe / follow).
+   Ported from design/prototype/kidq-desktop-app.css (#screen-breathing,
+   #screen-find, #screen-follow and their shared .bsun/.kq-bdots/.halo bits).
+   ========================================================================= */
+@keyframes kqHalopulse { 0%, 100% { transform: scale(1); opacity: .85; } 50% { transform: scale(1.08); opacity: 1; } }
+@keyframes kqRingout { 0% { transform: scale(.7); opacity: .95; } 100% { transform: scale(2.1); opacity: 0; } }
+@keyframes kqEyeBlink { 0%, 93%, 100% { transform: scaleY(1); } 96% { transform: scaleY(.15); } }
+@keyframes kqSmokeUp { 0% { opacity: 0; transform: translateY(0); } 25% { opacity: .75; } 100% { opacity: 0; transform: translateY(-18px); } }
+@keyframes kqFlick { 0%, 100% { transform: scale(1) rotate(-2deg); } 50% { transform: scale(1.1, 1.26) rotate(2deg); } }
+@keyframes kqRayRipple { 0%, 100% { stroke-width: 3.4; opacity: .75; } 50% { stroke-width: 5; opacity: 1; } }
+
+.breatheScreen {
+  min-height: calc(100vh - 130px); display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 22px; text-align: center; padding: 30px;
+  background: linear-gradient(180deg, #fdf8ec 0%, #f7ebd2 58%, #f1e2c4 100%); position: relative; overflow: hidden;
+}
+.breakHead { font: 800 clamp(28px, 4vw, 34px)/1.15 "Baloo 2", system-ui; color: #2e2a24; min-height: 1.2em; margin: 0; text-wrap: balance; }
+.breakSub { font-size: 16.5px; font-weight: 500; color: #6b6459; margin: 0; max-width: 480px; }
+.halo { position: absolute; border-radius: 50%; pointer-events: none; }
+.ring1 { position: absolute; inset: 8px; border-radius: 50%; border: 3px solid #ffc64d; opacity: 0; pointer-events: none; }
+.eye { transform-box: fill-box; transform-origin: center; animation: kqEyeBlink 5.6s ease-in-out infinite; }
+.bsunWrap { position: relative; width: min(50vw, 190px); aspect-ratio: 1; flex-shrink: 0; }
+.bsunWrap .halo { inset: -30px; background: radial-gradient(circle, rgba(255,198,77,.45) 0%, rgba(255,198,77,0) 68%); animation: kqHalopulse 3s ease-in-out -1.5s infinite; }
+.bsun { position: relative; width: 100%; height: 100%; display: block; transform: scale(.96); transition: transform 3.2s ease-in-out; }
+.bsun .rays line { animation: kqRayRipple 2.6s ease-in-out infinite; }
+.bsun .eyesClosed { opacity: 0; }
+.bsun .mouthO { opacity: 0; }
+
+/* ---------- breathing ---------- */
+.breatheScreen[data-phase="celebrate"] .ring1 { animation: kqRingout .9s ease-out; }
+.breatheScreen[data-phase="in"] .bsun { transform: scale(1.16); }
+.breatheScreen[data-phase="in"] .bsun .eyesClosed { opacity: 1; }
+.breatheScreen[data-phase="in"] .bsun .eyesOpen { opacity: 0; }
+.breatheScreen[data-phase="out"] .bsun .mouthO { opacity: 1; }
+.breatheScreen[data-phase="out"] .bsun .mouthSmile { opacity: 0; }
+.breatheRow { display: flex; align-items: center; justify-content: center; gap: clamp(18px, 6vw, 90px); }
+.prop { width: min(20vw, 86px); flex-shrink: 0; }
+.petalsB { transform-origin: 43px 38px; transform: scale(.55); transition: transform 3s ease-in-out; }
+.breatheScreen[data-phase="in"] .petalsB { transform: scale(1); }
+.flameB { transform-origin: 43px 46px; animation: kqFlick 1.3s ease-in-out infinite; transition: opacity .3s ease; }
+.breatheScreen[data-phase="out"] .flameB { opacity: 0; transition-delay: 1.2s; }
+.smokeB { opacity: 0; }
+.breatheScreen[data-phase="out"] .smokeB { animation: kqSmokeUp 1.6s ease-out 1.35s; }
+.breatheLottie { display: none; width: min(88vw, 460px); }
+.breatheLottie[data-visible="true"] { display: block; }
+.breatheDots { display: flex; gap: 10px; justify-content: center; }
+.breatheDots i { width: 12px; height: 12px; border-radius: 50%; background: rgba(46,42,36,.16); transition: background .4s ease; display: block; }
+.breatheDots i[data-on="true"] { background: #f0a72e; }
+
+@media (prefers-reduced-motion: reduce) {
+  .breatheScreen * {
+    animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .12s !important;
+  }
+}
