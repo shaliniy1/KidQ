@@ -343,7 +343,7 @@ export default function ParentFlow() {
       {screen === "settings" && child && <Settings child={child} openPreferences={() => navigateScreen("preferences")} addChild={() => navigateScreen("addChild")} />}
     </div>
     </div>
-    <nav className={styles.mobileTabs} aria-label="Mobile parent navigation"><button onClick={() => navigateScreen("home")}>▶<small>Start</small></button><button onClick={loadRecommendations}>✦<small>Recs</small></button><button onClick={() => navigateScreen("insights")}>◔<small>Insights</small></button><button onClick={loadLibrary}>▣<small>Videos</small></button><button onClick={() => navigateScreen("settings")}>⚙<small>Settings</small></button></nav>
+    {screen !== "login" && <nav className={styles.mobileTabs} aria-label="Mobile parent navigation"><button onClick={() => navigateScreen("home")}>▶<small>Start</small></button><button onClick={loadRecommendations}>✦<small>Recs</small></button><button onClick={() => navigateScreen("insights")}>◔<small>Insights</small></button><button onClick={loadLibrary}>▣<small>Videos</small></button><button onClick={() => navigateScreen("settings")}>⚙<small>Settings</small></button></nav>}
   </main>;
 }
 
