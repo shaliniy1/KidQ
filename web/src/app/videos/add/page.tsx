@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useSession } from "@/hooks/useSession";
 import { getChildren } from "@/services/child-profile";
 import { previewVideo, submitVideo, type SubmissionPreview } from "@/services/my-videos";
+import { extractYouTubeUrls } from "@/lib/pdf-links";
 import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
 
@@ -36,7 +37,9 @@ export default function AddVideoPage() {
   async function readPdf(file: File) {
     if (!childId) return;
     setPhase("checking"); setErrorMessage(null);
-    const urls = [...new Set((await file.text()).match(/https?:\/\/[^\s<>"']+/g) ?? [])].filter((item) => /youtube\.com|youtu\.be/i.test(item));
+    let urls: string[];
+    try { urls = await extractYouTubeUrls(file); }
+    catch { setPhase("error"); setErrorMessage("Couldn&apos;t read that PDF. Check the file and try again."); return; }
     if (!urls.length) { setPhase("error"); setErrorMessage("No supported YouTube URLs were found in that PDF."); return; }
     const initial = urls.map((item) => ({ url: item, status: "checking" as const, selected: false }));
     setPdfItems(initial);
