@@ -28,6 +28,182 @@ type BreakActivity = AssembledSession["slots"][number]["break_activity"];
 const CHILD_COLOURS = ["#1F7A6D", "#E2705E", "#2B2955", "#F0A72E", "#16594F"];
 const QUEUE_COLOURS = ["#D8C89C", "#B9A574", "#C9B8E8", "#F0A72E", "#7FD8C8", "#E2705E"];
 
+// Star/cloud positions below are copied verbatim from design/prototype/index.html
+// (#screen-splash and #screen-login's own kq-star / kq-cloud markup) so the web
+// port's sky stays pixel-consistent with the locked design, not re-derived.
+type StarSpec = { left: string; top: string; delay?: string; size?: number };
+function starStyle(s: StarSpec): React.CSSProperties {
+  return {
+    left: s.left,
+    top: s.top,
+    animationDelay: s.delay,
+    width: s.size ? `${s.size}px` : undefined,
+    height: s.size ? `${s.size}px` : undefined,
+  };
+}
+
+// design/prototype/index.html #screen-splash .kq-sky--night stars (24)
+const SPLASH_STARS: StarSpec[] = [
+  { left: "15%", top: "8%" },
+  { left: "82%", top: "12%", delay: "-1.2s", size: 3 },
+  { left: "62.7%", top: "4.1%", delay: "-2.57s", size: 2 },
+  { left: "15.3%", top: "7.4%", delay: "-0.37s" },
+  { left: "10.3%", top: "21.1%", delay: "-3.08s", size: 2 },
+  { left: "24.1%", top: "28.9%", delay: "-2.72s", size: 3 },
+  { left: "63.7%", top: "26.4%", delay: "-1.87s", size: 2 },
+  { left: "28.4%", top: "40.4%", delay: "-1.03s", size: 2 },
+  { left: "34.3%", top: "9.7%", delay: "-3.05s", size: 2 },
+  { left: "38.1%", top: "18.4%", delay: "-1.35s", size: 2 },
+  { left: "78.7%", top: "34.4%", delay: "-2.98s", size: 3 },
+  { left: "89.6%", top: "6.4%", delay: "-0.58s", size: 2 },
+  { left: "60.8%", top: "40.1%", delay: "-2.75s", size: 3 },
+  { left: "8.6%", top: "31.4%", delay: "-0.05s", size: 2 },
+  { left: "83.3%", top: "40.3%", delay: "-2.45s", size: 3 },
+  { left: "62.4%", top: "18.7%", delay: "-2.19s", size: 2 },
+  { left: "65.7%", top: "33.2%", delay: "-1.2s" },
+  { left: "59.9%", top: "10.4%", delay: "-2.57s" },
+  { left: "45.9%", top: "14.6%", delay: "-1.06s" },
+  { left: "22.9%", top: "16.9%", delay: "-2.62s", size: 2 },
+  { left: "5.0%", top: "16.6%", delay: "-3.17s", size: 2 },
+  { left: "88.7%", top: "27.4%", delay: "-2.33s" },
+  { left: "64.3%", top: "20.0%", delay: "-1.84s" },
+  { left: "27.2%", top: "13.6%", delay: "-1.57s", size: 3 },
+];
+
+// design/prototype/index.html #screen-login .kq-sky--predawn stars (26)
+const PROFILE_STARS: StarSpec[] = [
+  { left: "15%", top: "8%" },
+  { left: "82%", top: "12%", delay: "-1.2s", size: 3 },
+  { left: "66%", top: "22%", delay: "-2.5s" },
+  { left: "24%", top: "30%", delay: "-.7s", size: 3 },
+  { left: "40.4%", top: "11.6%", delay: "-2.62s", size: 2 },
+  { left: "14.7%", top: "6.7%", delay: "-2.1s" },
+  { left: "67.0%", top: "26.2%", delay: "-1.74s", size: 3 },
+  { left: "42.1%", top: "29.4%", delay: "-0.71s", size: 2 },
+  { left: "76.9%", top: "38.4%", delay: "-2.68s" },
+  { left: "45.8%", top: "10.7%", delay: "-2.25s", size: 3 },
+  { left: "92.0%", top: "25.7%", delay: "-1.81s", size: 2 },
+  { left: "40.2%", top: "14.6%", delay: "-1.95s", size: 2 },
+  { left: "36.4%", top: "43.1%", delay: "-1.83s", size: 2 },
+  { left: "87.5%", top: "29.0%", delay: "-2.18s", size: 2 },
+  { left: "22.5%", top: "42.6%", delay: "-0.86s", size: 2 },
+  { left: "44.0%", top: "42.8%", delay: "-0.19s", size: 2 },
+  { left: "64.7%", top: "4.6%", delay: "-2.82s", size: 2 },
+  { left: "67.0%", top: "21.0%", delay: "-1.25s", size: 3 },
+  { left: "15.6%", top: "29.5%", delay: "-2.28s", size: 3 },
+  { left: "51.7%", top: "11.6%", delay: "-1.22s", size: 2 },
+  { left: "44.1%", top: "26.5%", delay: "-2.2s", size: 2 },
+  { left: "68.0%", top: "42.7%", delay: "-0.89s", size: 2 },
+  { left: "70.2%", top: "36.5%", delay: "-1.33s", size: 2 },
+  { left: "40.8%", top: "7.1%", delay: "-2.39s", size: 2 },
+  { left: "96.2%", top: "20.6%", delay: "-0.41s", size: 2 },
+  { left: "32.3%", top: "24.5%", delay: "-0.52s", size: 2 },
+];
+
+// design/prototype/index.html's two kq-cloud SVGs, reused as-is by both skies.
+function CloudBig({ className, top, delay }: { className?: string; top: string; delay?: string }) {
+  return (
+    <svg className={className} style={{ top, animationDelay: delay }} width="70" height="30" viewBox="0 0 70 30" aria-hidden="true">
+      <ellipse cx="35" cy="21" rx="34" ry="8" fill="#C9B8E8" opacity=".7" />
+      <circle cx="17" cy="15" r="9.5" fill="#C9B8E8" opacity=".65" />
+      <circle cx="36" cy="10" r="12" fill="#C9B8E8" opacity=".65" />
+      <circle cx="54" cy="14" r="9" fill="#C9B8E8" opacity=".65" />
+      <path d="M16.5 13.5 q1.7 1.3 3.4 0" stroke="#6B6459" strokeWidth="1.4" fill="none" strokeLinecap="round" />
+      <path d="M22.5 13.5 q1.7 1.3 3.4 0" stroke="#6B6459" strokeWidth="1.4" fill="none" strokeLinecap="round" />
+      <path d="M17 17.5 Q21 19.5 25 17.5" stroke="#6B6459" strokeWidth="1.5" fill="none" strokeLinecap="round" />
+    </svg>
+  );
+}
+function CloudSmall({ className, top, delay }: { className?: string; top: string; delay?: string }) {
+  return (
+    <svg className={className} style={{ top, animationDelay: delay }} width="54" height="24" viewBox="0 0 54 24" aria-hidden="true">
+      <ellipse cx="27" cy="17" rx="26" ry="6.5" fill="#C9B8E8" opacity=".68" />
+      <circle cx="14" cy="12" r="7.5" fill="#C9B8E8" opacity=".62" />
+      <circle cx="29" cy="8" r="9" fill="#C9B8E8" opacity=".62" />
+      <circle cx="43" cy="11" r="6.8" fill="#C9B8E8" opacity=".62" />
+      <path d="M11 11.5 q1.3 1 2.6 0" stroke="#6B6459" strokeWidth="1.2" fill="none" strokeLinecap="round" />
+      <path d="M16 11.5 q1.3 1 2.6 0" stroke="#6B6459" strokeWidth="1.2" fill="none" strokeLinecap="round" />
+      <path d="M11.3 14.7 Q14.5 16.2 17.7 14.7" stroke="#6B6459" strokeWidth="1.3" fill="none" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+const LETTER_CLASS = [styles.b1, styles.b2, styles.b3, styles.b4];
+const SEED_CLASS = [styles.s1, styles.s2, styles.s3, styles.s4];
+const BACKDROP_CLASS = [styles.sd1, styles.sd2, styles.sd3, styles.sd4];
+const HUE_CLASS: Record<"teal" | "coral" | "dusk" | "rose", string> = {
+  teal: styles.hueTeal,
+  coral: styles.hueCoral,
+  dusk: styles.hueDusk,
+  rose: styles.hueRose,
+};
+const POS_CLASS: Record<"tl" | "l" | "r" | "b", string> = {
+  tl: styles.posTl,
+  l: styles.posL,
+  r: styles.posR,
+  b: styles.posB,
+};
+const BACKDROP_BALLOONS: { hue: keyof typeof HUE_CLASS; pos: keyof typeof POS_CLASS }[] = [
+  { hue: "teal", pos: "tl" },
+  { hue: "coral", pos: "l" },
+  { hue: "dusk", pos: "r" },
+  { hue: "rose", pos: "b" },
+];
+
+function BackdropBalloon({ hue, pos, index }: { hue: keyof typeof HUE_CLASS; pos: keyof typeof POS_CLASS; index: number }) {
+  return (
+    <div className={`${styles.backdropBalloon} ${BACKDROP_CLASS[index]} ${HUE_CLASS[hue]} ${POS_CLASS[pos]}`}>
+      <span className={styles.balloonBody} />
+      <span className={styles.balloonKnot} />
+      <span className={styles.balloonString} />
+    </div>
+  );
+}
+
+// Ported from design/prototype/kidq-desktop-app.js's startSplash(): "go" plays
+// the inflate/twinkle entrance immediately, "off" (at 2000ms) plays the
+// deflate/fade-out, and onDone (at 2400ms) hands off to the profile screen —
+// same trigger point (fires once on the kid app's own mount) and same timing
+// as the prototype. later()'s reduced-motion clamp (min(ms, 200)) is mirrored
+// here too.
+function SplashScreen({ onDone }: { onDone: () => void }) {
+  const [phase, setPhase] = useState<"go" | "off">("go");
+  const jingleRef = useRef<HTMLAudioElement>(null);
+
+  useEffect(() => {
+    const reduced = typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const clamp = (ms: number) => (reduced ? Math.min(ms, 200) : ms);
+    jingleRef.current?.play().catch(() => {});
+    const offTimer = setTimeout(() => setPhase("off"), clamp(2000));
+    const doneTimer = setTimeout(onDone, clamp(2400));
+    return () => {
+      clearTimeout(offTimer);
+      clearTimeout(doneTimer);
+    };
+    // Runs exactly once, when the splash mounts — mirrors startSplash()'s own
+    // unconditional call at script init.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return (
+    <section className={`${styles.splashScreen} ${phase === "off" ? styles.splashOff : styles.splashGo}`} aria-label="KidQ is opening">
+      <audio ref={jingleRef} src="/kid-prototype/proposal-src/splash-jingle.mp3" preload="auto" />
+      <div className={styles.splashSky} aria-hidden="true">
+        {SPLASH_STARS.map((s, i) => <span key={i} className={styles.skyStar} style={starStyle(s)} />)}
+        <CloudBig className={styles.skyCloud} top="18%" delay="-8s" />
+        <CloudSmall className={styles.skyCloudSmall} top="28%" />
+        {BACKDROP_BALLOONS.map((b, i) => <BackdropBalloon key={b.pos} hue={b.hue} pos={b.pos} index={i} />)}
+      </div>
+      {["K", "i", "d", "Q"].map((letter, i) => (
+        <span key={letter + i} className={styles.balloonSlot} aria-hidden="true">
+          <i className={`${styles.seed} ${SEED_CLASS[i]}`} />
+          <span className={`${styles.balloon} ${LETTER_CLASS[i]}`}>{letter}</span>
+        </span>
+      ))}
+    </section>
+  );
+}
+
 type LiveActivityStage = "breathing" | "follow" | "find";
 type ActivityDefinition = {
   key: string;
@@ -51,6 +227,17 @@ const ACTIVITY_DEFINITIONS: readonly ActivityDefinition[] = [
   { key: "sleepy_stretch", aliases: ["sleepy", "stretch"], title: "Sleepy stretch", live: false },
   { key: "firefly_count", aliases: ["firefly"], title: "Firefly count", live: false },
 ];
+
+// Sun's position on the watching screen's sky arc: a quadratic bezier through
+// (30,215) -> (500,5) -> (970,215) in a 1000x220 coordinate space, ported
+// exactly from the locked prototype's positionSun() in
+// design/prototype/kidq-desktop-app.js. `p` is session progress (0-1).
+function sunArcPosition(p: number): { left: string; top: string } {
+  const t = 0.22 + p * 0.56;
+  const bx = (1 - t) * (1 - t) * 30 + 2 * (1 - t) * t * 500 + t * t * 970;
+  const by = (1 - t) * (1 - t) * 215 + 2 * (1 - t) * t * 5 + t * t * 215;
+  return { left: `${(bx / 1000) * 100}%`, top: `${(by / 220) * 100}%` };
+}
 
 function activityScreen(activity: BreakActivity): "breathing" | "follow" | "find" | "playtime" {
   const searchable = `${activity?.key ?? ""} ${activity?.title ?? ""}`.toLowerCase();
@@ -78,6 +265,7 @@ export default function KidQDesktop() {
   const [session, setSession] = useState<AssembledSession | null>(null);
   const [current, setCurrent] = useState(0);
   const [completedSeconds, setCompletedSeconds] = useState(0);
+  const [currentPlaybackSeconds, setCurrentPlaybackSeconds] = useState(0);
   const [paused, setPaused] = useState(false);
   const [breakSlotIndex, setBreakSlotIndex] = useState<number | null>(null);
   const [timedBreak, setTimedBreak] = useState<ParentActivity | null>(null);
@@ -86,6 +274,7 @@ export default function KidQDesktop() {
   const [handledBreakpoints, setHandledBreakpoints] = useState<Set<number>>(new Set());
   const [story, setStory] = useState<Story | null>(null);
   const [childrenLoaded, setChildrenLoaded] = useState(false);
+  const [splashDone, setSplashDone] = useState(false);
 
   useEffect(() => {
     getChildren().then(setChildren).catch(() => setChildren([])).finally(() => setChildrenLoaded(true));
@@ -112,7 +301,7 @@ export default function KidQDesktop() {
     return () => { cancelled = true; };
   }, [stage, isStorybook, currentEntry]);
 
-  const video = currentEntry
+  const video = currentEntry?.item?.card
     ? {
         title: currentEntry.item.card.title,
         minutes: currentEntry.item.card.duration_seconds ? Math.round(currentEntry.item.card.duration_seconds / 60) : 0,
@@ -121,14 +310,16 @@ export default function KidQDesktop() {
       }
     : null;
   const plannedMinutes = session ? Math.round(session.planned_seconds / 60) : 30;
-  const progress = session && session.planned_seconds > 0 ? Math.min(100, Math.round((completedSeconds / session.planned_seconds) * 100)) : 0;
-  const remaining = Math.max(1, Math.ceil((session ? session.planned_seconds - completedSeconds : plannedMinutes * 60) / 60));
+  const watchedSeconds = completedSeconds + currentPlaybackSeconds;
+  const progress = session && session.planned_seconds > 0 ? Math.min(100, Math.round((watchedSeconds / session.planned_seconds) * 100)) : 0;
+  const remaining = Math.max(1, Math.ceil((session ? session.planned_seconds - watchedSeconds : plannedMinutes * 60) / 60));
   const nextVideos = useMemo(() => queue.filter((_, index) => index !== current), [queue, current]);
 
   async function chooseChild(child: ChildProfile, forceNoSession = false) {
     setChildName(child.nickname);
     setActiveChild(child);
     setCompletedSeconds(0);
+    setCurrentPlaybackSeconds(0);
     setBreakSlotIndex(null);
     if (forceNoSession) {
       setSession(null);
@@ -139,7 +330,8 @@ export default function KidQDesktop() {
     try {
       const [live, library] = await Promise.all([getCurrentSession(child.id), getLibrary(child.id).catch(() => [])]);
       setLibraryItems(library);
-      setSelectedLibraryIds(new Set(library.map((item) => item.card.id)));
+      // The child chooses deliberately; do not preselect the whole family queue.
+      setSelectedLibraryIds(new Set());
       if (live && live.slots.some((slot) => slot.items.length > 0)) {
         setSession(live);
         setCurrent(0);
@@ -158,11 +350,16 @@ export default function KidQDesktop() {
     if (!activeChild || selectedLibraryIds.size === 0) return;
     try {
       const started = await startSession(activeChild.id, 30, "AUTO");
-      setSession(started);
+      const selectedSlots = started.slots
+        .map((slot) => ({ ...slot, items: slot.items.filter((item) => selectedLibraryIds.has(item.card.id)) }))
+        .filter((slot) => slot.items.length > 0);
+      setSession({ ...started, slots: selectedSlots });
       setCurrent(0);
       setCompletedSeconds(0);
+      setCurrentPlaybackSeconds(0);
       setBreakSlotIndex(null);
-      setStage("sunrise");
+      // Start the chosen item directly so the child sees the real player.
+      setStage("watching");
     } catch {
       // Keep the picker visible when the parent queue cannot be started yet.
     }
@@ -178,6 +375,7 @@ export default function KidQDesktop() {
       setSession(replayed);
       setCurrent(0);
       setCompletedSeconds(0);
+      setCurrentPlaybackSeconds(0);
       setBreakSlotIndex(null);
       setStage("sunrise");
     } catch {
@@ -185,12 +383,13 @@ export default function KidQDesktop() {
     }
   }
 
-  const startWatching = (index = current) => { setCurrent(index); setPaused(false); setTimedBreak(null); setHandledBreakpoints(new Set()); setStage("watching"); };
+  const startWatching = (index = current) => { setCurrent(index); setCurrentPlaybackSeconds(0); setPaused(false); setTimedBreak(null); setHandledBreakpoints(new Set()); setStage("watching"); };
 
   function checkTimedBreakpoint(position: number) {
+    setCurrentPlaybackSeconds(position);
     const entry = queue[current];
     if (!entry || stage !== "watching") return;
-    const point = entry.item.activity_breakpoints.find((candidate) => candidate.timestamp_seconds <= position && !handledBreakpoints.has(candidate.timestamp_seconds));
+    const point = (entry.item.activity_breakpoints ?? []).find((candidate) => candidate.timestamp_seconds <= position && !handledBreakpoints.has(candidate.timestamp_seconds));
     if (!point) return;
     const activity = activities.find((candidate) => candidate.id === point.activity_id);
     if (!activity) return;
@@ -206,6 +405,7 @@ export default function KidQDesktop() {
     const durationSeconds = entry.item.card.duration_seconds ?? 0;
     recordItemOutcome(session.id, entry.item.id, { outcome: "COMPLETED", watched_seconds: durationSeconds }).catch(() => undefined);
     setCompletedSeconds((value) => value + durationSeconds);
+    setCurrentPlaybackSeconds(0);
 
     const isLastOverall = current >= queue.length - 1;
     if (isLastOverall) {
@@ -227,7 +427,8 @@ export default function KidQDesktop() {
     setStage(activityScreen(breakActivity));
   };
 
-  if (stage === "profile") return <Shell label="Who's watching today?"><section className={styles.profileScreen}><div className={styles.profileStars} /><h1>Who&apos;s watching<br />today?</h1>{children.length > 0 ? <div className={styles.profileChoices}>{children.map((item, index) => <button key={item.id} onClick={() => chooseChild(item)}><span style={{ background: CHILD_COLOURS[index % CHILD_COLOURS.length] }}>{item.nickname[0]}</span><b>{item.nickname}</b><small>Start my day</small></button>)}</div> : childrenLoaded && <div className={styles.noProfiles}><p>No child profiles yet.</p><Link href="/parent">Set up a child profile in Parent view</Link></div>}<p className={styles.noLogin}>No child login needed — a parent sets up the profile.</p>{children[0] && <button className={styles.demoLink} onClick={() => chooseChild(children[0], true)}>Show no-session state</button>}</section></Shell>;
+  if (!splashDone) return <SplashScreen onDone={() => setSplashDone(true)} />;
+  if (stage === "profile") return <Shell label="Who's watching today?"><section className={styles.profileScreen}><div className={styles.profileSky} aria-hidden="true">{PROFILE_STARS.map((s, i) => <span key={i} className={styles.skyStar} style={starStyle(s)} />)}<CloudBig className={styles.skyCloud} top="16%" /><CloudSmall className={styles.skyCloudSmall} top="36%" /></div><h1>Who&apos;s watching<br />today?</h1>{children.length > 0 ? <div className={styles.profileChoices}>{children.map((item, index) => <button key={item.id} onClick={() => chooseChild(item)}><span style={{ background: CHILD_COLOURS[index % CHILD_COLOURS.length] }}>{item.nickname[0]}</span><b>{item.nickname}</b><small>Start my day</small></button>)}</div> : childrenLoaded && <div className={styles.noProfiles}><p>No child profiles yet.</p><Link href="/parent">Set up a child profile in Parent view</Link></div>}<p className={styles.noLogin}>No child login needed — a parent sets up the profile.</p>{children[0] && <button className={styles.demoLink} onClick={() => chooseChild(children[0], true)}>Show no-session state</button>}</section></Shell>;
   if (stage === "library") return <LibraryPicker childName={childName} items={libraryItems} selected={selectedLibraryIds} toggle={(id) => setSelectedLibraryIds((current) => { const next = new Set(current); if (next.has(id)) next.delete(id); else next.add(id); return next; })} start={startSelectedLibrarySession} onBack={() => setStage("profile")} />;
   if (stage === "sunrise") return <Shell label={`${childName}'s session`}><section className={styles.sunriseScreen}><div className={styles.sunriseSky}><span className={styles.sunriseStars} /><div className={styles.sunriseCenter}><h1>Hi,<br />{childName}!</h1><button className={styles.sunButton} onClick={() => startWatching(0)} aria-label="Start today's watching session"><Sun /></button><p>Tap the sun to start your day</p><p className={styles.heartLine}>♥ <b>Mumma &amp; Papa picked {queue.length} video{queue.length === 1 ? "" : "s"}</b> · {plannedMinutes} min</p></div></div></section></Shell>;
   if (stage === "playtime") return <BreakScreen title={breakActivity?.title ?? "Time to play!"} body={breakActivity?.instruction ?? "The sun is coming down for a little break away from the screen."} action="Start the break" onClick={beginBreak} />;
@@ -243,8 +444,8 @@ export default function KidQDesktop() {
 
   if (!video) return <NoSession onBack={() => setStage("profile")} onReplay={handleReplay} />;
 
-  const sunPosition = progress <= 8 ? { left: "10%", top: "92%" } : progress >= 96 ? { left: "90%", top: "92%" } : { left: `${progress}%`, top: "30%" };
-  return <Shell label={`${childName}'s session`}><section className={`${styles.world} ${progress >= 96 ? styles.end : ""}`}><div className={styles.cloudOne} /><div className={styles.cloudTwo} /><div className={styles.arc} aria-hidden="true"><svg viewBox="0 0 1280 220" preserveAspectRatio="none"><path d="M70 205 Q640 15 1210 205" fill="none" stroke="#E4D6B8" strokeWidth="3" strokeDasharray="1 11" strokeLinecap="round" /><line x1="70" y1="205" x2="1210" y2="205" stroke="#E4D6B8" strokeWidth="3" strokeLinecap="round" /></svg></div><div className={styles.sun} style={sunPosition} aria-label="Session progress"><span className={styles.halo} /><Sun /></div><span className={styles.timeLeft}>{remaining} min left</span><div className={styles.childHeader}><span className={styles.avatar}>{childName[0]}</span><div><h2>{childName}&apos;s watch time</h2><p>video {current + 1} of {queue.length}</p></div></div><div className={styles.content}><div className={isStorybook ? styles.storyFrame : styles.player}>{isStorybook ? (story ? <KidQStoryReader title={story.title} pages={story.pages} credits={story.credits} attribution={story.attribution} onFinished={() => void finishVideo()} /> : <div className={styles.playerArt}><span>{video.title}</span><small>Loading the book…</small></div>) : <KidQPlayer ref={playerRef} player={currentEntry.item.card.player} title={video.title} poster={currentEntry.item.card.thumbnail_url} attribution={currentEntry.item.card.attribution} onPlayback={(event) => { if (event.type === "time") checkTimedBreakpoint(event.position); }} onEnded={() => void finishVideo()} />}</div><div className={styles.dayBar} aria-label={`${progress}% of session elapsed`}><span style={{ width: `${100 - progress}%` }} /><b className={styles.progressSun} style={{ left: `${progress}%` }} aria-hidden="true"><Sun /></b></div><div className={styles.now}><h3>{paused ? "Paused for now" : video.title}</h3><p><Heart /><span><strong>Picked by {video.pickedBy}</strong> · {video.minutes} min</span></p></div><p className={styles.upNext}>Your session</p><div className={styles.queue}>{queue.map((entry, index) => <button key={entry.item.id} className={`${styles.queueCard} ${index === current ? styles.queueCurrent : ""}`} onClick={() => startWatching(index)}><span>{entry.item.card.title}</span></button>)}<button className={styles.endCard} onClick={finishVideo}>The End 🌙<small>Finish &amp; play</small></button></div><div className={styles.sessionActions}><button onClick={finishVideo}>{current === queue.length - 1 ? "Finish videos" : "Finish this video"}</button><button onClick={() => setStage("cast")}>Cast mode</button></div></div></section></Shell>;
+  const sunPosition = sunArcPosition(progress / 100);
+  return <Shell label={`${childName}'s session`}><section className={`${styles.world} ${progress >= 96 ? styles.end : ""}`}><div className={styles.cloudOne} /><div className={styles.cloudTwo} /><div className={styles.arc}><svg viewBox="0 0 1000 220" preserveAspectRatio="none" aria-hidden="true"><path d="M30 215 Q500 5 970 215" fill="none" stroke="#E4D6B8" strokeWidth="3" strokeDasharray="1 11" strokeLinecap="round" /><line x1="30" y1="215" x2="970" y2="215" stroke="#E4D6B8" strokeWidth="3" strokeLinecap="round" /></svg><div className={styles.sun} style={sunPosition} aria-label="Session progress"><span className={styles.halo} /><Sun /></div></div><span className={styles.timeLeft}>{remaining} min left</span><div className={styles.childHeader}><span className={styles.avatar}>{childName[0]}</span><div><h2>{childName}&apos;s watch time</h2><p>video {current + 1} of {queue.length}</p></div></div><div className={styles.content}><div className={isStorybook ? styles.storyFrame : styles.player}>{isStorybook ? (story ? <KidQStoryReader title={story.title} pages={story.pages} credits={story.credits} attribution={story.attribution} onFinished={() => void finishVideo()} /> : <div className={styles.playerArt}><span>{video.title}</span><small>Loading the book…</small></div>) : <KidQPlayer ref={playerRef} player={currentEntry.item.card.player} title={video.title} poster={currentEntry.item.card.thumbnail_url} attribution={currentEntry.item.card.attribution} onPlayback={(event) => { if (event.type === "time") checkTimedBreakpoint(event.position); }} onEnded={() => void finishVideo()} />}</div><div className={styles.dayBar} aria-label={`${progress}% of session elapsed`}><span style={{ width: `${100 - progress}%` }} /><b className={styles.progressSun} style={{ left: `${progress}%` }} aria-hidden="true"><Sun /></b></div><div className={styles.now}><h3>{paused ? "Paused for now" : video.title}</h3><p><Heart /><span><strong>Picked by {video.pickedBy}</strong> · {video.minutes} min</span></p></div><p className={styles.upNext}>Your session</p><div className={styles.queue}>{queue.map((entry, index) => <button key={entry.item.id} className={`${styles.queueCard} ${index === current ? styles.queueCurrent : ""}`} onClick={() => startWatching(index)}><span>{entry.item.card.title}</span></button>)}<button className={styles.endCard} onClick={finishVideo}>The End 🌙<small>Finish &amp; play</small></button></div><div className={styles.sessionActions}><button onClick={finishVideo}>{current === queue.length - 1 ? "Finish videos" : "Finish this video"}</button><button onClick={() => setStage("cast")}>Cast mode</button></div></div></section></Shell>;
 }
 
 export function Shell({ children, label }: { children: React.ReactNode; label: string }) { return <main className={styles.page}><header className={styles.productBar}><Link className={styles.brand} href="/kid">KidQ<span>✦</span></Link><span className={styles.modeLabel}>{label}</span><div className={styles.headerActions}><Link className={styles.navButton} href="/kid?choose=1">Choose another child</Link></div></header>{children}</main>; }

@@ -56,7 +56,23 @@
 .footer { max-width: 1280px; margin: 18px auto 0; display: flex; justify-content: space-between; align-items: center; color: #6b6459; font-size: 13px; }.footer button { padding: 5px 12px; }
 @keyframes pulse { 0%, 100% { transform: scale(1); opacity: .85; } 50% { transform: scale(1.08); opacity: 1; } }
 @media (max-width: 900px) { .page { padding: 24px 14px 50px; }.productBar { flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }.headerActions { width: 100%; justify-content: flex-end; margin-left: 0; }.navButton { min-height: 36px; padding: 7px 12px; }.pageHeader { align-items: flex-start; flex-direction: column; margin-bottom: 24px; }.controls { flex-wrap: wrap; }.world { height: 700px; border-radius: 10px; }.timeLeft { top: 95px; right: 24px; }.childHeader { top: 18px; left: 26px; }.content { top: 156px; padding: 18px 24px 20px; }.player, .dayBar { max-width: 420px; }.sun { width: 70px; height: 70px; }.footer { font-size: 12px; } }
-@media (prefers-reduced-motion: reduce) { .sun, .halo { transition: none; animation: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .sun, .halo { transition: none; animation: none; }
+  /* Splash + sky motion: crush to near-instant rather than disabling outright,
+     so one-shot entrance animations (opacity 0 -> 1) still land on their final
+     state instead of freezing invisible at their `from` keyframe — the same
+     technique design/prototype/kidq-desktop-app.css uses (its blanket
+     `.reduce-motion` rule crushes duration, it never sets animation:none). */
+  .splashScreen *, .skyStar, .skyCloud, .skyCloudSmall {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+  }
+  /* Mirrors the prototype's own carve-out (kidq-desktop-app.css, reduced-motion
+     block): the blanket rule above never zeroes animation-delay, so the later
+     letters/seeds (up to .36s delay) would still miss the crushed window. */
+  .s1, .s2, .s3, .s4, .b2, .b3, .b4 { animation-delay: 0s !important; }
+}
 
 /* React child-flow states. The progress sun intentionally lives inside the
    dashed day bar so the child has one clear, tactile progress signal. */
@@ -96,7 +112,7 @@
 .castSky p { font-size: 18px; }
 .breakSun { width: 124px; height: 124px; filter: drop-shadow(0 0 28px #ffc64d88); }
 .breakSun svg { width: 100%; height: 100%; }
-.profileScreen{min-height:calc(100vh - 148px);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px 20px;background:linear-gradient(180deg,#252652,#5665a0);color:#fff;position:relative;overflow:hidden}.profileScreen h1{font:800 clamp(36px,6vw,66px)/.98 'Baloo 2',sans-serif;margin:0 0 34px;position:relative}.profileChoices{display:flex;gap:20px;position:relative}.profileChoices button{width:190px;border:1px solid #ffffff33;border-radius:24px;background:#ffffff18;color:#fff;padding:22px 18px;display:flex;flex-direction:column;align-items:center;gap:7px;cursor:pointer;transition:transform .15s,background .15s}.profileChoices button:hover{transform:translateY(-4px);background:#ffffff2b}.profileChoices span{width:72px;height:72px;border-radius:50%;display:grid;place-items:center;font:800 30px 'Baloo 2'}.profileChoices b{font:700 22px 'Baloo 2'}.profileChoices small{color:#d9d8ed}.noProfiles{position:relative;display:flex;flex-direction:column;align-items:center;gap:10px;color:#d9d8ed;font-size:15px}.noProfiles a{color:#ffc64d;font-weight:700;text-decoration:underline}.noLogin{color:#d9d8ed;font-size:13px;margin-top:28px;position:relative}.profileStars{position:absolute;inset:0;background:radial-gradient(circle at 15% 20%,#fff 0 2px,transparent 3px),radial-gradient(circle at 80% 24%,#fff 0 2px,transparent 3px),radial-gradient(circle at 66% 10%,#fff 0 1px,transparent 2px);opacity:.7}
+.profileScreen{min-height:calc(100vh - 148px);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px 20px;background:linear-gradient(180deg,#3A3768 0%,#4E4482 58%,#8D7BB5 100%);color:#fff;position:relative;overflow:hidden}.profileScreen h1{font:800 clamp(36px,6vw,66px)/.98 'Baloo 2',sans-serif;margin:0 0 34px;position:relative}.profileChoices{display:flex;gap:20px;position:relative}.profileChoices button{width:190px;border:1px solid #ffffff33;border-radius:24px;background:#ffffff18;color:#fff;padding:22px 18px;display:flex;flex-direction:column;align-items:center;gap:7px;cursor:pointer;transition:transform .15s,background .15s}.profileChoices button:hover{transform:translateY(-4px);background:#ffffff2b}.profileChoices span{width:72px;height:72px;border-radius:50%;display:grid;place-items:center;font:800 30px 'Baloo 2'}.profileChoices b{font:700 22px 'Baloo 2'}.profileChoices small{color:#d9d8ed}.noProfiles{position:relative;display:flex;flex-direction:column;align-items:center;gap:10px;color:#d9d8ed;font-size:15px}.noProfiles a{color:#ffc64d;font-weight:700;text-decoration:underline}.noLogin{color:#d9d8ed;font-size:13px;margin-top:28px;position:relative}.profileSky{position:absolute;inset:0;overflow:hidden}
 .breakScreen{min-height:calc(100vh - 130px);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:30px;background:linear-gradient(180deg,#e9f5f5,#fff8f0)}.breakScreen h1,.kidComplete h1{font:800 clamp(32px,5vw,60px) 'Baloo 2';margin:18px 0 6px;color:#2e2a24}.breakScreen p,.kidComplete p{max-width:430px;color:#6b6355;line-height:1.6}.breakScreen button{border:0;border-radius:15px;background:#1f7a6d;color:#fff;padding:15px 22px;font:700 17px 'Baloo 2';cursor:pointer;margin-top:20px}.breakSun{width:138px;height:138px;border-radius:50%;display:grid;place-items:center;background:#ffc64d;box-shadow:0 0 42px #ffc64d99;font-size:65px}.kidComplete{min-height:calc(100vh - 130px);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:28px;background:#2e2a5c;color:#fff}.kidComplete h1{color:#fff}.kidComplete p{color:#c9c6e8}.kidComplete a{color:#ffc64d;font-weight:800}.endMoon{font-size:68px}
 @media (max-width: 600px) {
   .productBar { flex-wrap: wrap; gap: 8px 14px; margin-bottom: 16px; }
@@ -231,4 +247,140 @@
   }
   .mFull { display: none; }
   .mReduced { display: inline; }
+}
+
+/* =====================================================================
+   Splash screen + enriched predawn sky, ported from
+   design/prototype/index.html (#screen-splash, #screen-login) and
+   design/prototype/kidq-desktop-app.css. Colours/timings are copied
+   from the prototype's own literal hex values and keyframe percentages
+   (this file already mixes literal hex with no custom-property layer,
+   same convention followed here). Do not edit design/prototype/* to
+   "fix" a mismatch found here — that file is the locked reference.
+   ===================================================================== */
+
+.splashScreen {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  overflow: hidden;
+  background: linear-gradient(180deg, #3A3768 0%, #2B2955 52%, #211F45 100%);
+}
+
+/* ---- shared sky bits (stars + drifting clouds), reused by the splash's
+   night sky and the profile/login screen's predawn sky ---- */
+.splashSky, .profileSky { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.skyStar {
+  position: absolute; width: 4px; height: 4px; border-radius: 50%;
+  background: #FAF4E8; animation: skyTwinkle 3.4s ease-in-out infinite;
+}
+@keyframes skyTwinkle { 50% { opacity: .25; } }
+.skyCloud, .skyCloudSmall { position: absolute; opacity: .85; animation: skyDrift 60s linear infinite; }
+.skyCloudSmall { animation-duration: 80s; animation-delay: -30s; }
+@keyframes skyDrift { from { transform: translateX(-120px); } to { transform: translateX(110vw); } }
+
+/* ---- splash: four glossy "KidQ" balloon letters ---- */
+.balloonSlot { position: relative; display: inline-flex; font-size: clamp(66px, 12vw, 120px); }
+.balloon {
+  position: relative; font-family: "Baloo 2", "Trebuchet MS", system-ui, sans-serif;
+  font-weight: 800; font-size: clamp(66px, 12vw, 120px); line-height: 1;
+  display: inline-block; opacity: 0; -webkit-background-clip: text; background-clip: text;
+  color: transparent; filter: drop-shadow(0 10px 14px rgba(46,42,36,.3));
+}
+.seed {
+  position: absolute; left: 50%; top: 50%; width: 4px; height: 4px; border-radius: 50%;
+  background: #FAF4E8; opacity: 0; transform: translate(-50%,-50%) scale(0);
+}
+.splashGo .s1 { animation: splashSeedHoldLeft 1.40s ease-out 0s forwards, splashSeedTwinkle 3.4s ease-in-out 1.40s infinite; }
+.splashGo .s2 { animation: splashSeedInLeft 1.52s ease-out 0s forwards, splashSeedTwinkle 3.4s ease-in-out 1.52s infinite; }
+.splashGo .s3 { animation: splashSeedInRight 1.52s ease-out .12s forwards, splashSeedTwinkle 3.4s ease-in-out 1.64s infinite; }
+.splashGo .s4 { animation: splashSeedInRight 1.52s ease-out .24s forwards, splashSeedTwinkle 3.4s ease-in-out 1.76s infinite; }
+@keyframes splashSeedHoldLeft {
+  0% { transform: translate(-50%,-50%) scale(1) translate(0,0); animation-timing-function: ease-out; }
+  68% { transform: translate(-50%,-50%) scale(1) translate(0,0); }
+  100% { transform: translate(-50%,-50%) scale(1) translate(-.55em,-.65em); }
+}
+@keyframes splashSeedInLeft {
+  0% { opacity: 0; transform: translate(-50%,-50%) scale(0); animation-timing-function: ease-out; }
+  10% { opacity: 1; transform: translate(-50%,-50%) scale(1); animation-timing-function: linear; }
+  70% { opacity: 1; transform: translate(-50%,-50%) scale(1); animation-timing-function: ease-out; }
+  100% { opacity: 1; transform: translate(-50%,-50%) scale(1) translate(-.55em,-.65em); }
+}
+@keyframes splashSeedInRight {
+  0% { opacity: 0; transform: translate(-50%,-50%) scale(0); animation-timing-function: ease-out; }
+  10% { opacity: 1; transform: translate(-50%,-50%) scale(1); animation-timing-function: linear; }
+  70% { opacity: 1; transform: translate(-50%,-50%) scale(1); animation-timing-function: ease-out; }
+  100% { opacity: 1; transform: translate(-50%,-50%) scale(1) translate(.55em,-.65em); }
+}
+@keyframes splashSeedTwinkle { 0%, 100% { opacity: 1; } 50% { opacity: .25; } }
+
+.splashGo .balloon { animation: splashInflate .95s cubic-bezier(.22,1,.36,1) both, splashBob 3.4s ease-in-out 1.4s infinite; }
+.splashGo .b2 { animation-delay: .12s, 1.55s; }
+.splashGo .b3 { animation-delay: .24s, 1.7s; }
+.splashGo .b4 { animation-delay: .36s, 1.85s; }
+.splashOff .balloon { animation: splashDeflate .38s cubic-bezier(.4,0,.8,1) both; }
+.b1 { background-image: radial-gradient(circle at 32% 24%, #EFFFFA 0%, #9ADEC9 9%, #35A98F 36%, #1F7A6D 62%, #123F37 100%); }
+.b2 { background-image: radial-gradient(circle at 32% 24%, #FFFBEA 0%, #FFE29A 9%, #FFC64D 40%, #F0A72E 66%, #8F5C12 100%); }
+.b3 { background-image: radial-gradient(circle at 32% 24%, #FFF1EC 0%, #F5A897 9%, #E2705E 40%, #C2543F 66%, #6E2818 100%); }
+.b4 { background-image: radial-gradient(circle at 32% 24%, #F6F1FF 0%, #C4B2EA 9%, #8E79C9 40%, #6F5AA8 66%, #382A66 100%); }
+@keyframes splashInflate {
+  0% { opacity: 0; transform: translateY(150px) scale(.2); }
+  55% { opacity: 1; transform: translateY(-14px) scale(1.22,.8); }
+  72% { transform: translateY(5px) scale(.88,1.14); }
+  86% { transform: translateY(-3px) scale(1.07,.94); }
+  100% { opacity: 1; transform: none; }
+}
+@keyframes splashDeflate { to { opacity: 0; transform: translateY(34px) scale(1.25,.55); } }
+@keyframes splashBob { 50% { transform: translateY(-9px) scale(1.02,.98); } }
+
+/* ---- splash: four large edge-anchored flat "backdrop" balloons on the
+   night sky, one per brand hue (teal/coral/dusk/rose) ---- */
+.backdropBalloon {
+  opacity: 0; pointer-events: none;
+  filter: drop-shadow(0 2px 3px rgba(46,42,36,.22));
+  width: calc(var(--cnt) * 1.15); height: calc(var(--cnt) * 1.505);
+}
+.backdropBalloon .balloonString { opacity: .35; }
+.posTl { position: absolute; left: -24px; top: -18px; --cnt: 78px; }
+.posL { position: absolute; left: -22px; top: 60%; --cnt: 68px; }
+.posR { position: absolute; right: -24px; top: 34%; --cnt: 74px; }
+.posB { position: absolute; bottom: -20px; left: 14%; --cnt: 64px; }
+.splashGo .sd1 { animation: splashBackdropFadeIn .8s ease-out forwards, splashBackdropBob 5.6s ease-in-out infinite; animation-delay: .15s, .95s; }
+.splashGo .sd2 { animation: splashBackdropFadeIn .8s ease-out forwards, splashBackdropBob 6.2s ease-in-out infinite; animation-delay: .3s, 1.1s; }
+.splashGo .sd3 { animation: splashBackdropFadeIn .8s ease-out forwards, splashBackdropBob 5.0s ease-in-out infinite; animation-delay: .45s, 1.25s; }
+.splashGo .sd4 { animation: splashBackdropFadeIn .8s ease-out forwards, splashBackdropBob 5.8s ease-in-out infinite; animation-delay: .6s, 1.4s; }
+.splashOff .backdropBalloon { animation: splashBackdropFadeOut .3s ease-in forwards; }
+@keyframes splashBackdropFadeIn { from { opacity: 0; transform: translateY(10px) scale(.7); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes splashBackdropFadeOut { to { opacity: 0; } }
+@keyframes splashBackdropBob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+
+.balloonBody { position: absolute; top: 0; left: 0; width: 100%; height: calc(var(--cnt) * 1.32); border-radius: 50%; }
+.balloonKnot {
+  position: absolute; left: 50%; top: calc(var(--cnt) * 1.28);
+  width: calc(var(--cnt) * .16); height: calc(var(--cnt) * .1);
+  transform: translateX(-50%); clip-path: polygon(50% 100%, 12% 0, 88% 0);
+}
+.balloonString {
+  position: absolute; left: 50%; top: calc(var(--cnt) * 1.36);
+  width: 1.5px; height: calc(var(--cnt) * .16); background: #6B6459;
+  opacity: .5; transform: translateX(-50%) rotate(-4deg); transform-origin: top center;
+}
+.hueTeal .balloonBody { background-image: linear-gradient(135deg, #7DB2AA 0%, #1F7A6D 65%); filter: drop-shadow(0 3px 5px rgba(46,42,36,.28)) drop-shadow(0 0 calc(var(--cnt) * .26) rgba(31,122,109,.55)); }
+.hueTeal .balloonKnot { background: #11433C; }
+.hueRose .balloonBody { background-image: linear-gradient(135deg, #CD9AAB 0%, #A8506E 65%); filter: drop-shadow(0 3px 5px rgba(46,42,36,.28)) drop-shadow(0 0 calc(var(--cnt) * .26) rgba(168,80,110,.55)); }
+.hueRose .balloonKnot { background: #5C2C3D; }
+.hueCoral .balloonBody { background-image: linear-gradient(135deg, #DC9C90 0%, #C2543F 65%); filter: drop-shadow(0 3px 5px rgba(46,42,36,.28)) drop-shadow(0 0 calc(var(--cnt) * .26) rgba(194,84,63,.55)); }
+.hueCoral .balloonKnot { background: #6B2E23; }
+.hueDusk .balloonBody { background-image: linear-gradient(135deg, #AB9FCD 0%, #6F5AA8 65%); filter: drop-shadow(0 3px 5px rgba(46,42,36,.28)) drop-shadow(0 0 calc(var(--cnt) * .26) rgba(111,90,168,.55)); }
+.hueDusk .balloonKnot { background: #3D325C; }
+
+@media (min-width: 900px) {
+  .posTl { left: -40px; top: -30px; --cnt: 150px; }
+  .posL { left: -38px; top: 64%; --cnt: 130px; }
+  .posR { right: -42px; top: 38%; --cnt: 145px; }
+  .posB { bottom: -36px; left: 22%; --cnt: 125px; }
 }
