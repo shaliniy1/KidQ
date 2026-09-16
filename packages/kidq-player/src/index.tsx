@@ -154,9 +154,11 @@ export const KidQPlayer = forwardRef<KidQPlayerHandle, KidQPlayerProps>(function
         videoId: youtubeId,
         width: "100%",
         height: "100%",
-        playerVars: { ...youtubeParams, origin: window.location.origin, enablejsapi: 1 },
+        playerVars: { ...youtubeParams, autoplay: 1, origin: window.location.origin, enablejsapi: 1 },
         events: {
-          onReady: (event: { target: YTPlayer }) => setDuration(event.target.getDuration()),
+          // The watching screen only mounts after the child already tapped to start their session,
+          // so play inline immediately — no separate "Play" tap for a video they already chose.
+          onReady: (event: { target: YTPlayer }) => { setDuration(event.target.getDuration()); event.target.playVideo(); },
           onStateChange: (event: { data: number }) => {
             const youtube = youtubeRef.current;
             const at = youtube ? [youtube.getCurrentTime(), youtube.getDuration()] as const : ([0, 0] as const);
@@ -265,6 +267,7 @@ export const KidQPlayer = forwardRef<KidQPlayerHandle, KidQPlayerProps>(function
             src={player.media_url}
             poster={poster ?? undefined}
             playsInline
+            autoPlay
             preload="metadata"
             disablePictureInPicture
             controlsList="nodownload noremoteplayback noplaybackrate"
