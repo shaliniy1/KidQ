@@ -22,6 +22,11 @@ type Child = { id: string; name: string; age: string; color: string; duration: n
 const SESSION_MINUTES_OPTIONS = [15, 30, 45, 60, 90] as const;
 const nearestSessionMinutes = (value: number) => SESSION_MINUTES_OPTIONS.reduce((best, option) => (Math.abs(option - value) < Math.abs(best - value) ? option : best));
 const RECOMMENDATION_COUNT = 5;
+const RECOMMENDATION_VIDEO_COUNT = 3;
+const RECOMMENDATION_STORY_COUNT = 2;
+// Fetch a wider pool than we show so there's enough of each type to pick 3 videos + 2 storybooks
+// from, rather than whatever the top-5 ranked order happens to contain.
+const RECOMMENDATION_POOL_SIZE = 30;
 const DEFAULT_SELECTED_COUNT = 3;
 const AGE_BAND_LABELS: Record<string, string> = { "0_2": "0–2", "2_3": "2–3", "3_4": "3–4", "4_5": "4–5", "5_6": "5–6" };
 const AGE_BAND_KEYS: Record<string, OnboardingChild["age_band"]> = { "0–2": "0_2", "2–3": "2_3", "3–4": "3_4", "4–5": "4_5", "5–6": "5_6" };
@@ -75,7 +80,24 @@ function toParentRecommendationCard(card: Recommendation["card"], selectedAge: s
     guardrails: card.kidq_check.dimensions.map((d) => d.label).length
       ? card.kidq_check.dimensions.map((d) => d.label)
       : ["KidQ reviewed"],
+    contentType: card.content_type,
   };
+}
+
+// Fixed mix: 3 videos + 2 storybooks, best-ranked of each first. Falls back to whatever's left
+// (the other type, then anything) so a thin catalog for one type still fills all 5 slots.
+function pickMix(items: ParentRecommendation[], videoCount: number, storyCount: number): ParentRecommendation[] {
+  const videos = items.filter((item) => item.contentType === "VIDEO");
+  const stories = items.filter((item) => item.contentType === "STORYBOOK");
+  const rest = items.filter((item) => item.contentType !== "VIDEO" && item.contentType !== "STORYBOOK");
+  const picked = [...videos.slice(0, videoCount), ...stories.slice(0, storyCount)];
+  const pickedIds = new Set(picked.map((item) => item.id));
+  const total = videoCount + storyCount;
+  for (const item of [...videos.slice(videoCount), ...stories.slice(storyCount), ...rest]) {
+    if (picked.length >= total) break;
+    if (!pickedIds.has(item.id)) { picked.push(item); pickedIds.add(item.id); }
+  }
+  return picked;
 }
 
 function toParentRecommendation(rec: Recommendation, selectedAge: string): ParentRecommendation {
@@ -237,16 +259,18 @@ export default function ParentFlow() {
       // race must not leave recommendations built against the previous session length.
       await updateChild(child.id, { session_minutes: nearestSessionMinutes(duration) }).catch(() => undefined);
       const [real, libraryEntries] = await Promise.all([
-        fetchRecommendations(child.id, RECOMMENDATION_COUNT),
+        fetchRecommendations(child.id, RECOMMENDATION_POOL_SIZE),
         getLibrary(child.id).catch(() => []),
       ]);
-      const mapped = real.length > 0
+      const mappedPool = real.length > 0
         ? real.map((item) => toParentRecommendation(item, child.age))
         : getMockRecommendations(child, duration).map((item) => ({
             ...item,
             ageRange: child.age,
             category: categoryLabel(item.category),
           }));
+      // Ranked order within each type is preserved — only which types fill the 5 slots is fixed.
+      const mapped = real.length > 0 ? pickMix(mappedPool, RECOMMENDATION_VIDEO_COUNT, RECOMMENDATION_STORY_COUNT) : mappedPool.slice(0, RECOMMENDATION_COUNT);
       const saved = libraryEntries.map((entry) => toParentRecommendationCard(entry.card, child.age, "Added to your Q"));
       const localAdded = recommendations.filter((item) => /^(url|approved|saved|pdf)-/.test(item.id));
       const byId = new Map([...mapped, ...saved, ...localAdded].map((item) => [item.id, item]));
