@@ -250,12 +250,14 @@ export default function ParentFlow() {
       const saved = libraryEntries.map((entry) => toParentRecommendationCard(entry.card, child.age, "Added to your Q"));
       const localAdded = recommendations.filter((item) => /^(url|approved|saved|pdf)-/.test(item.id));
       const byId = new Map([...mapped, ...saved, ...localAdded].map((item) => [item.id, item]));
-      const merged = [...byId.values()];
+      // The library's own "Added to your Q" items are unbounded — cap the whole review screen at
+      // RECOMMENDATION_COUNT so it stays a short, real choice instead of the full library reappearing here.
+      const merged = [...byId.values()].slice(0, RECOMMENDATION_COUNT);
       setRecommendations(merged);
       setSelectedRecommendations(merged.slice(0, DEFAULT_SELECTED_COUNT).map((item) => item.id));
       navigateScreen("recommendation");
     } catch {
-      const fallback = [...getMockRecommendations(child, duration), ...recommendations.filter((item) => /^(url|approved|saved|pdf)-/.test(item.id))];
+      const fallback = [...getMockRecommendations(child, duration), ...recommendations.filter((item) => /^(url|approved|saved|pdf)-/.test(item.id))].slice(0, RECOMMENDATION_COUNT);
       setRecommendations(fallback);
       setSelectedRecommendations(fallback.slice(0, DEFAULT_SELECTED_COUNT).map((item) => item.id));
       navigateScreen("recommendation");
