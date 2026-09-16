@@ -79,15 +79,15 @@ export default function ContentDetailPage() {
     };
   }, [showAdditionalReview]);
 
-  /** Runs an admin action, then shows the refreshed detail the API returns. */
-  const act = async (label: string, run: () => Promise<unknown>) => {
+  /** Runs an admin action, then shows the refreshed detail the API returns. `label` can read the result, so a call that didn't fail but didn't fully succeed (e.g. AI scoring deferred) can still say why. */
+  const act = async (label: string | ((result: unknown) => string), run: () => Promise<unknown>) => {
     setError(null);
     setNotice(null);
     try {
       const result = await run();
       if (result && typeof result === "object" && "content" in result) setDetail(result as Detail);
       else await load();
-      setNotice(label);
+      setNotice(typeof label === "function" ? label(result) : label);
     } catch (failure) {
       const blockers = blockersOf(failure).map((b) => BLOCKER_LABELS[b] ?? b);
       setError(`${friendlyError(failure, "That change could not be saved. Please try again.")}${blockers.length ? ` ${blockers.join(", ")}.` : ""}`);
@@ -162,7 +162,7 @@ export default function ContentDetailPage() {
             </div>
             <div className="two-col">
               <div className="stack">
-                <ScoreCard content={content} onSeek={seek} />
+                <ScoreCard content={content} onSeek={seek} act={act} id={id} />
                 <Sliders content={content} act={act} id={id} />
                 <Rubric detail={detail} act={act} id={id} />
               </div>
@@ -178,7 +178,7 @@ export default function ContentDetailPage() {
   );
 }
 
-type Act = (label: string, run: () => Promise<unknown>) => Promise<void>;
+type Act = (label: string | ((result: unknown) => string), run: () => Promise<unknown>) => Promise<void>;
 
 function Timestamps({ values, onSeek }: { values: string[]; onSeek: (value: string) => void }) {
   if (!values.length) return null;
@@ -193,16 +193,50 @@ function Timestamps({ values, onSeek }: { values: string[]; onSeek: (value: stri
   );
 }
 
-function ScoreCard({ content, onSeek }: { content: AdminContent; onSeek: (value: string) => void }) {
+function ScoreCard({ content, onSeek, act, id }: { content: AdminContent; onSeek: (value: string) => void; act: Act; id: string }) {
   const score = content.content_score;
-  if (!score) return <div className="card muted">Not scored yet.</div>;
+  const [busy, setBusy] = useState(false);
+
+  const validate = () => {
+    setBusy(true);
+    void act(
+      (result) => {
+        const outcome = result as { validated?: boolean; message?: string | null };
+        return outcome.validated ? "Score validated" : (outcome.message ?? "AI scoring did not run.");
+      },
+      async () => unwrap(await api.POST("/content-items/{id}/validate-score", { params: { path: { id } } })),
+    )
+      .catch(() => undefined)
+      .finally(() => setBusy(false));
+  };
+
+  const validateButton = (
+    <button className="btn" disabled={busy} onClick={validate} title="Calls Gemini for this item now, instead of waiting for the AI backlog sweep">
+      {busy ? "Validating…" : "Validate score"}
+    </button>
+  );
+
+  if (!score) {
+    return (
+      <div className="card stack">
+        <div className="row" style={{ justifyContent: "space-between" }}>
+          <h2 style={{ margin: 0 }}>Content score</h2>
+          {validateButton}
+        </div>
+        <p className="muted" style={{ margin: 0 }}>Not scored yet.</p>
+      </div>
+    );
+  }
   return (
     <div className="card stack">
       <div className="row" style={{ justifyContent: "space-between" }}>
         <h2 style={{ margin: 0 }}>Content score</h2>
-        <div>
-          <span className="score">{score.score ?? (score.safety_flags.length ? "Withheld" : "Not scored")}</span>
-          {score.score != null && <span className="muted"> / 100</span>}
+        <div className="row" style={{ gap: 10 }}>
+          <div>
+            <span className="score">{score.score ?? (score.safety_flags.length ? "Withheld" : "Not scored")}</span>
+            {score.score != null && <span className="muted"> / 100</span>}
+          </div>
+          {validateButton}
         </div>
       </div>
       <p className="muted" style={{ margin: 0 }}>
