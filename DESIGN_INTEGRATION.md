@@ -655,3 +655,64 @@ and index.
 - `/session` now receives the same palette, typography, cards, buttons, pills,
   and avatar styling used by the rest of the application instead of falling
   back to browser-default presentation.
+
+## 32. Kid session spacing regression
+
+- The Kid session canvas now has enough vertical room for the player, progress
+  metadata, and queue without overlap.
+- Queue items use a responsive grid with internal padding and safe text
+  wrapping, so long titles remain inside their cards.
+- Narrow layouts switch to two columns and remain free of horizontal overflow;
+  existing colors, typography, and interaction styles are preserved.
+
+## 33. Story previews
+
+- Storybook recommendation previews now open in the same parent modal pattern
+  as video previews.
+- The popup loads the real story pages and retains page navigation, credits,
+  attribution, and a close action. Video previews continue to use their
+  playable embed path.
+
+## 34. Kid story popup
+
+- When a storybook is opened in a Kid session, the existing `KidQStoryReader`
+  now presents as a focused popup over the current session page.
+- The child can read and turn pages without leaving the Kid route; the story
+  still preserves its end credits and completion callback.
+- Admin and other inline story-reader usages remain inline unless they opt into
+  the popup prop.
+
+## 35. Close story popup
+
+- Kid story popups now include a visible `×` close button.
+- Closing the popup returns the child to the current session page without
+  marking the story complete; opening a new story starts a fresh popup.
+
+## 36. Explicit story opening
+
+- Kid sessions no longer auto-open the first storybook.
+- A story appears as an `Open story` card in the current session; the popup
+  opens only after the child taps that action.
+
+## 37. Kid selected-video start
+
+- The Kid parent-picked list starts with no item selected.
+- The child selects one video at a time, then taps `Start selected video`.
+- The selected item is filtered into the session and opens in the existing
+  `KidQPlayer`; storybooks continue through the explicit story popup path.
+
+## 38. Live Kid sun progress
+
+- The session sun now uses the active video playback position plus completed
+  video time, rather than advancing only after a video ends.
+- Player time events update the progress path and remaining-minute label during
+  playback; the existing transition animation carries the sun smoothly between
+  positions.
+
+## 39. Kid video page recovery
+
+- Restored the watching-stage render after the session state transitions from
+  the sunrise screen. The Kid route now renders the existing player, story
+  opener, progress path, and session queue instead of returning a blank page.
+- Video cards continue to use `KidQPlayer`, while storybooks retain the
+  explicit `Open story` popup behavior.

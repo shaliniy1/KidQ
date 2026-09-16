@@ -77,6 +77,7 @@ export default function KidQDesktop() {
   const [session, setSession] = useState<AssembledSession | null>(null);
   const [current, setCurrent] = useState(0);
   const [completedSeconds, setCompletedSeconds] = useState(0);
+  const [currentPlaybackSeconds, setCurrentPlaybackSeconds] = useState(0);
   const [paused, setPaused] = useState(false);
   const [breaths, setBreaths] = useState(0);
   const [followCatches, setFollowCatches] = useState(0);
@@ -113,7 +114,7 @@ export default function KidQDesktop() {
     return () => { cancelled = true; };
   }, [stage, isStorybook, currentEntry]);
 
-  const video = currentEntry
+  const video = currentEntry?.item?.card
     ? {
         title: currentEntry.item.card.title,
         minutes: currentEntry.item.card.duration_seconds ? Math.round(currentEntry.item.card.duration_seconds / 60) : 0,
@@ -122,14 +123,16 @@ export default function KidQDesktop() {
       }
     : null;
   const plannedMinutes = session ? Math.round(session.planned_seconds / 60) : 30;
-  const progress = session && session.planned_seconds > 0 ? Math.min(100, Math.round((completedSeconds / session.planned_seconds) * 100)) : 0;
-  const remaining = Math.max(1, Math.ceil((session ? session.planned_seconds - completedSeconds : plannedMinutes * 60) / 60));
+  const watchedSeconds = completedSeconds + currentPlaybackSeconds;
+  const progress = session && session.planned_seconds > 0 ? Math.min(100, Math.round((watchedSeconds / session.planned_seconds) * 100)) : 0;
+  const remaining = Math.max(1, Math.ceil((session ? session.planned_seconds - watchedSeconds : plannedMinutes * 60) / 60));
   const nextVideos = useMemo(() => queue.filter((_, index) => index !== current), [queue, current]);
 
   async function chooseChild(child: ChildProfile, forceNoSession = false) {
     setChildName(child.nickname);
     setActiveChild(child);
     setCompletedSeconds(0);
+    setCurrentPlaybackSeconds(0);
     setBreakSlotIndex(null);
     if (forceNoSession) {
       setSession(null);
@@ -140,7 +143,8 @@ export default function KidQDesktop() {
     try {
       const [live, library] = await Promise.all([getCurrentSession(child.id), getLibrary(child.id).catch(() => [])]);
       setLibraryItems(library);
-      setSelectedLibraryIds(new Set(library.map((item) => item.card.id)));
+      // The child chooses deliberately; do not preselect the whole family queue.
+      setSelectedLibraryIds(new Set());
       if (live && live.slots.some((slot) => slot.items.length > 0)) {
         setSession(live);
         setCurrent(0);
@@ -159,11 +163,16 @@ export default function KidQDesktop() {
     if (!activeChild || selectedLibraryIds.size === 0) return;
     try {
       const started = await startSession(activeChild.id, 30, "AUTO");
-      setSession(started);
+      const selectedSlots = started.slots
+        .map((slot) => ({ ...slot, items: slot.items.filter((item) => selectedLibraryIds.has(item.card.id)) }))
+        .filter((slot) => slot.items.length > 0);
+      setSession({ ...started, slots: selectedSlots });
       setCurrent(0);
       setCompletedSeconds(0);
+      setCurrentPlaybackSeconds(0);
       setBreakSlotIndex(null);
-      setStage("sunrise");
+      // Start the chosen item directly so the child sees the real player.
+      setStage("watching");
     } catch {
       // Keep the picker visible when the parent queue cannot be started yet.
     }
@@ -179,6 +188,7 @@ export default function KidQDesktop() {
       setSession(replayed);
       setCurrent(0);
       setCompletedSeconds(0);
+      setCurrentPlaybackSeconds(0);
       setBreakSlotIndex(null);
       setStage("sunrise");
     } catch {
@@ -186,12 +196,13 @@ export default function KidQDesktop() {
     }
   }
 
-  const startWatching = (index = current) => { setCurrent(index); setPaused(false); setTimedBreak(null); setHandledBreakpoints(new Set()); setBreaths(0); setFollowCatches(0); setFound(0); setStage("watching"); };
+  const startWatching = (index = current) => { setCurrent(index); setCurrentPlaybackSeconds(0); setPaused(false); setTimedBreak(null); setHandledBreakpoints(new Set()); setBreaths(0); setFollowCatches(0); setFound(0); setStage("watching"); };
 
   function checkTimedBreakpoint(position: number) {
+    setCurrentPlaybackSeconds(position);
     const entry = queue[current];
     if (!entry || stage !== "watching") return;
-    const point = entry.item.activity_breakpoints.find((candidate) => candidate.timestamp_seconds <= position && !handledBreakpoints.has(candidate.timestamp_seconds));
+    const point = (entry.item.activity_breakpoints ?? []).find((candidate) => candidate.timestamp_seconds <= position && !handledBreakpoints.has(candidate.timestamp_seconds));
     if (!point) return;
     const activity = activities.find((candidate) => candidate.id === point.activity_id);
     if (!activity) return;
@@ -207,6 +218,7 @@ export default function KidQDesktop() {
     const durationSeconds = entry.item.card.duration_seconds ?? 0;
     recordItemOutcome(session.id, entry.item.id, { outcome: "COMPLETED", watched_seconds: durationSeconds }).catch(() => undefined);
     setCompletedSeconds((value) => value + durationSeconds);
+    setCurrentPlaybackSeconds(0);
 
     const isLastOverall = current >= queue.length - 1;
     if (isLastOverall) {
@@ -232,7 +244,7 @@ export default function KidQDesktop() {
   };
 
   if (stage === "profile") return <Shell label="Who's watching today?"><section className={styles.profileScreen}><div className={styles.profileStars} /><h1>Who&apos;s watching<br />today?</h1><div className={styles.profileChoices}>{children.map((item, index) => <button key={item.id} onClick={() => chooseChild(item)}><span style={{ background: CHILD_COLOURS[index % CHILD_COLOURS.length] }}>{item.nickname[0]}</span><b>{item.nickname}</b><small>Start my day</small></button>)}</div><p className={styles.noLogin}>No child login needed — a parent sets up the profile.</p>{children[0] && <button className={styles.demoLink} onClick={() => chooseChild(children[0], true)}>Show no-session state</button>}</section></Shell>;
-  if (stage === "library") return <LibraryPicker childName={childName} items={libraryItems} selected={selectedLibraryIds} toggle={(id) => setSelectedLibraryIds((current) => { const next = new Set(current); if (next.has(id)) next.delete(id); else next.add(id); return next; })} start={startSelectedLibrarySession} onBack={() => setStage("profile")} />;
+  if (stage === "library") return <LibraryPicker childName={childName} items={libraryItems} selected={selectedLibraryIds} toggle={(id) => setSelectedLibraryIds((current) => current.has(id) ? new Set() : new Set([id]))} start={startSelectedLibrarySession} onBack={() => setStage("profile")} />;
   if (stage === "sunrise") return <Shell label={`${childName}'s session`}><section className={styles.sunriseScreen}><div className={styles.sunriseSky}><span className={styles.sunriseStars} /><div className={styles.sunriseCenter}><h1>Hi,<br />{childName}!</h1><button className={styles.sunButton} onClick={() => startWatching(0)} aria-label="Start today's watching session"><Sun /></button><p>Tap the sun to start your day</p><p className={styles.heartLine}>♥ <b>Mumma &amp; Papa picked {queue.length} video{queue.length === 1 ? "" : "s"}</b> · {plannedMinutes} min</p></div></div></section></Shell>;
   if (stage === "playtime") return <BreakScreen title={breakActivity?.title ?? "Time to play!"} body={breakActivity?.instruction ?? "The sun is coming down for a little break away from the screen."} action="Start the break" onClick={beginBreak} />;
   if (stage === "timedBreak") return <BreakScreen title={timedBreak?.title ?? "Time for an activity"} body={timedBreak?.instruction ?? "Take a little break away from the screen."} action="Resume video" onClick={() => { setTimedBreak(null); setStage("watching"); playerRef.current?.play(); }} />;
@@ -252,7 +264,7 @@ export default function KidQDesktop() {
 }
 
 function Shell({ children, label }: { children: React.ReactNode; label: string }) { return <main className={styles.page}><header className={styles.productBar}><Link className={styles.brand} href="/kid">KidQ<span>✦</span></Link><span className={styles.modeLabel}>{label}</span><div className={styles.headerActions}><Link className={styles.navButton} href="/kid?choose=1">Choose another child</Link><Link className={`${styles.navButton} ${styles.navButtonPrimary}`} href="/parent">Parent view</Link></div></header>{children}<footer className={styles.footer}><span>Parent-picked · finite queue · no endless feed</span><Link href="/parent">Open parent view</Link></footer></main>; }
-function LibraryPicker({ childName, items, selected, toggle, start, onBack }: { childName: string; items: LibraryEntry[]; selected: Set<string>; toggle: (id: string) => void; start: () => void; onBack: () => void }) { return <Shell label={`${childName}'s picks`}><section className={styles.choiceScreen}><div className={styles.breakSun}><Sun /></div><h1>Pick something for today, {childName}.</h1><p>These are the videos your parent picked. Choose what you would like to watch.</p><div className={styles.choiceList}>{items.map((item) => <button key={item.card.id} onClick={() => toggle(item.card.id)} aria-pressed={selected.has(item.card.id)} style={selected.has(item.card.id) ? { outline: "3px solid #008080" } : undefined}><span style={{ background: item.card.thumbnail_url ? `url(${item.card.thumbnail_url}) center / contain no-repeat #d8c89c` : "#d8c89c" }} />{item.card.title}</button>)}</div><button disabled={selected.size === 0} onClick={start}>Start selected videos</button><button className={styles.secondaryAction} onClick={onBack}>Choose another child</button></section></Shell>; }
+function LibraryPicker({ childName, items, selected, toggle, start, onBack }: { childName: string; items: LibraryEntry[]; selected: Set<string>; toggle: (id: string) => void; start: () => void; onBack: () => void }) { return <Shell label={`${childName}'s picks`}><section className={styles.choiceScreen}><div className={styles.breakSun}><Sun /></div><h1>Pick something for today, {childName}.</h1><p>These are the videos your parent picked. Choose one to watch.</p><div className={styles.choiceList}>{items.map((item) => <button key={item.card.id} onClick={() => toggle(item.card.id)} aria-pressed={selected.has(item.card.id)} style={selected.has(item.card.id) ? { outline: "3px solid #008080" } : undefined}><span style={{ background: item.card.thumbnail_url ? `url(${item.card.thumbnail_url}) center / contain no-repeat #d8c89c` : "#d8c89c" }} />{item.card.title}</button>)}</div><button disabled={selected.size === 0} onClick={start}>Start selected video</button><button className={styles.secondaryAction} onClick={onBack}>Choose another child</button></section></Shell>; }
 function BreakScreen({ title, body, action, onClick }: { title: string; body: string; action: string; onClick: () => void }) { return <Shell label="Playtime"><section className={styles.breakScreen}><div className={styles.breakSun}><Sun /></div><h1>{title}</h1><p>{body}</p><button onClick={onClick}>{action}</button></section></Shell>; }
 function ChoiceScreen({ childName, hasNext, onNext, onPick, items }: { childName: string; hasNext: boolean; onNext: () => void; onPick: (index: number) => void; items: QueueEntry[] }) { return <Shell label="Choose what is next"><section className={styles.choiceScreen}><div className={styles.breakSun}><Sun /></div><h1>What&apos;s next, {childName}?</h1><p>{hasNext ? "Tap the sun for the next video, or choose one of your remaining picks." : "The sun is ready to set. Choose the moon when you are done."}</p><button onClick={onNext}>{hasNext ? "☀ Next video" : "🌙 Finish the day"}</button><div className={styles.choiceList}>{items.map((entry, index) => <button key={entry.item.id} onClick={() => onPick(index)}><span style={{ background: QUEUE_COLOURS[index % QUEUE_COLOURS.length] }} />{entry.item.card.title}</button>)}</div></section></Shell>; }
 function EndScreen({ childName, onNight }: { childName: string; onNight: () => void }) { return <Shell label="All done for today"><section className={styles.kidComplete}><div className={styles.endMoon}>🌙</div><h1>All done for now, {childName}.</h1><p>The sun has set. Time to go play, rest, or do something offline.</p><button onClick={onNight}>Turn on night light</button></section></Shell>; }

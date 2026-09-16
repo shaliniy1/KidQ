@@ -1,6 +1,6 @@
 // KidQ recommendation engine (RANK_V2, docs/recommendation/README.md "Recommendation engine"):
 // filter admin-approved content by the child profile, rank it by relevance, KidQ score, learning
-// value and fit, then mix it so no two items of one category sit side by side.
+// value and fit, then mix it so no two items of one category — or one content type — sit side by side.
 // Pure: no I/O. Popularity (views, likes, subscribers, trending) is never an input.
 
 export interface ChildProfileInput {
@@ -183,10 +183,16 @@ function explain(candidate: CandidateInput, matched: Matched, coldStart: boolean
 
 /**
  * Variety: walks the ranked list and takes the best item that isn't the same category as the one
- * before it, and whose creator hasn't filled their share of the top window. Nothing is dropped;
- * when no item qualifies, the best remaining one goes next.
+ * before it and isn't the same content type either — a run of all-STORYBOOK (or all-VIDEO) is as
+ * repetitive as a run of one category, even across different topics — and whose creator hasn't
+ * filled their share of the top window. Nothing is dropped; when no item qualifies, the best
+ * remaining one goes next.
  */
-function arrange<T extends { id: string; creator: string | null; category: string | null; parentCategories?: string[] }>(items: T[], maxPerCreator: number, window: number): T[] {
+function arrange<T extends { id: string; creator: string | null; category: string | null; parentCategories?: string[]; contentType: string }>(
+  items: T[],
+  maxPerCreator: number,
+  window: number,
+): T[] {
   // Stories then Storybooks is still two in a row for a parent: rotate by the parent group.
   const rotationKey = (item: T) => item.parentCategories?.[0] ?? item.category;
   const remaining = [...items];
@@ -194,7 +200,11 @@ function arrange<T extends { id: string; creator: string | null; category: strin
   const perCreator = new Map<string, number>();
   const creatorOf = (item: T) => item.creator ?? `__unknown:${item.id}`;
   const withinCap = (item: T) => arranged.length >= window || (perCreator.get(creatorOf(item)) ?? 0) < maxPerCreator;
-  const repeats = (item: T) => arranged.length > 0 && rotationKey(arranged[arranged.length - 1]) === rotationKey(item);
+  const repeats = (item: T) => {
+    if (arranged.length === 0) return false;
+    const previous = arranged[arranged.length - 1];
+    return rotationKey(previous) === rotationKey(item) || previous.contentType === item.contentType;
+  };
   while (remaining.length > 0) {
     let index = remaining.findIndex((item) => withinCap(item) && !repeats(item));
     if (index < 0) index = remaining.findIndex(withinCap);

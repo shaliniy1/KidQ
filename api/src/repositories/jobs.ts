@@ -78,7 +78,7 @@ export async function completeJob(db: Db, id: string): Promise<void> {
 
 /** Retryable failures back off exponentially (1, 2, 4, 8… minutes); others, or too many attempts, fail for good. */
 export async function failJob(db: Db, job: Job, error: unknown, retryable: boolean): Promise<void> {
-  const message = redactText(error instanceof Error ? error.message : String(error)).slice(0, 1000);
+  const message = redactText(error instanceof Error ? (error.stack ?? error.message) : String(error)).slice(0, 2000);
   if (retryable && job.attemptCount < MAX_ATTEMPTS) {
     await db.query(
       `UPDATE outbox_events SET status = 'PENDING', locked_at = NULL, last_error = $2,
