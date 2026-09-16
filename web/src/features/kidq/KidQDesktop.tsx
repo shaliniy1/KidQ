@@ -18,7 +18,7 @@ import { getLibrary, type LibraryEntry } from "@/services/my-videos";
 import { getActivities, type ParentActivity } from "@/services/activity-breaks";
 import { getStory, type Story } from "@/services/story";
 import { KidQPlayer, KidQStoryReader } from "@kidq/player";
-import { BreathingBreak, FindColoursBreak } from "./BreakGames";
+import { BreathingBreak, FindColoursBreak, FollowSunBreak } from "./BreakGames";
 
 type Stage = "profile" | "library" | "sunrise" | "watching" | "timedBreak" | "playtime" | "breathing" | "follow" | "find" | "choice" | "end" | "noSession" | "night" | "cast";
 type SlotItem = AssembledSession["slots"][number]["items"][number];
@@ -79,7 +79,6 @@ export default function KidQDesktop() {
   const [current, setCurrent] = useState(0);
   const [completedSeconds, setCompletedSeconds] = useState(0);
   const [paused, setPaused] = useState(false);
-  const [followCatches, setFollowCatches] = useState(0);
   const [breakSlotIndex, setBreakSlotIndex] = useState<number | null>(null);
   const [timedBreak, setTimedBreak] = useState<ParentActivity | null>(null);
   const [activities, setActivities] = useState<ParentActivity[]>([]);
@@ -186,7 +185,7 @@ export default function KidQDesktop() {
     }
   }
 
-  const startWatching = (index = current) => { setCurrent(index); setPaused(false); setTimedBreak(null); setHandledBreakpoints(new Set()); setFollowCatches(0); setStage("watching"); };
+  const startWatching = (index = current) => { setCurrent(index); setPaused(false); setTimedBreak(null); setHandledBreakpoints(new Set()); setStage("watching"); };
 
   function checkTimedBreakpoint(position: number) {
     const entry = queue[current];
@@ -225,7 +224,6 @@ export default function KidQDesktop() {
   const breakActivity = breakSlot?.break_activity ?? null;
 
   const beginBreak = () => {
-    setFollowCatches(0);
     setStage(activityScreen(breakActivity));
   };
 
@@ -235,7 +233,7 @@ export default function KidQDesktop() {
   if (stage === "playtime") return <BreakScreen title={breakActivity?.title ?? "Time to play!"} body={breakActivity?.instruction ?? "The sun is coming down for a little break away from the screen."} action="Start the break" onClick={beginBreak} />;
   if (stage === "timedBreak") return <BreakScreen title={timedBreak?.title ?? "Time for an activity"} body={timedBreak?.instruction ?? "Take a little break away from the screen."} action="Resume video" onClick={() => { setTimedBreak(null); setStage("watching"); playerRef.current?.play(); }} />;
   if (stage === "breathing") return <BreathingBreak onComplete={() => setStage("choice")} />;
-  if (stage === "follow") return <BreakScreen title={followCatches < 3 ? "Follow the sun!" : "You did it! ✨"} body={followCatches < 3 ? `Follow the sun with your eyes and catch it · ${followCatches} of 3` : "A gentle break is complete."} action={followCatches < 3 ? "Catch the sun" : "Continue"} onClick={() => followCatches < 3 ? setFollowCatches((value) => value + 1) : setStage("choice")} />;
+  if (stage === "follow") return <FollowSunBreak onComplete={() => setStage("choice")} />;
   if (stage === "find") return <FindColoursBreak onComplete={() => setStage("choice")} />;
   if (stage === "choice") return <ChoiceScreen childName={childName} hasNext={current < queue.length} onNext={() => current >= queue.length ? setStage("end") : startWatching(current)} onPick={(index) => startWatching(index)} items={queue} />;
   if (stage === "end") return <EndScreen childName={childName} onNight={() => setStage("night")} />;
