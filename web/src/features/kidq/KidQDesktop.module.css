@@ -48,16 +48,21 @@
 .playerArt { display: flex; flex-direction: column; align-items: center; color: #faf4e8; text-shadow: 0 2px 5px #2e2a2488; }
 .playerArt span { font: 700 27px "Baloo 2"; }
 .playerArt small { font-size: 16px; }
-.pause { position: absolute; right: 14px; top: 14px; width: 44px; height: 44px; border: 0; border-radius: 50%; background: #faf4e8eb; color: #16594f; display: grid; place-items: center; cursor: pointer; font-weight: 800; }
+.pause { position: absolute; right: 14px; top: 14px; width: 44px; height: 44px; border: 0; border-radius: 50%; background: #faf4e8eb; color: #16594f; display: grid; place-items: center; cursor: pointer; font-weight: 800; z-index: 2; }
+.pause:focus-visible { outline: 3px solid #16594f; outline-offset: 2px; }
+.expand { position: absolute; right: 66px; top: 14px; width: 44px; height: 44px; border: 0; border-radius: 50%; background: #faf4e8eb; color: #16594f; display: grid; place-items: center; cursor: pointer; z-index: 2; }
+.expand:focus-visible { outline: 3px solid #16594f; outline-offset: 2px; }
 .eq { position: absolute; left: 16px; bottom: 12px; display: flex; gap: 3px; align-items: flex-end; height: 16px; }
-.eq i { width: 4px; border-radius: 2px; background: #16594f; display: block; }
-.eq i:nth-child(1) { height: 15px; } .eq i:nth-child(2) { height: 8px; } .eq i:nth-child(3) { height: 12px; }
+.eq i { width: 4px; height: 7px; border-radius: 2px; background: #16594f; display: block; animation: eqBounce 1s ease-in-out infinite; }
+.eq i:nth-child(2) { animation-delay: .2s; } .eq i:nth-child(3) { animation-delay: .45s; }
+@keyframes eqBounce { 0%, 100% { height: 7px; } 50% { height: 15px; } }
+.playerPaused .eq i { animation-play-state: paused; }
 .dayBar { position: relative; width: 100%; max-width: 480px; height: 12px; border-radius: 99px; background: linear-gradient(90deg, #f7ebd2 0%, #ffc64d 34%, #c9b8e8 68%, #2b2955 100%); }
 .dayBar span { position: absolute; top: 0; right: 0; bottom: 0; border-radius: 0 99px 99px 0; background: #faf4e8c7; }
 .dayBar b { position: absolute; top: 50%; width: 20px; height: 20px; transform: translate(-50%, -50%); border-radius: 50%; background: #ffc64d; border: 3px solid #fff; box-shadow: 0 2px 6px #2e2a244d; }
 .now { width: 100%; text-align: center; }.now h3 { font: 700 23px/1.2 "Baloo 2"; margin: 0; }.now p { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 6px 0 0; color: #6b6459; font-size: 15px; }.now strong { color: #2e2a24; }.heart { width: 19px; height: 19px; }
 .upNext { margin: 0; color: #6b6459; font-size: 13px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
-.queue { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; width: min(760px, 100%); }.queueCard, .endCard { width: 100%; min-width: 0; min-height: 86px; height: auto; padding: 12px 10px; border-radius: 14px; border: 2px solid #2e2a241a; background: linear-gradient(135deg, #d8c89c, #b9a574); display: grid; place-items: center; text-align: center; overflow-wrap: anywhere; color: #faf4e8; font: 700 16px/1.15 "Baloo 2"; cursor: pointer; }.queueCard:hover { outline: 3px solid #ffc64d; }.endCard { background: #2b2955; border: 2px dashed #c9b8e8; cursor: default; }
+.queue { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; width: min(760px, 100%); }.queueCardWrap { display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 0; }.queueCard, .endCard { width: 100%; min-width: 0; min-height: 86px; height: auto; aspect-ratio: 16 / 9; padding: 0; border-radius: 14px; border: 2px solid #2e2a241a; background: linear-gradient(135deg, #d8c89c, #b9a574); overflow: hidden; display: grid; place-items: center; text-align: center; color: #faf4e8; font: 700 16px/1.15 "Baloo 2"; cursor: pointer; }.queueCard span { padding: 12px 10px; overflow-wrap: anywhere; }.queueThumb { width: 100%; height: 100%; object-fit: cover; display: block; }.queueCard:hover { outline: 3px solid #ffc64d; }.endCard { aspect-ratio: auto; padding: 12px 10px; background: #2b2955; border: 2px dashed #c9b8e8; cursor: default; }.queueLabel { margin: 0; font: 700 13px "Baloo 2"; color: #6b6459; max-width: 100%; overflow-wrap: anywhere; text-align: center; }.queueLabelNow { color: #16594f; }.queueWatched { opacity: .55; }
 .footer { max-width: 1280px; margin: 18px auto 0; display: flex; justify-content: space-between; align-items: center; color: #6b6459; font-size: 13px; }.footer button { padding: 5px 12px; }
 @keyframes pulse { 0%, 100% { transform: scale(1); opacity: .85; } 50% { transform: scale(1.08); opacity: 1; } }
 @media (max-width: 900px) { .page { padding: 24px 14px 50px; }.productBar { flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }.headerActions { width: 100%; justify-content: flex-end; margin-left: 0; }.navButton { min-height: 36px; padding: 7px 12px; }.pageHeader { align-items: flex-start; flex-direction: column; margin-bottom: 24px; }.controls { flex-wrap: wrap; }.world { height: 700px; border-radius: 10px; }.timeLeft { top: 95px; right: 24px; }.childHeader { top: 18px; left: 26px; }.content { top: 156px; padding: 18px 24px 20px; }.player, .dayBar { max-width: 420px; }.sun { width: 70px; height: 70px; }.footer { font-size: 12px; } }
@@ -85,7 +90,12 @@
 .dayBar { overflow: visible; }
 .progressSun { position: absolute; top: 50%; width: 30px; height: 30px; transform: translate(-50%, -50%); border: 0; background: transparent; padding: 0; z-index: 2; }
 .progressSun svg { width: 100%; height: 100%; display: block; filter: drop-shadow(0 2px 4px #2e2a244d); }
-.queueCurrent { outline: 3px solid #ffc64d; outline-offset: 2px; }
+.queueCurrent { outline: 3px solid #ffc64d; outline-offset: 2px; cursor: default; }
+/* Gap 2 (player pause/expand overlay): ported from design/prototype/kidq-desktop-app.css's
+   #screen-watching.wide tier, simplified to this layout's flat (non-container-query) sizing —
+   the expand button's job (a visibly bigger player) rather than the prototype's full
+   multi-tier px cascade, which doesn't map onto this file's fixed max-width scheme. */
+.world.wide .player, .world.wide .dayBar { max-width: 760px; }
 .sessionActions { display: flex; gap: 10px; }
 .sessionActions button { border: 0; border-radius: 999px; background: #1f7a6d; color: #fff; padding: 9px 14px; font: 700 13px Mukta; cursor: pointer; }
 .sessionActions button + button { background: transparent; color: #16594f; text-decoration: underline; }
