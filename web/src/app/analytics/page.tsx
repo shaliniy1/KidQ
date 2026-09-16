@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
 import { loadAnalytics, loadChildren, usingSampleData } from "@/services/analytics";
 import type { ChildSummary, ParentAnalytics, Period } from "@/types/analytics";
+import { SunFaceLogo } from "@/components/SunFaceLogo";
 import styles from "./analytics.module.css";
 
 const PERIODS: { key: Period; label: string }[] = [
@@ -69,7 +70,7 @@ export default function AnalyticsPage() {
     <main className={styles.page}>
       <header className={styles.header}>
         <Link className={styles.brand} href="/" aria-label="KidQ home">
-          <span className={styles.brandMark}>Q</span>
+          <span className={styles.brandMark}><SunFaceLogo size={24} /></span>
           <span>KidQ</span>
         </Link>
         {usingSampleData && (

@@ -43,13 +43,12 @@
   height: 34px;
   display: grid;
   place-items: center;
-  color: #f7f4ec;
-  background: var(--coral);
-  border-radius: 50% 50% 46% 54%;
-  box-shadow: 0 4px 0 #bd4d36;
-  font-family: Georgia, serif;
-  font-size: 20px;
-  transform: rotate(-8deg);
+  /* was coral — a warm orange sits too close in value to the sun disc's own
+     yellow (~2:1 contrast) to read clearly; teal (matching the login mark's
+     badge) gives the sun-face room to read and keeps both marks looking like
+     the same mark. */
+  background: #1f7a6d;
+  border-radius: 50%;
 }
 
 .sample {

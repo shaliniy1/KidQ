@@ -13,6 +13,7 @@ import { getLibrary, removeFromLibrary, submitVideo } from "@/services/my-videos
 import { getCurationSettings, saveCurationSettings, type CurationSettings } from "@/services/curation-settings";
 import { getLocalPreferences, saveLocalPreferences, type LocalPreferences } from "@/services/local-preferences";
 import { getParentAnalytics, type ParentAnalytics, type Period } from "@/services/parent-analytics";
+import { SunFaceLogo } from "@/components/SunFaceLogo";
 
 type Screen = "login" | "home" | "profile" | "addChild" | "confirmation" | "preferences" | "interests" | "content" | "regulation" | "screentime" | "voice" | "guided" | "recommendation" | "playlist" | "addContent" | "planReady" | "preview" | "session" | "complete" | "details" | "insights" | "library" | "add" | "settings";
 type Child = { id: string; name: string; age: string; color: string; duration: number };
@@ -354,7 +355,7 @@ function Login({ google, firstTime }: { google: () => void; firstTime: () => voi
   const [consent, setConsent] = useState(false);
   const continueFromConsent = () => { if (!consent) return; (entry === "google" ? google : firstTime)(); };
   return <div className={`${styles.login} ${entry ? styles.loginConsent : ""}`}>
-    <div className={styles.loginMark}>Q</div>
+    <div className={styles.loginMark}><SunFaceLogo size={44} /></div>
     <Header title="Welcome to KidQ" sub="Sign in to continue." />
     <Button onClick={() => { setEntry("google"); setConsent(false); }}>Continue with Google</Button>
     <Button secondary onClick={() => { setEntry("signup"); setConsent(false); }}>First-time parent setup</Button>
