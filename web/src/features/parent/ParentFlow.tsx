@@ -316,7 +316,7 @@ export default function ParentFlow() {
 
     <div className={styles.shellFrame}>
     {screen !== "login" && <aside className={styles.desktopSidebar} aria-label="Parent workspace navigation"><div className={styles.sidebarTitle}>KidQ</div><div className={styles.sidebarLabel}>Workspace</div><button onClick={() => navigateScreen("home")}>▶ <span>Start a session</span></button><button onClick={() => navigateScreen("addChild")}>＋ <span>Add a child</span></button><button onClick={loadRecommendations}>✦ <span>Recommendations</span></button><button onClick={() => navigateScreen("insights")}>◔ <span>Analytics</span></button><button onClick={loadLibrary}>▣ <span>My videos</span></button><button onClick={() => navigateScreen("settings")}>☼ <span>Preferences</span></button></aside>}
-    <div className={styles.shell}>
+    <div className={screen === "login" ? `${styles.shell} ${styles.shellLogin}` : styles.shell}>
       {screen === "login" && <Login google={handleGoogleSignIn} firstTime={handleFirstTimeSignIn} />}
       {screen === "home" && child && <Home child={child} active={active} children={children} duration={duration} timeMode={timeMode} setTimeMode={setTimeMode} chooseChild={chooseChild} setDuration={setDuration} getRecommendations={loadRecommendations} setScreen={navigateScreen} parentName={parentName} />}
       {screen === "profile" && <Profile name={parentName} setName={setParentName} nickname={draftNickname} setNickname={setDraftNickname} ageBand={draftAgeBand} setAgeBand={setDraftAgeBand} next={handleOnboardingSubmit} disabled={busy || !parentName.trim() || !draftNickname.trim()} back={() => navigateScreen("home")} />}
