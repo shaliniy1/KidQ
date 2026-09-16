@@ -262,3 +262,7 @@ th { color: var(--ink-soft); font-size: 12px; letter-spacing: 0.04em; text-trans
 .analytics-bar-track > i { width: 100%; }
 .analytics-bar-label { color: var(--ink-soft); font-size: 11px; white-space: nowrap; }
 .analytics-row .bar { margin-top: 6px; }
+
+/* Add Content: items just added, with their studio status and KidQ score */
+.added-items { list-style: none; margin: 4px 0 0; }
+.added-item { align-items: center; }
