@@ -3,7 +3,7 @@
 // KidQ story reader: a picture book one page at a time, with KidQ's own big page buttons that
 // work with touch, a keyboard or a TV remote (arrows turn pages, Back goes back). There are no
 // links out; the book's full credits follow the last page, as its license requires.
-import { useCallback, useState, type CSSProperties, type KeyboardEvent } from "react";
+import { useCallback, useEffect, useState, type CSSProperties, type KeyboardEvent } from "react";
 import { comfortStyles, type VisualComfort } from "./comfort";
 
 export interface StoryPage {
@@ -23,15 +23,24 @@ export interface KidQStoryReaderProps {
   /** Visual Comfort Mode for the illustrations: a warm, softer picture. Off by default. */
   comfort?: VisualComfort;
   className?: string;
+  /** Open the reader above the current screen without changing the underlying route. */
+  popup?: boolean;
+  onClose?: () => void;
 }
 
 const BACK_KEYS = new Set(["Escape", "Backspace", "BrowserBack", "GoBack"]);
 const BACK_KEY_CODES = new Set([10009, 461]);
 
-export function KidQStoryReader({ title, pages, credits, attribution, onFinished, comfort: comfortMode, className }: KidQStoryReaderProps) {
+export function KidQStoryReader({ title, pages, credits, attribution, onFinished, comfort: comfortMode, className, popup = false, onClose }: KidQStoryReaderProps) {
   const comfort = comfortStyles(comfortMode);
+  // Kid sessions show a launcher first. The child explicitly opens the story;
+  // other readers remain inline unless popup is requested by the caller.
+  const isKidStory = Boolean(onFinished) && !popup;
   // 0 … pages.length - 1 are the story pages; pages.length is "The end" with the credits.
   const [index, setIndex] = useState(0);
+  const [popupOpen, setPopupOpen] = useState(!isKidStory);
+  const isPopup = popup || (isKidStory && popupOpen);
+  useEffect(() => { setPopupOpen(!isKidStory); }, [isKidStory, title]);
   const atEnd = index >= pages.length;
   const page = pages[index];
 
@@ -51,10 +60,20 @@ export function KidQStoryReader({ title, pages, credits, attribution, onFinished
     event.preventDefault();
   };
 
+  if (isKidStory && !popupOpen) {
+    return <div style={styles.launcher}>
+      <p style={styles.launcherTitle}>{title}</p>
+      <button type="button" data-control style={styles.openButton} onClick={() => setPopupOpen(true)}>Open story</button>
+    </div>;
+  }
+  if (popup && !popupOpen) return null;
+
   return (
-    <div className={`kidq-story ${className ?? ""}`} style={styles.root} onKeyDown={onKeyDown}>
+    <div className={`kidq-story ${className ?? ""}`} style={isPopup ? styles.popupRoot : styles.root} onKeyDown={onKeyDown}>
       <style>{READER_CSS}</style>
-      <div style={styles.frame} aria-live="polite">
+      <div style={isPopup ? styles.popupCard : undefined}>
+        {isPopup ? <button type="button" data-control style={styles.close} onClick={() => { setPopupOpen(false); onClose?.(); }} aria-label="Close story">×</button> : null}
+        <div style={styles.frame} aria-live="polite">
         {atEnd || !page ? (
           <div style={styles.end}>
             <p style={styles.endTitle}>The end</p>
@@ -80,7 +99,7 @@ export function KidQStoryReader({ title, pages, credits, attribution, onFinished
             <p style={styles.text}>{page.text}</p>
           </>
         )}
-      </div>
+        </div>
       <div style={styles.controls}>
         <button type="button" data-control style={styles.button} onClick={() => go(index - 1)} disabled={index === 0} aria-label="Previous page">
           ◀
@@ -91,6 +110,7 @@ export function KidQStoryReader({ title, pages, credits, attribution, onFinished
         </button>
       </div>
       {attribution?.text ? <p style={styles.credit}>{attribution.text}</p> : null}
+      </div>
     </div>
   );
 }
@@ -102,6 +122,12 @@ const READER_CSS = `
 
 const styles: Record<string, CSSProperties> = {
   root: { display: "grid", gap: 10, width: "100%" },
+  launcher: { display: "grid", gap: 12, placeItems: "center", width: "100%", padding: 24, borderRadius: 16, background: "#fffdf8", border: "1px solid rgba(36,53,47,.15)", textAlign: "center" },
+  launcherTitle: { margin: 0, color: "#24352f", fontSize: 22, fontWeight: 800 },
+  openButton: { minHeight: 52, padding: "0 26px", borderRadius: 999, border: 0, background: "#dd5b3c", color: "#fffaf0", fontSize: 18, fontWeight: 800, cursor: "pointer" },
+  popupRoot: { position: "fixed", inset: 0, zIndex: 30, display: "grid", placeItems: "center", padding: 20, overflow: "auto", background: "rgba(46,42,36,.62)" },
+  popupCard: { position: "relative", width: "min(760px, 100%)", maxHeight: "calc(100vh - 40px)", overflow: "auto", padding: 16, borderRadius: 24, background: "#fff8f0", boxShadow: "0 24px 60px rgba(46,42,36,.35)" },
+  close: { position: "absolute", top: 14, right: 14, zIndex: 2, width: 42, height: 42, border: 0, borderRadius: 999, background: "#fffdf8", color: "#24352f", fontSize: 28, lineHeight: 1, cursor: "pointer" },
   frame: {
     display: "grid",
     alignContent: "start",

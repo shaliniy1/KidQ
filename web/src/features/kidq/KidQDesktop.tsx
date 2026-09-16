@@ -264,6 +264,7 @@ export default function KidQDesktop() {
   const [session, setSession] = useState<AssembledSession | null>(null);
   const [current, setCurrent] = useState(0);
   const [completedSeconds, setCompletedSeconds] = useState(0);
+  const [currentPlaybackSeconds, setCurrentPlaybackSeconds] = useState(0);
   const [paused, setPaused] = useState(false);
   const [breaths, setBreaths] = useState(0);
   const [followCatches, setFollowCatches] = useState(0);
@@ -302,7 +303,7 @@ export default function KidQDesktop() {
     return () => { cancelled = true; };
   }, [stage, isStorybook, currentEntry]);
 
-  const video = currentEntry
+  const video = currentEntry?.item?.card
     ? {
         title: currentEntry.item.card.title,
         minutes: currentEntry.item.card.duration_seconds ? Math.round(currentEntry.item.card.duration_seconds / 60) : 0,
@@ -311,14 +312,16 @@ export default function KidQDesktop() {
       }
     : null;
   const plannedMinutes = session ? Math.round(session.planned_seconds / 60) : 30;
-  const progress = session && session.planned_seconds > 0 ? Math.min(100, Math.round((completedSeconds / session.planned_seconds) * 100)) : 0;
-  const remaining = Math.max(1, Math.ceil((session ? session.planned_seconds - completedSeconds : plannedMinutes * 60) / 60));
+  const watchedSeconds = completedSeconds + currentPlaybackSeconds;
+  const progress = session && session.planned_seconds > 0 ? Math.min(100, Math.round((watchedSeconds / session.planned_seconds) * 100)) : 0;
+  const remaining = Math.max(1, Math.ceil((session ? session.planned_seconds - watchedSeconds : plannedMinutes * 60) / 60));
   const nextVideos = useMemo(() => queue.filter((_, index) => index !== current), [queue, current]);
 
   async function chooseChild(child: ChildProfile, forceNoSession = false) {
     setChildName(child.nickname);
     setActiveChild(child);
     setCompletedSeconds(0);
+    setCurrentPlaybackSeconds(0);
     setBreakSlotIndex(null);
     if (forceNoSession) {
       setSession(null);
@@ -329,7 +332,8 @@ export default function KidQDesktop() {
     try {
       const [live, library] = await Promise.all([getCurrentSession(child.id), getLibrary(child.id).catch(() => [])]);
       setLibraryItems(library);
-      setSelectedLibraryIds(new Set(library.map((item) => item.card.id)));
+      // The child chooses deliberately; do not preselect the whole family queue.
+      setSelectedLibraryIds(new Set());
       if (live && live.slots.some((slot) => slot.items.length > 0)) {
         setSession(live);
         setCurrent(0);
@@ -348,11 +352,16 @@ export default function KidQDesktop() {
     if (!activeChild || selectedLibraryIds.size === 0) return;
     try {
       const started = await startSession(activeChild.id, 30, "AUTO");
-      setSession(started);
+      const selectedSlots = started.slots
+        .map((slot) => ({ ...slot, items: slot.items.filter((item) => selectedLibraryIds.has(item.card.id)) }))
+        .filter((slot) => slot.items.length > 0);
+      setSession({ ...started, slots: selectedSlots });
       setCurrent(0);
       setCompletedSeconds(0);
+      setCurrentPlaybackSeconds(0);
       setBreakSlotIndex(null);
-      setStage("sunrise");
+      // Start the chosen item directly so the child sees the real player.
+      setStage("watching");
     } catch {
       // Keep the picker visible when the parent queue cannot be started yet.
     }
@@ -368,6 +377,7 @@ export default function KidQDesktop() {
       setSession(replayed);
       setCurrent(0);
       setCompletedSeconds(0);
+      setCurrentPlaybackSeconds(0);
       setBreakSlotIndex(null);
       setStage("sunrise");
     } catch {
@@ -375,12 +385,13 @@ export default function KidQDesktop() {
     }
   }
 
-  const startWatching = (index = current) => { setCurrent(index); setPaused(false); setTimedBreak(null); setHandledBreakpoints(new Set()); setBreaths(0); setFollowCatches(0); setFound(0); setStage("watching"); };
+  const startWatching = (index = current) => { setCurrent(index); setCurrentPlaybackSeconds(0); setPaused(false); setTimedBreak(null); setHandledBreakpoints(new Set()); setBreaths(0); setFollowCatches(0); setFound(0); setStage("watching"); };
 
   function checkTimedBreakpoint(position: number) {
+    setCurrentPlaybackSeconds(position);
     const entry = queue[current];
     if (!entry || stage !== "watching") return;
-    const point = entry.item.activity_breakpoints.find((candidate) => candidate.timestamp_seconds <= position && !handledBreakpoints.has(candidate.timestamp_seconds));
+    const point = (entry.item.activity_breakpoints ?? []).find((candidate) => candidate.timestamp_seconds <= position && !handledBreakpoints.has(candidate.timestamp_seconds));
     if (!point) return;
     const activity = activities.find((candidate) => candidate.id === point.activity_id);
     if (!activity) return;
@@ -396,6 +407,7 @@ export default function KidQDesktop() {
     const durationSeconds = entry.item.card.duration_seconds ?? 0;
     recordItemOutcome(session.id, entry.item.id, { outcome: "COMPLETED", watched_seconds: durationSeconds }).catch(() => undefined);
     setCompletedSeconds((value) => value + durationSeconds);
+    setCurrentPlaybackSeconds(0);
 
     const isLastOverall = current >= queue.length - 1;
     if (isLastOverall) {

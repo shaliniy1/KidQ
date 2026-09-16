@@ -1,6 +1,6 @@
 // KidQ recommendation engine (RANK_V2, docs/recommendation/README.md "Recommendation engine"):
 // filter admin-approved content by the child profile, rank it by relevance, KidQ score, learning
-// value and fit, then mix it so no two items of one category sit side by side.
+// value and fit, then mix it so no two items of one category — or one content type — sit side by side.
 // Pure: no I/O. Popularity (views, likes, subscribers, trending) is never an input.
 
 export interface ChildProfileInput {
@@ -183,10 +183,18 @@ function explain(candidate: CandidateInput, matched: Matched, coldStart: boolean
 
 /**
  * Variety: walks the ranked list and takes the best item that isn't the same category as the one
- * before it, and whose creator hasn't filled their share of the top window. Nothing is dropped;
- * when no item qualifies, the best remaining one goes next.
+ * before it (preferring one that also isn't the same content type — a run of all-STORYBOOK or
+ * all-VIDEO is as repetitive as a run of one category, even across different topics) and whose
+ * creator hasn't filled their share of the top window. Content type is a preference, not a hard
+ * requirement: most pools are all one type, and category variety must not give way just because
+ * type variety is impossible. Nothing is dropped; when nothing qualifies at all, the best
+ * remaining one goes next.
  */
-function arrange<T extends { id: string; creator: string | null; category: string | null; parentCategories?: string[] }>(items: T[], maxPerCreator: number, window: number): T[] {
+function arrange<T extends { id: string; creator: string | null; category: string | null; parentCategories?: string[]; contentType: string }>(
+  items: T[],
+  maxPerCreator: number,
+  window: number,
+): T[] {
   // Stories then Storybooks is still two in a row for a parent: rotate by the parent group.
   const rotationKey = (item: T) => item.parentCategories?.[0] ?? item.category;
   const remaining = [...items];
@@ -194,9 +202,12 @@ function arrange<T extends { id: string; creator: string | null; category: strin
   const perCreator = new Map<string, number>();
   const creatorOf = (item: T) => item.creator ?? `__unknown:${item.id}`;
   const withinCap = (item: T) => arranged.length >= window || (perCreator.get(creatorOf(item)) ?? 0) < maxPerCreator;
-  const repeats = (item: T) => arranged.length > 0 && rotationKey(arranged[arranged.length - 1]) === rotationKey(item);
+  const sameCategory = (item: T) => arranged.length > 0 && rotationKey(arranged[arranged.length - 1]) === rotationKey(item);
+  const sameType = (item: T) => arranged.length > 0 && arranged[arranged.length - 1].contentType === item.contentType;
   while (remaining.length > 0) {
-    let index = remaining.findIndex((item) => withinCap(item) && !repeats(item));
+    // Best fit first, loosening one rule at a time: only the last still-unsatisfiable rule ever bites.
+    let index = remaining.findIndex((item) => withinCap(item) && !sameCategory(item) && !sameType(item));
+    if (index < 0) index = remaining.findIndex((item) => withinCap(item) && !sameCategory(item));
     if (index < 0) index = remaining.findIndex(withinCap);
     if (index < 0) index = 0;
     const [item] = remaining.splice(index, 1);

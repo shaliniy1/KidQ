@@ -5,8 +5,10 @@ import { useParams, useRouter } from "next/navigation";
 import { useSession } from "@/hooks/useSession";
 import { getChildren } from "@/services/child-profile";
 import { addToLibrary, getRecommendations, type Recommendation } from "@/services/recommendations";
+import { getStory, type Story } from "@/services/story";
 import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
+import { KidQStoryReader } from "@kidq/player";
 
 const AGE_BAND_LABELS: Record<string, string> = { "0_2": "0–2", "2_3": "2–3", "3_4": "3–4", "4_5": "4–5", "5_6": "5–6" };
 
@@ -31,6 +33,7 @@ export default function RecommendationsPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [ageLabel, setAgeLabel] = useState("your child");
   const [previewId, setPreviewId] = useState<string | null>(null);
+  const [storyPreview, setStoryPreview] = useState<Story | null>(null);
 
   useEffect(() => {
     if (status === "anon") router.replace("/login");
@@ -68,6 +71,17 @@ export default function RecommendationsPage() {
       // Keep the design usable when browser storage is unavailable.
     }
   }, [childId]);
+
+  useEffect(() => {
+    const item = recommendations.find((rec) => rec.card.id === previewId)?.card;
+    if (!item || item.content_type !== "STORYBOOK") {
+      setStoryPreview(null);
+      return;
+    }
+    let cancelled = false;
+    getStory(item.id).then((result) => { if (!cancelled) setStoryPreview(result); }).catch(() => { if (!cancelled) setStoryPreview(null); });
+    return () => { cancelled = true; };
+  }, [previewId, recommendations]);
 
   function toggleSelected(contentId: string) {
     setSelected((current) => {
@@ -219,7 +233,7 @@ export default function RecommendationsPage() {
                 </div>
               )}
               <button
-                onClick={(event) => { event.stopPropagation(); setPreviewId(card.id); }}
+                onClick={(event) => { event.stopPropagation(); setStoryPreview(null); setPreviewId(card.id); }}
                 style={{ alignSelf: "flex-start", background: "none", border: "none", color: "var(--kq-teal)", cursor: "pointer", textDecoration: "underline" }}
               >
                 Preview content
@@ -247,7 +261,7 @@ export default function RecommendationsPage() {
         const item = recommendations.find((rec) => rec.card.id === previewId)?.card;
         if (!item) return null;
         const previewUrl = item.player?.provider === "youtube" ? item.player.embed_url : item.player?.provider === "html5" ? item.player.media_url : null;
-        return <div role="dialog" aria-modal="true" aria-label={`${item.title} preview`} style={{ position: "fixed", inset: 0, zIndex: 20, display: "grid", placeItems: "center", padding: 24, background: "rgba(46,36,24,.55)" }}><Card style={{ maxWidth: 720, width: "100%", display: "flex", flexDirection: "column", gap: 14 }}><h2 className="kq-heading" style={{ color: "var(--kq-charcoal)" }}>{item.title}</h2><div style={{ aspectRatio: "16 / 9", background: "var(--kq-charcoal)", borderRadius: "var(--kq-radius-control)", overflow: "hidden" }}>{previewUrl ? <iframe title={`${item.title} preview`} src={previewUrl} style={{ width: "100%", height: "100%", border: 0 }} allow="autoplay; encrypted-media; picture-in-picture" /> : <p style={{ color: "var(--kq-white)", padding: 24 }}>Preview is not available for this item yet.</p>}</div><Button variant="secondary" onClick={() => setPreviewId(null)}>Close preview</Button></Card></div>;
+        return <div role="dialog" aria-modal="true" aria-label={`${item.title} preview`} style={{ position: "fixed", inset: 0, zIndex: 20, display: "grid", placeItems: "center", padding: 24, background: "rgba(46,36,24,.55)" }}><Card style={{ maxWidth: 760, width: "100%", maxHeight: "92vh", overflow: "auto", display: "flex", flexDirection: "column", gap: 14 }}><h2 className="kq-heading" style={{ color: "var(--kq-charcoal)" }}>{item.title}</h2>{item.content_type === "STORYBOOK" ? storyPreview ? <KidQStoryReader title={storyPreview.title} pages={storyPreview.pages} credits={storyPreview.credits} attribution={storyPreview.attribution} /> : <p style={{ color: "var(--kq-text-secondary)" }}>Opening the story…</p> : <div style={{ aspectRatio: "16 / 9", background: "var(--kq-charcoal)", borderRadius: "var(--kq-radius-control)", overflow: "hidden" }}>{previewUrl ? <iframe title={`${item.title} preview`} src={previewUrl} style={{ width: "100%", height: "100%", border: 0 }} allow="autoplay; encrypted-media; picture-in-picture" /> : <p style={{ color: "var(--kq-white)", padding: 24 }}>Preview is not available for this item yet.</p>}</div>}<Button variant="secondary" onClick={() => { setPreviewId(null); setStoryPreview(null); }}>Close preview</Button></Card></div>;
       })()}
     </main>
   );

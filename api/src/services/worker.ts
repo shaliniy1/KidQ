@@ -64,6 +64,12 @@ async function processJob(job: Job, log: (message: string) => void = () => undef
       log(`done ${job.type} ${job.aggregateId}`);
     }
   } catch (error) {
+    if (job.type === "ANALYZE") {
+      console.error("[diag] typeof:", typeof error, "instanceof Error:", error instanceof Error);
+      console.error("[diag] keys:", error && typeof error === "object" ? Object.keys(error) : null);
+      console.error("[diag] stack:", error && typeof error === "object" ? (error as { stack?: unknown }).stack : undefined);
+      console.error("[diag] raw:", error);
+    }
     const retryable = error instanceof HttpError ? error.retryable : true;
     await failJob(pool, job, error, retryable);
     const finalFailure = !retryable || job.attemptCount >= MAX_ATTEMPTS;

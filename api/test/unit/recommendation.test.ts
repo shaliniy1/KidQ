@@ -124,6 +124,16 @@ describe("recommend", () => {
     expect(ids(profile, [...books, ...science])).toEqual([books[0].id, science[0].id, books[1].id, science[1].id, books[2].id]);
   });
 
+  it("never shows two items of one content type side by side even when their categories differ", () => {
+    const stories = [
+      candidate({ contentType: "STORYBOOK", category: "storybooks", kidqScore: 95 }),
+      candidate({ contentType: "STORYBOOK", category: "animals", kidqScore: 94 }),
+      candidate({ contentType: "STORYBOOK", category: "science", kidqScore: 93 }),
+    ];
+    const videos = [candidate({ contentType: "VIDEO", category: "music_rhymes", kidqScore: 80 }), candidate({ contentType: "VIDEO", category: "art", kidqScore: 79 })];
+    expect(ids(profile, [...stories, ...videos])).toEqual([stories[0].id, videos[0].id, stories[1].id, videos[1].id, stories[2].id]);
+  });
+
   it("mixes categories in the default feed of a child whose parent gave only an age", () => {
     // A 4–5 band child: no interests, SURPRISE, and the band's default development goals.
     const ageOnly: ChildProfileInput = { ...profile, ageYears: 4.5, interests: [], developmentGoals: ["cognitive", "creativity", "problem_solving"], regulationGoals: [] };
