@@ -256,7 +256,10 @@ function sunArcPosition(p: number): { left: string; top: string } {
   return { left: `${(bx / 1000) * 100}%`, top: `${(by / 220) * 100}%` };
 }
 
-function activityScreen(activity: BreakActivity): "breathing" | "follow" | "find" | "count" | "flowerCandle" | "tree" | "playtime" {
+// Accepts either shape of "activity" the app has (the session's own
+// break_activity, or a parent-authored mid-video ParentActivity) — both carry
+// a key/title, which is all this needs to resolve to a live game.
+function activityScreen(activity: { key?: string | null; title?: string | null } | null | undefined): "breathing" | "follow" | "find" | "count" | "flowerCandle" | "tree" | "playtime" {
   const searchable = `${activity?.key ?? ""} ${activity?.title ?? ""}`.toLowerCase();
   const definition = ACTIVITY_DEFINITIONS.find((item) =>
     item.live && [item.key, ...item.aliases].some((alias) => searchable.includes(alias)),
@@ -411,6 +414,8 @@ export default function KidQDesktop() {
 
   const startWatching = (index = current) => { setCurrent(index); setCurrentPlaybackSeconds(0); setPaused(false); setTimedBreak(null); setHandledBreakpoints(new Set()); setStage("watching"); };
 
+  const resumeFromTimedBreak = () => { setTimedBreak(null); setStage("watching"); playerRef.current?.play(); };
+
   function checkTimedBreakpoint(position: number) {
     setCurrentPlaybackSeconds(position);
     const entry = queue[current];
@@ -422,7 +427,15 @@ export default function KidQDesktop() {
     setHandledBreakpoints((currentPoints) => new Set(currentPoints).add(point.timestamp_seconds));
     setTimedBreak(activity);
     playerRef.current?.pause();
-    setStage("timedBreak");
+    // Route through the same live-game catalogue the between-video breaks use
+    // (find/breathe/follow/count/flowerCandle/tree), so a mid-video breakpoint
+    // shows the real interactive game instead of a static "Resume video" card.
+    // Activities that aren't one of those 6 yet (activityScreen's "playtime"
+    // fallback) keep the old generic screen — "playtime" itself is the
+    // between-video pre-break stage and has different resume semantics, so it
+    // would be wrong to land there from a mid-video breakpoint.
+    const resolved = activityScreen(activity);
+    setStage(resolved === "playtime" ? "timedBreak" : resolved);
   }
 
   async function finishVideo() {
@@ -458,13 +471,18 @@ export default function KidQDesktop() {
   if (stage === "library") return <LibraryPicker childName={childName} items={libraryItems} selected={selectedLibraryIds} toggle={(id) => setSelectedLibraryIds((current) => { const next = new Set(current); if (next.has(id)) next.delete(id); else next.add(id); return next; })} start={startSelectedLibrarySession} onBack={() => setStage("profile")} />;
   if (stage === "sunrise") return <Shell label={`${childName}'s session`}><section className={styles.sunriseScreen}><div className={styles.sunriseSky}><span className={styles.sunriseStars} /><div className={styles.sunriseCenter}><h1>Hi,<br />{childName}!</h1><button className={styles.sunButton} onClick={() => { playJingle(); startWatching(0); }} aria-label="Start today's watching session"><Sun /></button><p>Tap the sun to start your day</p><p className={styles.heartLine}><Heart /> <b>Mumma &amp; Papa picked {queue.length} video{queue.length === 1 ? "" : "s"}</b> · {plannedMinutes} min</p></div></div></section></Shell>;
   if (stage === "playtime") return <BreakScreen title={breakActivity?.title ?? "Time to play!"} body={breakActivity?.instruction ?? "The sun is coming down for a little break away from the screen."} action="Start the break" onClick={beginBreak} />;
-  if (stage === "timedBreak") return <BreakScreen title={timedBreak?.title ?? "Time for an activity"} body={timedBreak?.instruction ?? "Take a little break away from the screen."} action="Resume video" onClick={() => { setTimedBreak(null); setStage("watching"); playerRef.current?.play(); }} />;
-  if (stage === "breathing") return <BreathingBreak onComplete={() => setStage("choice")} />;
-  if (stage === "follow") return <FollowSunBreak onComplete={() => setStage("choice")} />;
-  if (stage === "find") return <FindColoursBreak onComplete={() => setStage("choice")} />;
-  if (stage === "count") return <CountBreak onDone={() => setStage("choice")} />;
-  if (stage === "flowerCandle") return <FlowerCandleBreak onDone={() => setStage("choice")} />;
-  if (stage === "tree") return <TreePoseBreak onDone={() => setStage("choice")} />;
+  if (stage === "timedBreak") return <BreakScreen title={timedBreak?.title ?? "Time for an activity"} body={timedBreak?.instruction ?? "Take a little break away from the screen."} action="Resume video" onClick={resumeFromTimedBreak} />;
+  // A break game can be entered from two contexts that need different "done"
+  // behavior: between videos (go to the choice screen) or mid-video via a
+  // parent-authored breakpoint (resume the paused video). `timedBreak` is only
+  // ever set for the latter, so it doubles as the context flag here.
+  const onBreakGameDone = timedBreak ? resumeFromTimedBreak : () => setStage("choice");
+  if (stage === "breathing") return <BreathingBreak onComplete={onBreakGameDone} />;
+  if (stage === "follow") return <FollowSunBreak onComplete={onBreakGameDone} />;
+  if (stage === "find") return <FindColoursBreak onComplete={onBreakGameDone} />;
+  if (stage === "count") return <CountBreak onDone={onBreakGameDone} />;
+  if (stage === "flowerCandle") return <FlowerCandleBreak onDone={onBreakGameDone} />;
+  if (stage === "tree") return <TreePoseBreak onDone={onBreakGameDone} />;
   if (stage === "choice") return <ChoiceScreen childName={childName} hasNext={current < queue.length} onNext={() => current >= queue.length ? setStage("end") : startWatching(current)} onPick={(index) => startWatching(index)} items={queue} />;
   if (stage === "end") return <EndScreen childName={childName} onNight={() => setStage("night")} />;
   if (stage === "noSession") return <NoSession onBack={() => setStage("profile")} onReplay={handleReplay} />;
