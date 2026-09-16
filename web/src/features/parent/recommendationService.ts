@@ -9,6 +9,7 @@ export type ParentRecommendation = {
   reason: string;
   guardrails: string[];
   visibility?: "private" | "public_candidate";
+  contentType?: string;
 };
 
 const catalog: ParentRecommendation[] = [
