@@ -208,6 +208,10 @@ export const ingestionRunSchema = z.object({
   records_unchanged: z.number(),
   records_rejected_before_ai: z.number(),
   errors: z.array(z.object({ external_id: nullableString, code: z.string(), message: z.string(), retryable: z.boolean() })),
+  // What this run actually created, so the admin sees each item's studio state and KidQ check right
+  // away instead of a bare count. Scoring is asynchronous — a fresh item's kidq_check is CHECKING
+  // until the AI (or an admin) reviews it, same as everywhere else a card is shown.
+  created_items: z.array(adminContentSchema),
 });
 
 const slider = z.object({ value: z.number().min(0).max(100), evidence: z.string().min(3).max(500) });

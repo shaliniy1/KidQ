@@ -151,6 +151,7 @@ export interface paths {
                                 message: string;
                                 retryable: boolean;
                             }[];
+                            created_items: components["schemas"]["AdminContent"][];
                         };
                     };
                 };
@@ -244,6 +245,7 @@ export interface paths {
                                 message: string;
                                 retryable: boolean;
                             }[];
+                            created_items: components["schemas"]["AdminContent"][];
                         };
                     };
                 };
