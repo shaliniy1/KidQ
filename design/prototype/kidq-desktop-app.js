@@ -10,7 +10,8 @@
   const KidQData = {
     profiles: [
       { id: "aarav", name: "Aarav", color: "#1F7A6D", face: "#FAF4E8" },
-      { id: "meera", name: "Meera", face: "#2E2A24", color: "#C9B8E8" }
+      { id: "meera", name: "Meera", face: "#2E2A24", color: "#C9B8E8" },
+      { id: "kabir", name: "Kabir", color: "#E2705E", face: "#FAF4E8" }
     ],
     // today's parent-picked session per profile; null = no session yet
     sessions: {
@@ -37,7 +38,11 @@
             src: "proposal-src/clip-b.mp4", poster: "proposal-src/thumb-b.jpg" }
         ]
       },
-      meera: null
+      meera: null,
+      // Kabir has no session data at all - he's the night-light demo profile
+      // (seeded done-today, below), never reaches the has/no-session branch
+      // that would read this.
+      kabir: null
     },
     // yesterday's session (per profile) — powers the no-session replay path
     yesterdays: {
@@ -1668,15 +1673,17 @@
     }
   });
 
-  // Demo seed: Meera's profile always starts a fresh page load already
-  // marked done for today, so her avatar on the login screen is a real,
+  // Demo seed: Kabir's profile always starts a fresh page load already
+  // marked done for today, so his avatar on the login screen is a real,
   // repeatable way to reach night-light - "the state a kid finds reopening
   // the app after today's session is already used up" - without having to
   // play a whole session through first. Runs once per load, after the
   // per-profile flag helpers exist; "Reset for a new day" on the night-light
   // screen clears it for the rest of that load same as it would for any
-  // other profile. Aarav is untouched and always starts fresh.
-  markSessionDone("meera");
+  // other profile. Aarav and Meera are untouched - Meera still has her own
+  // no-session/yesterday-replay demo path (KidQData.yesterdays.meera above),
+  // which a done-today flag on her would have made unreachable from login.
+  markSessionDone("kabir");
 
   // Reopening the app always goes back through splash/login now, not
   // straight to night-light - with two profiles on one device, "today's
