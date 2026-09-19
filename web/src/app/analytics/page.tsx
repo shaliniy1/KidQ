@@ -54,12 +54,17 @@ export default function AnalyticsPage() {
   useEffect(() => {
     if (!childId) return;
     let cancelled = false;
-    setData(null);
-    loadAnalytics(childId, period)
-      .then((result) => !cancelled && setData(result))
-      .catch(() => !cancelled && setError("We couldn't load this view right now. Please try again in a moment."));
+    const run = (showLoading: boolean) => {
+      if (showLoading) setData(null);
+      loadAnalytics(childId, period)
+        .then((result) => !cancelled && setData(result))
+        .catch(() => !cancelled && setError("We couldn't load this view right now. Please try again in a moment."));
+    };
+    run(true);
+    const interval = setInterval(() => run(false), 20_000);
     return () => {
       cancelled = true;
+      clearInterval(interval);
     };
   }, [childId, period]);
 

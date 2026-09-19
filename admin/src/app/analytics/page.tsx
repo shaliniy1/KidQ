@@ -40,6 +40,8 @@ export default function AnalyticsPage() {
 
   useEffect(() => {
     void load(period);
+    const interval = setInterval(() => void load(period), 20_000);
+    return () => clearInterval(interval);
   }, [load, period]);
 
   return (
