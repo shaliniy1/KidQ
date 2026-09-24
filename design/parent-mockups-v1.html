@@ -1,0 +1,3233 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KidQ Parent — Interactive Mockups v1</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&family=Mukta:wght@400;500;600;700&display=swap">
+<style>
+/* ============================================================
+   KidQ Parent — interactive design mockup.
+   Spec: docs/superpowers/specs/2026-09-16-kidq-parent-interactive-mockup-spec.md
+   Plan: docs/superpowers/specs/2026-09-16-kidq-parent-web-mockups-plan.md
+   Brand: design/brand.md — every value below traces to it.
+   NOTE (2026-09-16, user): "don't limit yourself to existing structure" —
+   this file restructures layout/navigation (one sidebar instead of the
+   shipped triple-nav; the session card is a full-width horizon card) while
+   keeping the real screens' data, copy and controls (no invented metrics).
+   ============================================================ */
+
+/* ---- Block 1: tokens (portable replacement for app/globals.css :root,
+        per plan §1a — same names, brand.md values) ---- */
+:root{
+  --background:#FAF4E8;            /* cream */
+  --foreground:#2E2A24;            /* ink */
+  --kq-saffron:#1F7A6D;            /* teal — the one UI accent */
+  --kq-saffron-ink:#16594F;        /* teal-deep */
+  --kq-teal:#1F7A6D;
+  --kq-teal-deep:#16594F;
+  --kq-cream:#FAF4E8;
+  --kq-cream-deep:#F2E9D8;         /* secondary surfaces */
+  --kq-mango:#FFC64D;              /* sun — illustration only, never text */
+  --kq-sun-deep:#F0A72E;           /* rays only */
+  --kq-terracotta:#E2705E;         /* heart — icons/graphics only */
+  --kq-text-error:#6B2E23;         /* coral knot — error/destructive TEXT */
+  --kq-charcoal:#2E2A24;
+  --kq-text-secondary:#6B6459;     /* ink-soft */
+  --kq-text-tertiary:#6B6459;
+  --kq-border:rgba(46,42,36,.1);
+  /* --kq-border (~10% ink, ~1.2:1) fails WCAG 1.4.11's 3:1 non-text-contrast
+     floor when it's the visible boundary of an interactive control (a card/
+     divider border doesn't need to clear that floor, since it's not
+     conveying a control's boundary). Scoped to the handful of interactive-
+     control borders that actually need it — see each usage below.
+     NOTE: 40% ink (the audit's own starting suggestion) only measures
+     ~2.3:1 against white/cream/cream-deep once actually blended per
+     WCAG's relative-luminance formula — verified by computing contrast
+     at several alphas; 55% ink is the value that actually clears 3:1
+     against all three (3.45:1 / 3.35:1 / 3.25:1 respectively). */
+  --kq-border-control:rgba(46,42,36,.55);
+  --kq-white:#FFFFFF;
+  --kq-dusk-lavender:#C9B8E8;      /* never behind text */
+  --kq-night:#2B2955;
+  --kq-radius-card:24px;
+  --kq-radius-control:14px;        /* resolved Q7: 14, not 16 */
+  --kq-radius-pill:99px;
+  --kq-shadow-card:0 12px 28px -16px rgba(46,42,36,.4);
+  --kq-shadow-cta:0 14px 26px -14px rgba(22,89,79,.55);
+  --kq-font-display:'Baloo 2', system-ui, sans-serif;
+  --kq-font-body:'Mukta', system-ui, sans-serif;
+  --kq-text-caption:13px;
+  --kq-text-body:16.5px;
+  --kq-text-interactive:#16594F;   /* colour role only (bug split, plan §6.1) */
+  --kq-text-h1:36px;
+  --kq-card-mint:#F2E9D8;          /* resolved Q1; text on it = teal-deep */
+  --kq-tap-min:44px;
+  /* icon-only identifier tones (never large fills) added for Hub tile icons
+     + mic/bell coral treatment — each independently verified to clear 3:1
+     non-text contrast against white, cream and cream-deep/mint. */
+  --kq-coral-ink:#C2543F;   /* heart/terracotta's icon-safe shade — same role teal-deep plays for teal */
+  --kq-dusk-ink:#6F5AA8;
+  --kq-rose-ink:#A8506E;
+  --kq-sun-ink:#AD6C0C;     /* sun/mango's icon-safe shade — same role as the other -ink tokens above */
+  /* Bold color-block pass (2026-09-19): a saturated FILL = "selected / in
+     the Q / chosen", its matching light TINT = "not selected / available".
+     Text on a fill is always cream (--kq-cream); text on a tint is always
+     ink (--foreground) — never a faded/reduced-opacity version of either,
+     that was tried and rejected once already for failing contrast. Used by
+     Recommendations, My Videos and Insights' category bars via FILL_HUE/
+     CATEGORY_FILL below, so a category reads as one consistent color
+     everywhere. coral-fill is a deeper coral than --kq-coral-ink — that
+     token was tuned for icons-on-light, not a large fill with cream text —
+     verified 4.67:1 cream / 5.12:1 white. Tints verified 10.4–11.4:1 ink,
+     see each tint's own number in the ?debug=tokens swatch strip. */
+  --kq-coral-fill:#B84B38;
+  --kq-night-tint:#DCDAF0;
+  --kq-coral-tint:#FADBD3;
+  --kq-dusk-tint:#E3D9F4;
+  --kq-rose-tint:#F6D8E3;
+  --kq-teal-tint:#D4EBE4;
+}
+
+*{box-sizing:border-box; margin:0}
+html,body{background:var(--background); font-family:var(--kq-font-body); color:var(--foreground); min-height:100%}
+button{font-family:inherit; cursor:pointer; -webkit-tap-highlight-color:transparent}
+button:focus-visible, input:focus-visible, a:focus-visible{
+  outline:3px solid var(--kq-teal-deep); outline-offset:2px; border-radius:6px}
+
+/* ---- page wrapper (no dev-rig chrome — this is meant to read as a live site) ---- */
+.rig{width:100%}
+
+/* ---- viewport: fills the real page, no floating device frame ----
+   Real responsive behavior lives in the @media query below, keyed off the
+   actual browser width — not a manual desktop/phone toggle. */
+.viewport{background:var(--kq-cream); width:100%}
+
+/* ============ product shell ============ */
+.shell{display:flex; flex-direction:column; min-height:100vh}
+/* Nav chrome hidden for focused/step flows (onboarding, consent, Hub, etc.) —
+   replaces the old .shell.no-sidebar grid-column trick; there's no sidebar
+   column to remove anymore, so this hides the nav row + CTA directly. The
+   brandmark and account-actions cluster (status pill/bell/avatar) stay
+   visible — same split the old mechanism already produced. */
+.shell.nav-hidden .mainnav,
+.shell.nav-hidden .topbar .kidmode{display:none}
+
+.topbar{display:flex; align-items:center; gap:14px; padding:14px 30px;
+  background:var(--kq-cream-deep); border-bottom:1px solid var(--kq-border);
+  min-height:64px; position:sticky; top:0; z-index:7}
+.topbar .grow{flex:1}
+/* pre-account screens (Consent, Onboarding — no signed-in identity yet):
+   topbar reduces to just the back-context */
+.topbar.pre-account .status-pill,
+.topbar.pre-account #inbox-bell,
+.topbar.pre-account .parent-avatar{display:none}
+.status-pill{display:inline-flex; align-items:center; gap:7px; border-radius:var(--kq-radius-pill);
+  background:var(--kq-white); border:1px solid var(--kq-border);
+  color:var(--kq-text-secondary); font-size:13px; font-weight:600; padding:5px 12px}
+.status-pill b{width:8px; height:8px; border-radius:50%; background:var(--kq-teal)}
+.parent-avatar{width:var(--kq-tap-min); height:var(--kq-tap-min); border-radius:50%; border:none; background:var(--kq-teal);
+  color:#fff; font-family:var(--kq-font-display); font-weight:800; font-size:18px}
+/* Revamped (2026-09-19): the single most consequential action in the
+   sidebar — launching into the kid-facing view — reads as a real primary
+   CTA now (solid teal fill, matching .cta) instead of a quiet outline
+   button that looked like every other secondary control. */
+.kidmode{display:inline-flex; align-items:center; justify-content:center; gap:8px; border:none;
+  background:var(--kq-teal); color:#fff; font-weight:700; font-size:14px;
+  padding:10px 20px; border-radius:var(--kq-radius-pill); /* was --kq-radius-control */
+  min-height:var(--kq-tap-min); flex:none; white-space:nowrap;
+  box-shadow:var(--kq-shadow-cta); transition:background-color .2s ease, transform .2s ease}
+.kidmode:hover{background:var(--kq-teal-deep)}
+.kidmode:active{transform:scale(.98)}
+.kidmode .ic{font-size:16px}
+
+/* Nav centering: absolutely centered against .topbar's own box, not the
+   leftover flex space (which would skew toward whichever flank — brandmark
+   vs. status-pill/bell/avatar/CTA — is narrower). .topbar's own
+   position:sticky already establishes a positioning context for this
+   absolutely-positioned child, so no separate position:relative is needed. */
+.mainnav{position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+  display:flex; align-items:center; gap:10px}
+/* Mid-width tier: the absolutely-centered nav has no automatic collision
+   avoidance with the brandmark/account cluster, so between mobile (≤700px,
+   handled below) and this breakpoint it drops to its own full-width row
+   under the brand/actions row instead of overlapping them. Breakpoint is
+   1699px, not the ~1300px a naive guess would land on: with all 6 nav
+   labels spelled out ("Recommendations" alone is ~175px) the centered nav
+   measures ~770px wide, and the right-side cluster (status pill + bell +
+   avatar + CTA) measures ~400px — centering that wide a nav against the
+   full topbar box doesn't clear the right cluster until viewport width
+   gets well into "wide desktop monitor" territory. Verified in-browser
+   (iframe-based viewport simulation, actual window capped at 1280px in
+   this environment) across 375–1920px; see build report for the full
+   measured crossover (~1641px raw, rounded up for margin). */
+@media (min-width:701px) and (max-width:1699px){
+  .topbar{flex-wrap:wrap; padding:14px 18px; gap:10px}
+  .status-pill{display:none}
+  .mainnav{position:static; transform:none; order:3; flex-basis:100%;
+    width:100%; justify-content:center; gap:6px; margin-top:4px; flex-wrap:wrap}
+  .nav-item{padding:10px 9px; gap:7px}
+}
+
+.main{display:flex; flex-direction:column; min-width:0; flex:1}
+.brandmark{font-family:var(--kq-font-display); font-weight:800; font-size:22px;
+  color:var(--foreground); padding:0 6px; border:none; background:none; flex:none; cursor:pointer}
+.brandmark i{font-style:normal; color:var(--kq-teal)}
+.navlabel{font-size:12px; font-weight:700; letter-spacing:.14em; text-transform:uppercase;
+  color:var(--kq-text-secondary); padding:0 10px 8px}
+.nav-item{display:flex; align-items:center; gap:10px;
+  border:none; background:none; color:var(--foreground); font-size:15px; font-weight:600;
+  padding:11px 12px; border-radius:var(--kq-radius-control);
+  min-height:var(--kq-tap-min); white-space:nowrap; flex:none}
+.nav-item .ic{width:20px; text-align:center; color:var(--kq-text-secondary); font-size:18px}
+.nav-item:hover{background:var(--kq-white)}
+.nav-item[aria-current="page"]{background:var(--kq-teal); color:#fff}
+.nav-item[aria-current="page"] .ic{color:#fff}
+/* Per-item glyph colors for all 6 nav items (icon-liveliness round 2).
+   Round 1 explicitly rejected colored icon BACKDROPS here (only 4 mascot
+   colors existed for 6+ items, forcing meaningless repeats) — this instead
+   colors the bare glyph itself (no backdrop, no fill-shape change) using 6
+   distinct "-ink"/accent tokens, one per item, zero repeats. Insight log's
+   ♥ coral-ink carries over unchanged from round 1 — documented in brand.md
+   as inherently coral-toned (the heart symbol IS the brand's "heart" color),
+   not a generic per-item rotation pick — just folded into this consolidated
+   rule set instead of its own standalone rule. Explicitly scoped to the
+   UNselected state only (equal selector specificity to the
+   [aria-current="page"] .ic rule above means source order alone can't be
+   trusted to keep the selected state white). */
+.nav-item[data-screen="today"]:not([aria-current="page"]) .ic{color:var(--kq-sun-ink)}
+.nav-item[data-screen="recommendations"]:not([aria-current="page"]) .ic{color:var(--kq-teal)}
+.nav-item[data-screen="insight-log"]:not([aria-current="page"]) .ic{color:var(--kq-coral-ink)}
+.nav-item[data-screen="insights"]:not([aria-current="page"]) .ic{color:var(--kq-dusk-ink)}
+.nav-item[data-screen="videos"]:not([aria-current="page"]) .ic{color:var(--kq-rose-ink)}
+.nav-item[data-screen="settings"]:not([aria-current="page"]) .ic{color:var(--kq-night)}
+.nav-item[aria-current="page"]:hover{background:var(--kq-teal-deep)}
+
+.content{padding:30px 34px 60px; display:flex; flex-direction:column; gap:22px;
+  max-width:1020px; width:100%; margin-inline:auto}
+
+/* screens swap */
+.screen{display:none}
+.screen.active{display:flex; flex-direction:column; gap:22px}
+
+/* ---- greeting band ---- */
+.greet .eyebrow{font-size:12px; font-weight:700; letter-spacing:.14em; text-transform:uppercase;
+  color:var(--kq-text-secondary); margin-bottom:8px}
+.greet h1{font-family:var(--kq-font-display); font-weight:800; line-height:1.05;
+  font-size:clamp(34px,5vw,48px); color:var(--foreground); max-width:18ch; text-wrap:balance}
+.greet h1 .hl, .session-body h2 .hl{font-style:normal; color:var(--kq-teal-deep)}
+.greet .sub{font-size:var(--kq-text-body); font-weight:500; color:var(--kq-text-secondary); margin-top:8px}
+
+/* ---- family card (Spotify Kids rows / GoHenry stat / Amazon Family tiles refs) ---- */
+.family-card{background:var(--kq-white); border:1px solid var(--kq-border);
+  border-radius:var(--kq-radius-card); box-shadow:var(--kq-shadow-card);
+  padding:20px 24px; display:flex; align-items:center; gap:18px; flex-wrap:wrap}
+.kid-lead{display:flex; align-items:center; gap:14px; min-width:230px}
+.kid-lead .avatar{width:56px; height:56px; border-radius:50%; color:#fff;
+  font-family:var(--kq-font-display); font-weight:800; font-size:24px;
+  display:flex; align-items:center; justify-content:center; border:none; flex:none}
+.kid-lead .who small{display:block; font-size:var(--kq-text-caption); font-weight:600;
+  letter-spacing:.06em; text-transform:uppercase; color:var(--kq-text-secondary)}
+.kid-lead .who b{font-family:var(--kq-font-display); font-weight:700; font-size:23px}
+.kid-lead .who span{display:block; font-size:var(--kq-text-caption); font-weight:500;
+  color:var(--kq-text-secondary); margin-top:2px}
+.kid-switch{margin-left:auto; display:flex; align-items:center; gap:10px; flex-wrap:wrap}
+/* Kid-switcher chips (2026-09-19 Today pass): each chip wears its own kid's
+   color, same selected=FILL / unselected=TINT language as Recommendations,
+   My Videos and Hub tiles, keyed by kid identity (KID_HUE) instead of
+   content category. --fill/--tint are set inline per-chip (JS), same
+   mechanism as .rec-card/.kid-tile. Border is transparent in both states:
+   the color itself is the selection signal (matches .rec-card). Cream text
+   on every fill clears 4.5:1 (weakest: coral 4.67); ink on every tint
+   clears 10:1; the fill-colored avatar dot on its own tint clears 3:1
+   (weakest: coral/rose ~3.9). Coda team-leader grid ref. */
+.kid-chip{display:flex; align-items:center; gap:8px; border:2px solid transparent;
+  border-radius:var(--kq-radius-pill); padding:5px 14px 5px 6px;
+  font-size:13px; font-weight:600; min-height:var(--kq-tap-min)}
+.kid-chip[aria-pressed="false"]{background:var(--tint); color:var(--foreground)}
+.kid-chip[aria-pressed="true"]{background:var(--fill); color:var(--kq-cream)}
+.kid-chip i{width:32px; height:32px; border-radius:50%; font-style:normal;
+  background:var(--fill); color:var(--kq-cream);
+  font-family:var(--kq-font-display); font-weight:800; font-size:14px;
+  display:flex; align-items:center; justify-content:center; flex:none}
+/* On the fill the dot would vanish into the chip (same color), so it gets a
+   2px cream ring — box-shadow, not border, so the 32px box does not grow. */
+.kid-chip[aria-pressed="true"] i{box-shadow:0 0 0 2px var(--kq-cream)}
+.kid-chip.just[aria-pressed="true"]{animation:kq-pop .22s ease}
+.kid-chip.add{padding:5px 14px; background:var(--kq-cream); color:var(--kq-teal-deep);
+  border-color:var(--kq-border); border-style:dashed}
+
+/* ---- horizon session card ---- */
+.session-card{background:var(--kq-cream-deep); border-radius:var(--kq-radius-card);
+  overflow:hidden; border:1px solid var(--kq-border)}
+.horizon{position:relative; height:132px;
+  background:linear-gradient(180deg,#FDF8EC 0%,#F7EBD2 58%,#F1E2C4 100%)}
+.horizon svg.arc{position:absolute; inset:0; width:100%; height:100%}
+.horizon .sun{position:absolute; left:50%; top:58px; transform:translate(-50%,-50%);
+  width:96px; height:96px}
+.horizon .sun .halo{position:absolute; inset:-22px; border-radius:50%;
+  background:radial-gradient(circle, rgba(255,198,77,.4), transparent 70%)}
+.horizon .sun svg{position:relative; width:100%; height:100%}
+.session-body{padding:24px 26px 26px; display:flex; flex-direction:column; gap:16px}
+.session-body .eyebrow{font-size:12px; font-weight:700; letter-spacing:.14em;
+  text-transform:uppercase; color:var(--kq-text-secondary)}
+.session-body h2{font-family:var(--kq-font-display); font-weight:800; font-size:32px; line-height:1.08}
+.session-body .lede{font-size:var(--kq-text-body); font-weight:500; color:var(--kq-text-secondary)}
+.pill-row{display:flex; gap:8px; flex-wrap:wrap}
+.pill{border:2px solid var(--kq-border); background:var(--kq-cream); border-radius:var(--kq-radius-pill);
+  color:var(--kq-teal-deep); font-size:13px; font-weight:600; padding:9px 15px;
+  min-height:var(--kq-tap-min); display:inline-flex; flex-direction:column; align-items:center;
+  justify-content:center; line-height:1.15; min-width:58px}
+.pill small{font-size:11px; font-weight:500; color:var(--kq-text-secondary)}
+.pill[aria-pressed="true"]{background:var(--kq-teal); border-color:var(--kq-teal); color:#fff}
+.pill[aria-pressed="true"] small{color:#fff}
+.row-label{font-size:var(--kq-text-caption); font-weight:600; color:var(--kq-text-secondary);
+  margin-bottom:6px; display:block}
+.breaks-line{font-size:13px; font-weight:500; color:var(--kq-text-secondary)}
+.pref-wrap{position:relative}
+.disclosure{display:inline-flex; align-items:center; gap:10px; border:2px solid var(--kq-border);
+  background:var(--kq-white); border-radius:var(--kq-radius-control); padding:10px 16px;
+  font-size:14px; font-weight:600; color:var(--foreground); min-height:var(--kq-tap-min)}
+.disclosure b{color:var(--kq-teal-deep); font-weight:700}
+.disclosure .chev{color:var(--kq-text-secondary); transition:transform .3s ease}
+.disclosure[aria-expanded="true"] .chev{transform:rotate(180deg)}
+.popover{position:absolute; z-index:5; top:calc(100% + 8px); left:0; width:min(320px,90cqw);
+  background:var(--kq-white); border:1px solid var(--kq-border); border-radius:var(--kq-radius-control);
+  box-shadow:var(--kq-shadow-card); padding:8px; display:none}
+.popover.open{display:block}
+.popover button{display:flex; width:100%; justify-content:space-between; align-items:center;
+  border:none; background:none; text-align:left; padding:12px 14px; font-size:14px; font-weight:600;
+  color:var(--foreground); border-radius:10px; min-height:var(--kq-tap-min)}
+.popover button:hover{background:var(--kq-cream)}
+.popover button span{color:var(--kq-text-secondary)}
+.cta-row{display:flex; align-items:center; gap:16px; margin-top:4px}
+.cta{border:none; background:var(--kq-teal); color:#fff; font-family:var(--kq-font-display);
+  font-weight:700; font-size:16px; padding:14px 26px; border-radius:var(--kq-radius-control);
+  box-shadow:var(--kq-shadow-cta); min-height:52px}
+.cta:hover{background:var(--kq-teal-deep)}
+/* Today's session-flow submit (2026-09-19 Today pass): the one action the
+   whole session card exists for, so it is the one .cta allowed to outgrow
+   the rest (Toggl Track / Mailchimp refs: confident, large, rounded, never
+   blending into a row of secondary controls). Scoped by modifier: the
+   shared .cta is reused by 12 lower-stakes buttons elsewhere in the file
+   and must not change. Same teal + teal-deep tokens as .cta; only scale,
+   weight, width, radius and press feedback change. */
+.cta.cta-hero{font-size:20px; font-weight:800; padding:18px 40px; min-height:64px;
+  width:100%; max-width:420px; border-radius:var(--kq-radius-pill);
+  letter-spacing:.005em; margin-top:6px;
+  transition:background-color .2s ease, transform .2s ease, box-shadow .2s ease}
+@media (hover: hover){
+  .cta.cta-hero:hover{transform:translateY(-2px); box-shadow:var(--kq-shadow-cta), var(--kq-shadow-cta)}
+}
+.cta.cta-hero:active{transform:translateY(0) scale(.98)}
+
+/* ---- settings ---- */
+.flow-header h1{font-family:var(--kq-font-display); font-weight:800; font-size:var(--kq-text-h1)}
+.flow-header p{font-size:var(--kq-text-body); font-weight:500; color:var(--kq-text-secondary); margin-top:6px}
+.panel{background:var(--kq-white); border:1px solid var(--kq-border);
+  border-radius:var(--kq-radius-card); padding:10px; display:flex; flex-direction:column}
+.panel-label{font-size:12px; font-weight:700; letter-spacing:.14em; text-transform:uppercase;
+  color:var(--kq-text-secondary); padding:14px 16px 8px}
+.setting-row{display:flex; align-items:center; justify-content:space-between; gap:16px; width:100%;
+  border:none; background:none; text-align:left; padding:16px; border-radius:var(--kq-radius-control);
+  min-height:var(--kq-tap-min)}
+.setting-row:hover{background:var(--kq-cream)}
+.setting-row + .setting-row{border-top:1px solid var(--kq-border); border-radius:0}
+.setting-row .txt b{display:block; font-size:var(--kq-text-body); font-weight:700; color:var(--foreground)}
+.setting-row .txt span{display:block; font-size:var(--kq-text-caption); font-weight:500;
+  color:var(--kq-text-secondary); margin-top:3px}
+.setting-row .txt span b{display:inline; font-size:var(--kq-text-caption); font-weight:600;
+  color:var(--kq-teal-deep)}
+.setting-row .go{color:var(--kq-text-secondary); font-size:18px; flex:none}
+.switch{flex:none; width:52px; height:30px; border-radius:99px; border:2px solid var(--kq-border-control);
+  background:var(--kq-cream-deep); position:relative; transition:background .3s ease, border-color .3s ease}
+.switch::after{content:""; position:absolute; top:2px; left:2px; width:22px; height:22px;
+  border-radius:50%; background:#fff; box-shadow:0 1px 3px rgba(46,42,36,.35); transition:left .3s ease}
+.switch[aria-checked="true"]{background:var(--kq-teal); border-color:var(--kq-teal)}
+.switch[aria-checked="true"]::after{left:24px}
+.chip-cards{display:flex; gap:8px; flex-wrap:wrap; padding:6px 16px 16px}
+.chip-card{border:2px solid var(--kq-border); background:var(--kq-cream); color:var(--kq-teal-deep);
+  border-radius:var(--kq-radius-control); font-size:13px; font-weight:600; padding:10px 16px;
+  min-height:var(--kq-tap-min)}
+/* color-blocked variant for Hub's Interests + Content-mix category pickers
+   only (Regulation and the break-type picker stay plain .chip-card) */
+.chip-cards.tiles{display:grid; grid-template-columns:repeat(auto-fill, minmax(104px,1fr)); gap:8px}
+.chip-card.tile{display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px;
+  position:relative; min-height:88px; background:var(--kq-card-mint); color:var(--kq-teal-deep)}
+.chip-card.tile .tile-icon{font-size:22px; line-height:1}
+.chip-card[aria-pressed="true"]{background:var(--kq-teal); border-color:var(--kq-teal); color:#fff}
+/* Hub tiles join the bold color-block fill/tint system (2026-09-19): --fill/
+   --tint/--ink are set inline per-tile (JS, from HUB_TILE_HUE/FILL_HUE),
+   same pattern as Recommendations/My Videos, so this needs no !important —
+   the old inline style.color on .tile-icon (which needed !important to
+   override) is gone. */
+.chip-card.tile[aria-pressed="false"]{background:var(--tint); border-color:transparent; color:var(--foreground)}
+.chip-card.tile[aria-pressed="true"]{background:var(--fill); border-color:transparent; color:var(--kq-cream)}
+.chip-card.tile[aria-pressed="false"] .tile-icon{color:var(--ink)}
+.chip-card.tile[aria-pressed="true"] .tile-icon{color:var(--kq-cream)}
+.chip-card.tile.just[aria-pressed="true"]{animation:kq-pop .22s ease}
+
+/* ---- insights ---- */
+.range-row{display:flex; gap:8px}
+.metrics{display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px}
+.stat-card{background:var(--kq-white); border:1px solid var(--kq-border);
+  border-radius:var(--kq-radius-card); box-shadow:var(--kq-shadow-card);
+  padding:20px 22px; display:flex; align-items:center; gap:18px; min-height:110px}
+.stat-card small{display:block; font-size:var(--kq-text-caption); font-weight:500;
+  color:var(--kq-text-secondary)}
+.stat-card .num{font-family:var(--kq-font-display); font-weight:800; font-size:29px; color:var(--foreground)}
+.ring{flex:none; width:64px; height:64px; transform:rotate(-90deg)}
+.ring circle{fill:none; stroke-width:8}
+.ring .track{stroke:var(--kq-cream-deep)}
+.ring .fill{stroke:var(--kq-teal); stroke-linecap:round;
+  transition:stroke-dashoffset .6s ease}
+/* fixed last-7-calendar-day session-outcome row (Insights' 3rd stat-card) —
+   independent of the day/week/month range pills, real derived data from
+   SESSIONS, not a streak/badge (see report) */
+.dot-row{display:flex; gap:6px}
+/* empty/no-session state needs its own visible boundary — the cream-deep
+   fill alone measures ~1.2:1 against white, effectively invisible — so it
+   gets the same interactive-control-border token as .switch/.check-box
+   etc. (--kq-border-control clears 3:1). .done/.early set their own
+   border-color so they don't also show a mismatched ring around the fill. */
+.dot{width:10px; height:10px; border-radius:50%; background:var(--kq-cream-deep);
+  border:2px solid var(--kq-border-control)}
+.dot.done{background:var(--kq-teal); border-color:var(--kq-teal)}
+.dot.early{background:none; border:2px solid var(--kq-teal)}
+.bars{background:var(--kq-white); border:1px solid var(--kq-border);
+  border-radius:var(--kq-radius-card); padding:22px 24px; display:flex; flex-direction:column; gap:14px}
+.bar-row{display:grid; grid-template-columns:88px 1fr 44px; align-items:center; gap:12px}
+.bar-row small{font-size:var(--kq-text-caption); font-weight:500; color:var(--kq-text-secondary)}
+.bar-track{height:10px; border-radius:99px; background:var(--kq-cream-deep); overflow:hidden}
+.bar-fill{height:100%; border-radius:99px; background:var(--kq-teal); width:0;
+  transition:width .6s ease}
+.bar-row b{font-size:var(--kq-text-caption); font-weight:600; color:var(--kq-teal-deep); text-align:right}
+.fine{font-size:var(--kq-text-caption); font-weight:500; color:var(--kq-text-secondary)}
+/* visually-hidden-but-screen-reader-accessible: standard pattern, used for
+   labels/live-region text that sighted users don't need repeated on screen
+   (2026-09-19 a11y pass). */
+.sr-only{position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden;
+  clip:rect(0,0,0,0); white-space:nowrap; border:0}
+.privacy{font-size:var(--kq-text-caption); font-weight:500; color:var(--kq-text-secondary); line-height:1.5}
+.child-switch{display:flex; gap:8px; flex-wrap:wrap}
+.child-switch .pill{flex-direction:row}
+
+/* ---- onboarding ---- */
+.onb-wrap{display:flex; justify-content:center; padding:10px 0 30px}
+.onb-card{background:var(--kq-white); border-radius:var(--kq-radius-card);
+  box-shadow:var(--kq-shadow-card); border:1px solid var(--kq-border);
+  width:min(480px,100%); padding:28px 26px; display:flex; flex-direction:column; gap:22px}
+.back-link{align-self:flex-start; border:none; background:none; color:var(--kq-text-secondary);
+  font-size:14px; font-weight:600; padding:6px 4px; min-height:var(--kq-tap-min);
+  display:inline-flex; align-items:center}
+.onb-card h1{font-family:var(--kq-font-display); font-weight:800; font-size:var(--kq-text-h1); line-height:1.1}
+.field label{display:block; font-size:var(--kq-text-caption); font-weight:500;
+  color:var(--kq-text-secondary); margin-bottom:7px}
+.field input{width:100%; height:var(--kq-tap-min); border:2px solid var(--kq-border-control);
+  border-radius:var(--kq-radius-control); padding:0 14px; font-size:var(--kq-text-body);
+  font-family:var(--kq-font-body); color:var(--foreground); background:var(--kq-white)}
+.field input::placeholder{color:var(--kq-text-secondary)}
+.stepper-row{display:flex; align-items:center; justify-content:space-between; gap:14px}
+.stepper{display:flex; align-items:center; gap:14px}
+.step-btn{width:var(--kq-tap-min); height:var(--kq-tap-min); border-radius:50%;
+  border:2px solid var(--kq-border); background:var(--kq-white); font-size:20px; color:var(--kq-teal-deep)}
+.step-btn:disabled{opacity:.45; cursor:default}
+.step-count{font-family:var(--kq-font-display); font-weight:800; font-size:22px; min-width:24px; text-align:center}
+.kid-block{border-top:1px solid var(--kq-border); padding-top:20px; display:flex;
+  flex-direction:column; gap:14px}
+.kid-block .row{display:flex; gap:14px; align-items:center}
+.avatar-edit{position:relative; flex:none; width:56px; height:56px; border-radius:50%; border:none;
+  color:#fff; font-family:var(--kq-font-display); font-weight:800; font-size:22px}
+.avatar-edit .pencil{position:absolute; right:-3px; bottom:-3px; width:22px; height:22px;
+  border-radius:50%; background:var(--kq-white); border:1.5px solid var(--kq-border);
+  display:flex; align-items:center; justify-content:center; font-size:11px; color:var(--kq-teal-deep)}
+.kid-block .field{flex:1}
+.error-text{font-size:var(--kq-text-caption); font-weight:600; color:var(--kq-text-error); display:none}
+.error-text.show{display:block}
+.onb-cta{width:100%}
+.onb-cta:disabled{opacity:.45; cursor:default}
+
+/* ---- new screens: shared small components (all values reuse existing
+        tokens above — no new colors/fonts/shadows introduced) ---- */
+.hub-shortcuts{display:flex; gap:10px; flex-wrap:wrap}
+.hub-shortcut{display:flex; align-items:center; gap:8px; border:2px solid var(--kq-border);
+  background:var(--kq-white); color:var(--kq-teal-deep); font-weight:700; font-size:13.5px;
+  padding:10px 16px; border-radius:var(--kq-radius-control); min-height:var(--kq-tap-min)}
+.hub-shortcut:hover{background:var(--kq-cream)}
+.mini-link{background:none; border:none; color:var(--kq-text-secondary); text-decoration:underline;
+  font-size:13px; font-weight:500; cursor:pointer; padding:8px; min-height:var(--kq-tap-min);
+  display:inline-flex; align-items:center}
+
+/* disclosure-row chevron (Hub's expandable rows reuse .setting-row as the header) */
+.setting-row .go.chev{transition:transform .25s ease; display:inline-block}
+.setting-row[aria-expanded="true"] .go.chev{transform:rotate(90deg)}
+.hub-body{padding:2px 16px 18px; display:flex; flex-direction:column; gap:14px}
+.hub-body .sub{font-size:var(--kq-text-caption); font-weight:600; color:var(--kq-text-secondary); margin-bottom:6px; display:block}
+
+/* single-select "radio" rows (content-mix choice — no existing analog, see report) */
+.radio-opt{display:flex; align-items:center; gap:12px; width:100%; border:2px solid var(--kq-border);
+  background:var(--kq-white); border-radius:var(--kq-radius-control); padding:12px 16px;
+  font-size:14px; font-weight:600; color:var(--foreground); min-height:var(--kq-tap-min); text-align:left}
+.radio-opt[aria-checked="true"]{border-color:var(--kq-teal)}
+.radio-dot{width:18px; height:18px; border-radius:50%; border:2px solid var(--kq-border-control); flex:none; position:relative}
+.radio-opt[aria-checked="true"] .radio-dot{border-color:var(--kq-teal)}
+.radio-opt[aria-checked="true"] .radio-dot::after{content:""; position:absolute; inset:3px;
+  border-radius:50%; background:var(--kq-teal)}
+
+/* tap-only checkbox (Consent gate; also the Recommendations/Kid-preview pick indicator) */
+.check-row{display:flex; align-items:flex-start; gap:12px; min-height:var(--kq-tap-min); cursor:pointer}
+.check-box{width:26px; height:26px; border-radius:8px; border:2px solid var(--kq-border-control);
+  background:var(--kq-white); flex:none; display:flex; align-items:center; justify-content:center;
+  color:#fff; font-size:15px; font-weight:800; margin-top:1px}
+.check-box[aria-checked="true"]{background:var(--kq-teal); border-color:var(--kq-teal)}
+/* selection indicator anchored to the thumbnail's top-right corner
+   (Recommendations + Kid View Preview) instead of a separate trailing
+   column, which is what dropped below the text at phone width */
+.check-box.on-thumb{position:absolute; top:8px; right:8px; margin-top:0}
+.check-box-input{appearance:none; -webkit-appearance:none; width:26px; height:26px; border-radius:8px;
+  border:2px solid var(--kq-border-control); background:var(--kq-white); flex:none; margin-top:1px;
+  cursor:pointer; position:relative; transition:background-color .2s ease, border-color .2s ease}
+/* My Videos grid-mode select checkboxes sit over the thumbnail corner —
+   same absolute positioning as .check-box.on-thumb, just for the real
+   <input> variant instead of the span-based indicator (2026-09-19 pass). */
+.check-box-input.on-thumb{position:absolute; top:8px; right:8px; margin-top:0}
+.check-box-input:checked{background:var(--kq-teal); border-color:var(--kq-teal)}
+.check-box-input:checked::after{content:"✓"; position:absolute; inset:0; display:flex;
+  align-items:center; justify-content:center; color:#fff; font-size:15px; font-weight:800;
+  /* Always-on pop for a standalone checkbox (Consent — never rebuilt inside
+     a re-rendered list, so this can't retrigger on unrelated items). */
+  animation:kq-pop .22s ease}
+/* My Videos grid select mode (2026-09-19 bold color-block pass): checked
+   tiles flip to their FILL, so the checkbox itself flips to the same white-
+   circle/colored-check .is-fill treatment Recommendations uses. */
+.check-box-input.is-fill:checked::after{color:var(--fill)}
+/* My Videos' select-mode checkboxes ARE rebuilt as part of a re-rendered
+   list on every toggle (renderVideos() rebuilds every card), so the
+   always-on rule above would replay the pop on every already-checked item,
+   not just the one just tapped. Suppress it by default here and re-enable
+   only on the single freshly-toggled card (.just), matching the same
+   .just-gated pattern already used for .check-box.on-thumb below. */
+.video-row .check-box-input:checked::after{animation:none}
+.video-row.just .check-box-input:checked::after{animation:kq-pop .22s ease}
+
+.field textarea{width:100%; border:2px solid var(--kq-border-control); border-radius:var(--kq-radius-control);
+  padding:12px 14px; font-size:var(--kq-text-body); font-family:var(--kq-font-body);
+  color:var(--foreground); background:var(--kq-white); resize:vertical}
+.field textarea::placeholder{color:var(--kq-text-secondary)}
+
+/* voice capture mic (state machine — no existing analog, see report).
+   Terracotta is icons-only per brand rule, never a large solid fill, so the
+   button itself stays a white/cream circle with a terracotta mic icon; a
+   teal ring (derived from --kq-teal, same rgba-of-token pattern already
+   used by --kq-border/--kq-shadow-cta above) signals the listening state. */
+.mic-btn{width:76px; height:76px; border-radius:50%; border:2px solid var(--kq-border);
+  background:var(--kq-white); color:var(--kq-coral-ink); font-size:30px; align-self:center;
+  box-shadow:var(--kq-shadow-card); display:flex; align-items:center; justify-content:center;
+  transition:background .2s ease, border-color .2s ease, box-shadow .2s ease, transform .2s ease}
+.mic-btn.listening{border-color:var(--kq-teal);
+  box-shadow:0 0 0 6px rgba(31,122,109,.18), var(--kq-shadow-card);
+  animation:mic-pulse 1.1s ease-in-out infinite}
+/* aria-disabled, not :disabled (2026-09-19 a11y pass, item 17) — see the
+   mic-btn click handler for why. */
+.mic-btn[aria-disabled="true"]{opacity:.5; cursor:default}
+@keyframes mic-pulse{0%,100%{transform:scale(1)} 50%{transform:scale(1.06)}}
+
+/* ---- shared motion mechanics (2026-09-19 pass): stagger-in entrance,
+   selection pop, and hover/press feedback for tappable cards across
+   Recommendations, Kid View Preview, Insight log, My Videos and Inbox.
+   Driven by the `entering`/`lastToggled` JS flags below — see report. ---- */
+.rec-card, .kid-tile, .video-row, .notif-card, .stat-card, .family-card{
+  transition:transform .2s ease, box-shadow .2s ease, background-color .2s ease, color .2s ease}
+@media (hover: hover){
+  .rec-card:hover, .kid-tile:hover, .video-row:hover, .notif-card:hover{
+    transform:translateY(-2px); box-shadow:var(--kq-shadow-card), var(--kq-shadow-card)}
+  /* .stat-card / .family-card are not tap targets — deepen shadow only, no
+     lift, so they don't visually imply they're clickable */
+  .stat-card:hover, .family-card:hover{
+    box-shadow:var(--kq-shadow-card), var(--kq-shadow-card)}
+}
+.rec-card:active, .kid-tile:active{transform:scale(.98)}
+
+/* Pressed-state transitions (2026-09-19 pass): these controls used to
+   hard-cut between states with no transition at all — e.g. Today's
+   duration pills snapped instantly to teal when pressed. */
+.pill, .kid-chip, .chip-card, .mode-btn, .radio-opt, .nav-item, .setting-row, .hub-shortcut{
+  transition:background-color .2s ease, border-color .2s ease, color .2s ease}
+/* Press feedback matches the existing .rec-card:active/.kid-tile:active scale. */
+.pill:active, .chip-card:active{transform:scale(.98)}
+
+@keyframes kq-fade-up{
+  from{opacity:0; transform:translateY(8px)}
+  to{opacity:1; transform:translateY(0)}
+}
+.enter{
+  animation:kq-fade-up .26s ease-out;
+  animation-delay:calc(min(var(--i), 8) * 40ms);
+  animation-fill-mode:backwards;
+}
+
+@keyframes kq-pop{
+  0%{transform:scale(0)}
+  60%{transform:scale(1.15)}
+  100%{transform:scale(1)}
+}
+
+/* recommendation / kid-preview cards */
+.rec-card{background:var(--kq-white); border:2px solid transparent; border-radius:var(--kq-radius-card);
+  box-shadow:var(--kq-shadow-card); padding:10px; display:flex; flex-direction:column; gap:10px}
+/* Bold color-block pass: a saturated FILL means "selected / in the Q", its
+   matching TINT means "not selected / available" — the color itself is now
+   the selection signal, so the old teal border indicator is gone (zero
+   border either way). --fill/--tint/--ink are set inline per-card (JS, from
+   FILL_HUE) so these plain stylesheet rules can branch on them without
+   !important — see report. */
+.rec-card[data-selected="true"]{background:var(--fill); border-color:transparent}
+.rec-card[data-selected="false"]{background:var(--tint); border-color:transparent}
+/* freshly-toggled selection pop: only the card most recently toggled AND
+   only while it reads as selected (never on deselect) */
+.rec-card.just[data-selected="true"],
+.kid-tile.just[aria-pressed="true"]{animation:kq-pop .22s ease}
+.rec-card.just[data-selected="true"] .check-box.on-thumb,
+.kid-tile.just[aria-pressed="true"] .check-box.on-thumb{animation:kq-pop .22s ease}
+/* fixed, smaller thumbnail with title/meta to its right — was full-width 16:9
+   stacked above the content, which left each card mostly empty space */
+.rec-thumb{width:240px; max-width:40%; aspect-ratio:16/9; border-radius:var(--kq-radius-control);
+  background:var(--kq-card-mint); border:none; flex:none; position:relative}
+/* Scoped to Recommendations/My-Videos-grid contexts — Add-a-Video's own
+   .rec-thumb (inside .add-preview-card below) also joins the fill/tint
+   system now (2026-09-19 pass), no longer the plain untouched mint box it
+   used to be. Transparent here so the card/tile's own fill/tint color shows
+   through behind the category glyph. */
+.rec-card .rec-thumb, #videos-list.grid .video-row.tile .rec-thumb, .add-preview-card .rec-thumb{background:transparent}
+.rec-thumb-glyph{position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+  font-size:64px; line-height:1; opacity:.22; pointer-events:none}
+.rec-card[data-selected="true"] .rec-thumb-glyph{color:var(--kq-cream)}
+.rec-card[data-selected="false"] .rec-thumb-glyph{color:var(--ink)}
+/* Add-a-Video preview card (2026-09-19 pass): thumbnail + title + channel
+   only, always TINT (never fill — the video isn't in the Q yet, so it's
+   "available", not "selected"). The trust badge and reason text stay
+   outside, on the plain white .onb-card background. --fill/--tint/--ink set
+   inline (JS, from hueForVideo/FILL_HUE). */
+.add-preview-card{background:var(--tint); color:var(--foreground); border-radius:var(--kq-radius-card);
+  padding:10px; display:flex; flex-direction:column; gap:6px}
+.add-preview-card .rec-thumb{background:transparent}
+.add-preview-card .rec-thumb-glyph{color:var(--ink)}
+.add-preview-card .rec-title{font-size:var(--kq-text-body)}
+/* selection checkmark on a fill/tint card: white circle, checkmark colored
+   in the card's own fill — reused by My Videos' grid select mode too. */
+.check-box.on-thumb.is-fill, .check-box-input.on-thumb.is-fill{background:var(--kq-cream); border-color:var(--kq-cream); color:var(--fill)}
+.rec-top{display:flex; align-items:flex-start; gap:14px; width:100%;
+  background:none; border:none; padding:0; text-align:left; cursor:pointer}
+/* .rec-top is a <button> — the UA stylesheet gives buttons their own base
+   text color (not simply "inherit from parent"), so the card's fill/tint
+   state color is set explicitly here rather than relied on to cascade down
+   from .rec-card automatically. */
+.rec-card[data-selected="true"] .rec-top{color:var(--kq-cream)}
+.rec-card[data-selected="false"] .rec-top{color:var(--foreground)}
+/* Compacting pass (2026-09-19): .rec-card is a grid tile now, not a wide
+   row — thumb stacks above the text at all widths, and both the thumb and
+   its decorative glyph shrink to tile scale. Scoped to .rec-card so Add-a-
+   Video's standalone .rec-thumb and My Videos' grid-tile .rec-thumb (which
+   share the base classes above) are untouched. */
+.rec-card .rec-top{flex-direction:column; gap:8px}
+.rec-card .rec-thumb{width:100%; max-width:100%; aspect-ratio:4/3}
+.rec-card .rec-thumb-glyph{font-size:44px}
+.rec-title{font-weight:700; font-size:14px;
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden}
+/* Reduced SIZE (not opacity — a faded/reduced-opacity meta line was tried
+   and rejected once already for failing contrast) so it still reads as
+   secondary to the title while staying full-strength cream/ink. Combined
+   into one "Category · N min" line — the separate uppercase eyebrow and the
+   per-card "age N" text are both gone: every card on this screen is for the
+   same child, so the screen's own header already establishes who it's for,
+   and the eyebrow only repeated the category the meta line already states. */
+.rec-meta{font-size:13px; font-weight:600; margin-top:2px}
+/* Footer row (2026-09-19 compacting pass): replaces the old always-visible
+   "✓ KidQ reviewed" .rec-badge pill. Left side only ever holds the pending
+   .tag-badge (most cards are already reviewed and show nothing there);
+   .rec-more's own margin-left:auto keeps it pinned right either way, so the
+   space-between below is a belt-and-suspenders, not load-bearing. */
+.rec-foot{display:flex; align-items:center; justify-content:space-between; gap:10px; width:100%}
+.rec-more{margin-left:auto; display:inline-flex; align-items:center; gap:4px;
+  border:none; background:none; font-size:12.5px; font-weight:700;
+  padding:0 4px; min-height:var(--kq-tap-min); cursor:pointer}
+.rec-more .chev{display:inline-block; transition:transform .25s ease}
+.rec-more[aria-expanded="true"] .chev{transform:rotate(180deg)}
+/* Tint card: teal-deep (not plain --foreground, and never the hue's own
+   -ink token) so Details still reads as a distinct tappable action rather
+   than blending into title/meta body text — verified ≥5.9:1 against every
+   tint (worst case --kq-night-tint at ~5.96:1; the rest clear 6:1+). Fill
+   card: matches every other .rec-actions/.rec-foot control already on a
+   fill — cream, underlined. */
+.rec-card[data-selected="true"] .rec-more{color:var(--kq-cream); text-decoration:underline}
+.rec-card[data-selected="false"] .rec-more{color:var(--kq-teal-deep)}
+.rec-detail{font-size:var(--kq-text-caption); color:var(--kq-text-secondary); background:var(--kq-cream);
+  border-radius:var(--kq-radius-control); padding:10px; display:flex; flex-direction:column; gap:6px}
+.rec-actions{display:flex; gap:16px; flex-wrap:wrap; align-items:center}
+.rec-actions button{background:none; border:none; color:var(--kq-text-secondary); font-size:13px;
+  font-weight:600; cursor:pointer; padding:6px 2px; min-height:var(--kq-tap-min)}
+.rec-actions button.link-teal{color:var(--kq-teal-deep)}
+.rec-actions button.link-danger{color:var(--kq-text-error)}
+/* (2026-09-19) The old "Fill card: every action reads as cream underlined
+   text" override that used to live here is gone: .rec-actions now always
+   renders inside .rec-detail, which is always a cream box regardless of the
+   card's own fill/tint state (see .rec-detail above) — cream-on-cream would
+   have been unreadable. .link-teal/.link-danger's plain text-on-cream
+   colors are correct in every case now, selected or not. */
+.rec-summary{display:flex; flex-direction:column; gap:4px}
+/* Confident solid-night summary strip (was a plain white panel) — verified
+   cream-on-night ≈12.3:1. The over-limit line is bold cream too, not
+   red-on-dark (verified ≈1.3:1, badly fails). */
+#rec-summary-panel{background:var(--kq-night)}
+#rec-summary-panel strong{font-family:var(--kq-font-display); font-weight:800; font-size:18px; color:var(--kq-cream)}
+#rec-summary-panel span{color:var(--kq-cream); font-size:var(--kq-text-caption)}
+.rec-summary .over{color:var(--kq-cream); font-size:var(--kq-text-caption); font-weight:800}
+
+/* My Videos source tags (static labels, not controls) */
+.tag-badge{display:inline-flex; align-items:center; font-size:11.5px; font-weight:700;
+  letter-spacing:.02em; color:var(--kq-teal-deep); background:var(--kq-card-mint);
+  border-radius:var(--kq-radius-pill); padding:3px 10px; align-self:flex-start}
+.tag-badge.pending{color:var(--kq-text-secondary); background:var(--kq-cream-deep)}
+/* Insight log per-video feedback "capsule" (icon-liveliness round 2):
+   replaces the old loose pair of individually-styled disabled thumbs
+   buttons + a separate .tag-badge.pending "Coming soon" label elsewhere in
+   the row. Buttons stay genuinely disabled (title/aria-label preserved from
+   the accessibility pass) — opacity:.7 on the icons, not near-invisible
+   graying, so it reads as a real, finished, temporarily-switched-off
+   feature rather than half-rendered. 1.5px dashed border at 55% ink
+   measures ~3.3–3.6:1 against the mint fill (verified via the WCAG relative-
+   luminance formula), clearing the 3:1 non-text floor; teal-deep/night at
+   opacity .7 blend to ~3.5:1 / ~4.8:1 against mint respectively. No hover/
+   press states — it's disabled. */
+.feedback-capsule{display:inline-flex; align-items:center; gap:2px; background:var(--kq-card-mint);
+  border:1.5px dashed rgba(46,42,36,.55); padding:2px; border-radius:var(--kq-radius-pill)}
+.feedback-capsule button{width:40px; height:40px; border-radius:50%; border:none; background:none;
+  display:flex; align-items:center; justify-content:center; opacity:.7; cursor:not-allowed}
+.feedback-caption{font-size:10.5px; font-weight:600; text-transform:uppercase; letter-spacing:.08em;
+  color:var(--kq-text-secondary); margin-top:4px}
+.video-row{background:var(--kq-white); border:1px solid var(--kq-border); border-radius:var(--kq-radius-card);
+  box-shadow:var(--kq-shadow-card); padding:16px 18px; display:flex; flex-direction:column; gap:8px}
+.video-top{display:flex; justify-content:space-between; align-items:flex-start; gap:10px}
+.video-actions{display:flex; gap:14px}
+.video-actions button{background:none; border:none; font-size:13px; font-weight:700; cursor:pointer;
+  padding:6px 2px; min-height:var(--kq-tap-min); color:var(--kq-teal-deep)}
+.video-actions button.link-danger{color:var(--kq-text-error)}
+/* List-mode-only Klarna-style category swatch (2026-09-19 bold color-block
+   pass) — always the hue's own FILL + cream glyph, unaffected by select
+   mode/checked state (list mode itself stays "as it is today"). */
+.video-swatch{width:64px; height:48px; border-radius:12px; flex:none; background:var(--fill);
+  color:var(--kq-cream); display:flex; align-items:center; justify-content:center; font-size:22px}
+.video-title{font-weight:700}
+.video-minutes{font-size:var(--kq-text-caption); color:var(--kq-text-secondary)}
+
+/* My Videos — grid/list toggle + multi-select bulk-remove (2026-09-19 pass).
+   Scoped to new modifier classes only; renderWatchedLog()'s plain .video-row
+   list on the Insight log screen never gets .tile/.selectable and is
+   unaffected. */
+.videos-toolbar{display:flex; align-items:center; gap:8px; flex-wrap:wrap}
+/* base (list) layout, moved out of an inline style so #videos-list.grid
+   below (a stylesheet rule) can actually override display — an inline
+   style attribute would otherwise always win regardless of specificity */
+#videos-list{display:flex; flex-direction:column; gap:12px}
+#videos-list.grid{display:grid; grid-template-columns:repeat(auto-fill, minmax(200px,1fr)); gap:12px}
+/* Recommendations compacting pass (2026-09-19): #rec-list gets its own grid
+   rule (identical values, plus align-items:start) rather than being folded
+   into the selector above — #videos-list.grid is explicitly out of scope
+   for this pass and must render exactly as it did before. align-items:start
+   stops one expanded/taller card from stretching the whole row's height. */
+#rec-list{display:grid; grid-template-columns:repeat(auto-fill, minmax(200px,1fr)); gap:12px; align-items:start}
+.video-row.tile{padding:10px}
+/* Grid mode BOLD color-block (2026-09-19 pass) — a deliberate contrast with
+   list mode's "stays plain" treatment: grid is for browsing/deciding, list
+   is for management. Outside select mode, every tile is always its FILL
+   (bold/confident by default, not just when "selected"). In select mode
+   every tile starts at its TINT (unselected) and flips to FILL only when
+   .checked — this makes it visually obvious which tiles are picked. --fill/
+   --tint are set inline per-tile (JS, from FILL_HUE), same pattern as
+   Recommendations, so this needs no !important. */
+#videos-list.grid .video-row.tile:not(.selectable){background:var(--fill); color:var(--kq-cream)}
+#videos-list.grid .video-row.tile.selectable{background:var(--tint); color:var(--foreground)}
+#videos-list.grid .video-row.tile.selectable.checked{background:var(--fill); color:var(--kq-cream)}
+/* .video-title/.video-minutes normally carry their own explicit color (list
+   mode) — in a grid tile they instead track the tile's own fill/tint state
+   color above. .video-row.tile/.selectable/.checked here are plain <div>/
+   <label> elements (not buttons), so ordinary color inheritance applies. */
+#videos-list.grid .video-row.tile .video-title,
+#videos-list.grid .video-row.tile .video-minutes{color:inherit}
+#videos-list.grid .video-row.tile:not(.selectable) .video-actions button{color:var(--kq-cream); text-decoration:underline}
+#videos-list.grid .video-row.tile:not(.selectable) .rec-thumb-glyph,
+#videos-list.grid .video-row.tile.selectable.checked .rec-thumb-glyph{color:var(--kq-cream)}
+#videos-list.grid .video-row.tile.selectable:not(.checked) .rec-thumb-glyph{color:var(--ink)}
+/* Select mode: Preview/Remove buttons aren't rendered at all, not just
+   display:none'd — the card is a <label> in select mode, and nesting other
+   interactive elements inside a <label> is non-conforming HTML even when
+   hidden (2026-09-19 a11y pass, item 5). See renderVideoCard(). */
+.bulk-bar{display:none; position:sticky; bottom:0; z-index:6; background:var(--kq-white);
+  border-top:1px solid var(--kq-border); box-shadow:var(--kq-shadow-card); padding:14px 18px;
+  align-items:center; gap:14px; flex-wrap:wrap}
+.bulk-bar.show{display:flex}
+
+/* Select-all master checkbox row (2026-09-19 pass) — replaces the old
+   "Select all" mini-link that lived in the bulk bar. Renders empty (no
+   height) when select mode is off; see renderSelectAllRow(). */
+.select-all-row-inner{display:flex; align-items:center; gap:10px; padding:10px 2px;
+  min-height:var(--kq-tap-min); cursor:pointer; font-size:14px; font-weight:600; color:var(--foreground)}
+/* :indeterminate is a live DOM property (element.indeterminate = true/false),
+   never an HTML attribute — see renderSelectAllRow(). Same teal fill as
+   :checked, but a dash instead of a checkmark so "some, not all" reads
+   differently from "all". */
+.check-box-input:indeterminate{background:var(--kq-teal); border-color:var(--kq-teal)}
+.check-box-input:indeterminate::after{content:""; position:absolute; left:50%; top:50%;
+  width:12px; height:3px; border-radius:2px; background:#fff; transform:translate(-50%,-50%)}
+
+/* Add-a-video trust badge (plain-language, no raw number — see report) */
+.trust-badge{display:inline-flex; align-self:flex-start; font-size:13px; font-weight:700;
+  padding:6px 14px; border-radius:var(--kq-radius-pill)}
+/* "good" state reuses .rec-badge's status treatment (mint fill/teal-deep text)
+   instead of a solid-teal fill, which read as a pressed/selected control
+   rather than a status indicator */
+.trust-badge.good{background:var(--kq-card-mint); color:var(--kq-teal-deep)}
+.trust-badge.review{background:var(--kq-white); border:2px solid var(--kq-border); color:var(--foreground)}
+.mode-row{display:flex; gap:8px}
+.mode-btn{border:2px solid var(--kq-border); background:var(--kq-white); color:var(--kq-teal-deep);
+  font-weight:700; font-size:14px; padding:10px 18px; border-radius:var(--kq-radius-control);
+  min-height:var(--kq-tap-min)}
+/* aria-pressed covers Select/Done; aria-checked covers the List/Grid
+   radiogroup (item 6 of the 2026-09-19 a11y pass) — same visual treatment
+   either way. */
+.mode-btn[aria-pressed="true"], .mode-btn[aria-checked="true"]{background:var(--kq-teal); border-color:var(--kq-teal); color:#fff}
+/* matches the existing .step-btn:disabled/.onb-cta:disabled convention —
+   used by My Videos' "Remove selected" bulk-bar button when nothing is
+   selected. */
+.mode-btn:disabled{opacity:.45; cursor:default}
+
+/* Inbox notifications */
+.notif-card{background:var(--kq-white); border:1px solid var(--kq-border); border-radius:var(--kq-radius-card);
+  box-shadow:var(--kq-shadow-card); padding:16px 18px; display:flex; flex-direction:column; gap:8px;
+  width:100%; text-align:left; cursor:pointer}
+/* expand affordance — same chevron-rotation pattern as .setting-row's .go.chev */
+.notif-card .go.chev{transition:transform .25s ease; display:inline-block}
+.notif-card[aria-expanded="true"] .go.chev{transform:rotate(90deg)}
+.notif-top{display:flex; justify-content:space-between; align-items:center; gap:10px; width:100%}
+.notif-title{font-weight:700; color:var(--foreground); font-size:var(--kq-text-body)}
+.notif-when{font-size:var(--kq-text-caption); color:var(--kq-text-secondary); flex:none}
+.notif-body{font-size:var(--kq-text-caption); color:var(--kq-text-secondary); display:flex;
+  flex-direction:column; gap:4px}
+.notif-kind{font-size:11px; font-weight:800; letter-spacing:.05em; text-transform:uppercase;
+  color:var(--kq-teal-deep)}
+.notif-kind.warn{color:var(--kq-text-error)}
+
+/* Kid View Preview — read-only mirror, reuses the Today horizon/sun exactly */
+.kid-preview-frame{border:3px solid var(--kq-teal-deep); border-radius:32px; overflow:hidden;
+  background:var(--kq-cream-deep)}
+.kid-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:12px; padding:20px}
+.kid-tile{border:3px solid transparent; border-radius:var(--kq-radius-control); overflow:hidden;
+  display:flex; flex-direction:column; cursor:pointer; padding:0}
+.kid-tile[aria-pressed="true"]{background:var(--fill); color:var(--kq-cream)}
+.kid-tile[aria-pressed="false"]{background:var(--tint); color:var(--foreground)}
+.kid-tile .thumb{aspect-ratio:4/3; background:transparent; width:100%; position:relative; display:block}
+.kid-tile .cap{font-size:13px; font-weight:700; padding:8px 10px; color:inherit;
+  font-family:var(--kq-font-display); text-align:left}
+.kid-tile[aria-pressed="true"] .rec-thumb-glyph{color:var(--kq-cream)}
+.kid-tile[aria-pressed="false"] .rec-thumb-glyph{color:var(--ink)}
+.preview-note{font-size:var(--kq-text-caption); color:var(--kq-text-secondary);
+  background:var(--kq-cream-deep); border-radius:var(--kq-radius-control); padding:10px 14px}
+
+/* shared modal (Recommendations / My Videos preview) */
+.modal-scrim{position:fixed; inset:0; z-index:20; background:rgba(46,36,24,.55); display:none;
+  align-items:center; justify-content:center; padding:24px}
+.modal-scrim.open{display:flex}
+.modal-card{background:var(--kq-white); border-radius:var(--kq-radius-card); box-shadow:var(--kq-shadow-card);
+  max-width:560px; width:100%; max-height:88vh; overflow:auto; padding:22px; display:flex;
+  flex-direction:column; gap:14px}
+.modal-close{align-self:flex-end; border:none; background:none; font-size:22px;
+  color:var(--kq-text-secondary); cursor:pointer; padding:4px; min-height:var(--kq-tap-min);
+  min-width:var(--kq-tap-min); display:inline-flex; align-items:center; justify-content:center}
+.modal-frame{aspect-ratio:16/9; background:var(--kq-charcoal); border-radius:var(--kq-radius-control);
+  display:flex; align-items:center; justify-content:center; color:#fff; font-size:14px;
+  text-align:center; padding:16px}
+
+/* ---- design debug strip (token audit + empty-state preview toggle) ----
+   Designer-only tools, not part of the live site: tucked past a <hr>, and
+   only actually shown when the URL has ?debug=tokens (see JS). */
+.debug-section{display:none; max-width:1480px; margin:0 auto; padding:20px 20px 60px}
+.debug-section.show{display:block}
+.debug-hr{border:none; border-top:1px solid var(--kq-border); margin:40px 20px 0}
+.debug-label{font-size:12px; font-weight:700; letter-spacing:.08em; text-transform:uppercase;
+  color:var(--kq-text-secondary); padding:20px 20px 0; display:block}
+.debug-toggle-row{max-width:1480px; margin:0 auto; padding:0 20px; display:flex; align-items:center; gap:8px;
+  font-size:13px; color:var(--kq-text-secondary)}
+.swatches{background:#2E2B25; border-radius:20px; margin-top:16px; padding:22px 24px; color:#E8E1D2}
+.swatches h2{font-family:var(--kq-font-display); font-size:16px; font-weight:700; margin-bottom:12px}
+.sw-row{display:flex; flex-wrap:wrap; gap:10px}
+.sw{display:flex; align-items:center; gap:8px; background:#26231E; padding:7px 12px 7px 8px;
+  border-radius:10px; font-size:12px}
+.sw i{width:22px; height:22px; border-radius:6px; border:1px solid rgba(255,255,255,.15)}
+.sw code{color:#B9B2A4}
+
+/* ---- responsive phone tier — real @media on the actual browser/device
+   width (was container-type:inline-size + a manual .rig.phone toggle) ---- */
+.tabbar{display:none}
+@media (max-width: 700px){
+  .shell{grid-template-columns:1fr; min-height:0}
+  .mainnav{display:none}
+  .topbar{padding:12px 16px}
+  .topbar .kidmode{display:none}
+  .status-pill{display:none}
+  .content{padding:20px 16px 110px}
+  .metrics{grid-template-columns:1fr}
+  .family-card{padding:16px}
+  .kid-switch{margin-left:0}
+  .horizon{height:110px}
+  .horizon .sun{width:76px; height:76px; top:52px}
+  .session-body h2{font-size:26px}
+  .kid-grid{grid-template-columns:repeat(auto-fill,minmax(120px,1fr)); padding:14px}
+  .rec-top{flex-direction:column}
+  .rec-thumb{width:100%; max-width:100%}
+  #videos-list.grid, #rec-list{grid-template-columns:repeat(auto-fill,minmax(140px,1fr))}
+  .tabbar{display:flex; position:sticky; bottom:0; z-index:6; background:var(--kq-white);
+    border-top:1px solid var(--kq-border); padding:8px 6px calc(8px + env(safe-area-inset-bottom))}
+  .tabbar button{flex:1; border:none; background:none; font-size:11.5px; font-weight:600;
+    color:var(--kq-text-secondary); display:flex; flex-direction:column; gap:3px; align-items:center;
+    padding:6px 2px; border-radius:10px; min-height:var(--kq-tap-min)}
+  .tabbar button .ic{font-size:20px}
+  .tabbar button[aria-current="page"]{color:var(--kq-teal-deep)}
+  /* Same per-item glyph colors as the sidebar nav above (icon-liveliness
+     round 2), mapped only to the items that actually exist in the tab bar
+     (no Insight log entry here). Same :not([aria-current="page"]) guard so
+     the locked active-tab color (teal-deep, rule above) always wins. */
+  .tabbar button[data-screen="today"]:not([aria-current="page"]) .ic{color:var(--kq-sun-ink)}
+  .tabbar button[data-screen="recommendations"]:not([aria-current="page"]) .ic{color:var(--kq-teal)}
+  .tabbar button[data-screen="insights"]:not([aria-current="page"]) .ic{color:var(--kq-dusk-ink)}
+  .tabbar button[data-screen="videos"]:not([aria-current="page"]) .ic{color:var(--kq-rose-ink)}
+  .tabbar button[data-screen="settings"]:not([aria-current="page"]) .ic{color:var(--kq-night)}
+}
+
+@media (prefers-reduced-motion: reduce){
+  *{transition-duration:.001ms !important; animation-duration:.001ms !important; animation-delay:0s !important}
+}
+
+/* Bug fix: these 3 panels used to pair the `hidden` attribute with an inline
+   style="display:flex" — an inline style always beats the UA stylesheet's
+   [hidden]{display:none}, so all three rendered visible unconditionally
+   regardless of what the JS set `hidden` to. The `display:flex` now lives
+   here instead, scoped to :not([hidden]), so the two states don't fight. */
+#rec-done:not([hidden]),
+#add-preview:not([hidden]),
+#add-done:not([hidden]){display:flex}
+</style>
+</head>
+<body>
+<!-- KidQ Parent — this page IS the product (no dev-rig chrome around it).
+     Navigation happens only through the real in-product nav (sidebar, phone
+     tab bar, back links, CTAs) via showScreen(), which also drives hash
+     routing (#hub, #videos-add, …) so a screen can still be linked directly
+     for design review. A hidden ?debug=tokens section at the very bottom
+     keeps the designer-only token audit strip available without showing it
+     to a normal visitor. Traces to design/brand.md. -->
+<div class="rig" id="rig">
+  <div class="viewport" id="viewport">
+    <div class="shell">
+      <!-- top bar (desktop + mobile): brandmark/home link, the ONE nav
+           (consolidates the former top-nav/sidebar/tabs), and the account
+           actions cluster. Sticky, sits full-width above .main. -->
+      <header class="topbar">
+        <button class="brandmark" id="brand-home" aria-label="KidQ home">KidQ<i aria-hidden="true">✦</i></button>
+        <nav class="mainnav" aria-label="Main">
+          <button class="nav-item nav-go" data-screen="today" aria-current="page"><span class="ic" aria-hidden="true">☀</span>Today</button>
+          <button class="nav-item nav-go" data-screen="recommendations"><span class="ic" aria-hidden="true">✦</span>Recommendations</button>
+          <button class="nav-item nav-go" data-screen="insight-log"><span class="ic" aria-hidden="true">♥</span>Insight log</button>
+          <button class="nav-item nav-go" data-screen="insights"><span class="ic" aria-hidden="true">◔</span>Insights</button>
+          <button class="nav-item nav-go" data-screen="videos"><span class="ic" aria-hidden="true">▣</span>My videos</button>
+          <button class="nav-item nav-go" data-screen="settings"><span class="ic" aria-hidden="true">⚙</span>Settings</button>
+        </nav>
+        <span class="grow"></span>
+        <span class="status-pill"><b></b>Library ready</span>
+        <button id="inbox-bell" aria-label="Notifications" title="Notifications"
+          style="border:none; background:none; display:inline-flex; align-items:center; justify-content:center; color:var(--kq-coral-ink); min-height:var(--kq-tap-min); min-width:var(--kq-tap-min); border-radius:var(--kq-radius-control)">
+          <svg width="19" height="19" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+            <path d="M10 2.5c-2.2 0-4 1.8-4 4v2.6c0 .6-.2 1.1-.6 1.6L4 12.5h12l-1.4-1.8c-.4-.5-.6-1-.6-1.6V6.5c0-2.2-1.8-4-4-4z"
+              stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
+            <path d="M8.2 14.5a1.8 1.8 0 0 0 3.6 0" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+          </svg>
+        </button>
+        <button class="parent-avatar" aria-label="Parent account">S</button>
+        <button class="kidmode nav-go" data-screen="kid-preview"><span class="ic" aria-hidden="true">▶</span>View kid mode</button>
+      </header>
+
+      <div class="main">
+        <div class="content">
+
+          <!-- ================= TODAY ================= -->
+          <section class="screen active" id="screen-today" aria-label="Today">
+            <div class="greet">
+              <div class="eyebrow" id="greet-eyebrow">Good afternoon, there</div>
+              <h1>Ready for a <em class="hl">good session</em>?</h1>
+              <p class="sub">Everything is set for a calm, finite watch.</p>
+            </div>
+
+            <div class="family-card">
+              <div class="kid-lead">
+                <!-- Plain div, not a button: this avatar has no action when
+                     activated (the .who text beside it already conveys the
+                     same info), so it shouldn't be a no-op tab stop
+                     (2026-09-19 a11y pass, item 20). -->
+                <div class="avatar" id="lead-avatar"></div>
+                <div class="who">
+                  <small>Session for</small>
+                  <b id="lead-name"></b>
+                  <span id="lead-meta"></span>
+                </div>
+              </div>
+              <div class="kid-switch" id="kid-switch" role="group" aria-label="Choose child"></div>
+            </div>
+
+            <div class="session-card">
+              <div class="horizon" aria-hidden="true">
+                <svg class="arc" viewBox="0 0 800 132" preserveAspectRatio="none">
+                  <path d="M40 120 Q400 8 760 120" fill="none" stroke="#E4D6B8"
+                        stroke-width="2.5" stroke-dasharray="1 9" stroke-linecap="round"/>
+                </svg>
+                <!-- kid-mode's own cumulus cloud geometry (design/prototype/index.html
+                     splash/login clouds: belly ellipse + three bumps), day-sky tier fills -->
+                <svg class="cloud" style="position:absolute; left:12%; top:18%" width="70" height="30" viewBox="0 0 70 30">
+                  <ellipse cx="35" cy="21" rx="34" ry="8" fill="#FFFFFF" opacity=".8"/>
+                  <circle cx="17" cy="15" r="9.5" fill="#FFFFFF" opacity=".72"/>
+                  <circle cx="36" cy="10" r="12" fill="#FFFFFF" opacity=".72"/>
+                  <circle cx="54" cy="14" r="9" fill="#FFFFFF" opacity=".72"/>
+                </svg>
+                <svg class="cloud" style="position:absolute; right:14%; top:38%" width="54" height="24" viewBox="0 0 54 24">
+                  <ellipse cx="27" cy="17" rx="26" ry="6.5" fill="#FFFFFF" opacity=".7"/>
+                  <circle cx="14" cy="12" r="7.5" fill="#FFFFFF" opacity=".62"/>
+                  <circle cx="29" cy="8" r="9" fill="#FFFFFF" opacity=".62"/>
+                  <circle cx="43" cy="11" r="6.8" fill="#FFFFFF" opacity=".62"/>
+                </svg>
+                <!-- decorative birds near the sun — simple double-arc silhouette, same
+                     hand-drawn stroke style as the sun's rays and the horizon's dashed arc -->
+                <svg class="bird" style="position:absolute; left:28%; top:6%; opacity:.55" width="20" height="9" viewBox="0 0 20 9" aria-hidden="true">
+                  <path d="M1,6 Q5,1 9,6 Q13,1 17,6" fill="none" stroke="#6B6459" stroke-width="1.6" stroke-linecap="round"/>
+                </svg>
+                <svg class="bird" style="position:absolute; left:66%; top:12%; opacity:.4" width="14" height="6" viewBox="0 0 20 9" aria-hidden="true">
+                  <path d="M1,6 Q5,1 9,6 Q13,1 17,6" fill="none" stroke="#6B6459" stroke-width="1.6" stroke-linecap="round"/>
+                </svg>
+                <div class="sun">
+                  <span class="halo"></span>
+                  <svg viewBox="0 0 60 60">
+                    <g stroke="#F0A72E" stroke-width="3.4" stroke-linecap="round">
+                      <line x1="30" y1="1.5" x2="30" y2="9.5"/><line x1="50" y1="30" x2="58.5" y2="30"/>
+                      <line x1="44" y1="16" x2="50" y2="10"/><line x1="44" y1="44" x2="50" y2="50"/>
+                      <line x1="30" y1="50.5" x2="30" y2="58.5"/><line x1="10" y1="50" x2="16" y2="44"/>
+                      <line x1="1.5" y1="30" x2="10" y2="30"/><line x1="10" y1="10" x2="16" y2="16"/>
+                    </g>
+                    <circle cx="30" cy="30" r="16.5" fill="#FFC64D"/>
+                    <circle cx="24.5" cy="28" r="1.9" fill="#2E2A24"/><circle cx="35.5" cy="28" r="1.9" fill="#2E2A24"/>
+                    <path d="M24.5 34.5 Q30 39 35.5 34.5" fill="none" stroke="#2E2A24"
+                          stroke-width="2.2" stroke-linecap="round"/>
+                  </svg>
+                </div>
+              </div>
+              <div class="session-body">
+                <span class="eyebrow">Start a session</span>
+                <h2 id="session-h2">Pick a length</h2>
+                <p class="lede">A finite session with breaks built in — it ends on its own, gently.</p>
+                <div>
+                  <span class="row-label">Length</span>
+                  <div class="pill-row" id="duration-pills" role="group" aria-label="Session length"></div>
+                </div>
+                <div>
+                  <span class="row-label">Time of day</span>
+                  <div class="pill-row" id="tod-pills" role="group" aria-label="Time of day"></div>
+                </div>
+                <p class="breaks-line" id="breaks-line"></p>
+                <div class="pref-wrap">
+                  <button class="disclosure" id="pref-btn" aria-expanded="false" aria-controls="pref-pop" aria-haspopup="menu">
+                    <span aria-hidden="true" style="color:var(--kq-teal-deep)">☷</span> Change content preferences <b>Balanced mix</b> <span class="chev" aria-hidden="true">▾</span>
+                  </button>
+                  <div class="popover" id="pref-pop" role="menu" aria-label="Content preferences">
+                    <button role="menuitem" class="hub-link" data-hub-row="interests" data-hub-origin="today">Interests <span>→</span></button>
+                    <button role="menuitem" class="hub-link" data-hub-row="contentMix" data-hub-origin="today">Content mix <span>→</span></button>
+                    <button role="menuitem" class="hub-link" data-hub-row="regulation" data-hub-origin="today">Regulation goals <span>→</span></button>
+                  </div>
+                </div>
+                <div class="cta-row">
+                  <button class="cta cta-hero" id="today-go">Get recommendations →</button>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- ================= SETTINGS ================= -->
+          <section class="screen" id="screen-settings" aria-label="Settings">
+            <div class="flow-header">
+              <h1>Settings</h1>
+              <p id="settings-sub">Rarely-changed defaults.</p>
+            </div>
+
+            <div class="panel">
+              <div class="panel-label">Content</div>
+              <button class="setting-row hub-link" data-hub-origin="settings">
+                <span class="txt"><b>Content &amp; curation preferences</b>
+                  <span>Interests, content mix, regulation goals</span></span>
+                <span class="go">→</span>
+              </button>
+              <button class="setting-row">
+                <span class="txt"><b>Add another child</b>
+                  <span>Add a child profile to this family</span></span>
+                <span class="go">→</span>
+              </button>
+            </div>
+
+            <div class="panel">
+              <div class="panel-label">Session behavior</div>
+              <button class="setting-row" data-toggle="autoplay" role="switch" aria-checked="true">
+                <span class="txt"><b>Autoplay next video</b>
+                  <span><b class="val">On</b> · Tap to change</span></span>
+                <span class="switch" aria-hidden="true"></span>
+              </button>
+              <!-- Break type is owned by the Hub (per-child, alongside duration/
+                   interval) — this row is read-only and deep-links there,
+                   the same way "Content & curation preferences" above does. -->
+              <button class="setting-row hub-link" data-hub-origin="settings" data-hub-row="screenTime">
+                <span class="txt"><b>Break type</b>
+                  <span>Set in Screen time &amp; breaks · <b id="break-val-summary"></b></span></span>
+                <span class="go">→</span>
+              </button>
+              <button class="setting-row" data-toggle="sensory" role="switch" aria-checked="false">
+                <span class="txt"><b>Sensory-friendly mode</b>
+                  <span><b class="val">Off</b> · Tap to change</span></span>
+                <span class="switch" aria-hidden="true"></span>
+              </button>
+              <button class="setting-row" data-toggle="schedule" role="switch" aria-checked="true">
+                <span class="txt"><b>Daily schedule</b>
+                  <span><b class="val">On</b> · Tap to change</span></span>
+                <span class="switch" aria-hidden="true"></span>
+              </button>
+            </div>
+          </section>
+
+          <!-- ================= INSIGHTS ================= -->
+          <section class="screen" id="screen-insights" aria-label="Insights">
+            <div class="flow-header">
+              <h1>Insights</h1>
+              <p id="insights-sub">Viewing data — one child at a time.</p>
+            </div>
+            <div class="child-switch" id="insights-children" role="group" aria-label="Child"></div>
+            <div class="range-row" id="range-pills" role="group" aria-label="Range"></div>
+
+            <div id="insights-data">
+              <div class="metrics">
+                <div class="stat-card">
+                  <div><small>Total screen time</small><div class="num" id="stat-time">—</div></div>
+                </div>
+                <div class="stat-card">
+                  <svg class="ring" viewBox="0 0 64 64" aria-hidden="true">
+                    <circle class="track" cx="32" cy="32" r="26"/>
+                    <circle class="fill" id="ring-fill" cx="32" cy="32" r="26"
+                            stroke-dasharray="163.36" stroke-dashoffset="163.36"/>
+                  </svg>
+                  <div><small>Completed</small><div class="num" id="stat-completed">—</div></div>
+                </div>
+                <div class="stat-card">
+                  <div><small>Last 7 days</small>
+                    <div class="dot-row" id="last7-dots" role="list" aria-label="Sessions in the last 7 days"></div>
+                    <!-- Legend for sighted users too — the empty/no-session
+                         state used to rely on a near-invisible fill alone
+                         (2026-09-19 a11y pass, item 10). Glyphs are
+                         decorative here since the words already say it. -->
+                    <p class="fine" style="margin-top:4px; color:var(--kq-teal)"><span aria-hidden="true">●</span> completed · <span aria-hidden="true">○</span> ended early · empty = no session</p>
+                  </div>
+                </div>
+              </div>
+              <div class="bars" id="bars" style="margin-top:16px"></div>
+            </div>
+            <p class="fine" id="insights-empty" hidden>No sessions in this range yet.</p>
+            <p class="privacy">Your family's viewing data stays inside KidQ's own analytics system.
+              We do not sell it or share it outside KidQ.</p>
+          </section>
+
+          <!-- ================= ONBOARDING (profile step) ================= -->
+          <section class="screen" id="screen-onboarding" aria-label="Onboarding — tell us about your family">
+            <div class="onb-wrap">
+              <div class="onb-card">
+                <button class="back-link"><span aria-hidden="true">←</span> Back</button>
+                <h1>Tell us about your family</h1>
+                <div class="field">
+                  <label for="parent-name">Your name</label>
+                  <input id="parent-name" type="text" placeholder="Parent name" autocomplete="off" aria-describedby="onb-error">
+                </div>
+                <div class="stepper-row">
+                  <!-- for/id can't target the step-count-el <span> — a span
+                       isn't a labelable element, so that association was
+                       always inert. role="group" + aria-labelledby on the
+                       actual control cluster is the correct fix (2026-09-19
+                       a11y pass, item 16). -->
+                  <label class="row-label" style="margin:0" id="step-count-label">Number of children</label>
+                  <div class="stepper" role="group" aria-labelledby="step-count-label">
+                    <button class="step-btn" id="step-minus" aria-label="Fewer children"><span aria-hidden="true">−</span></button>
+                    <span class="step-count" id="step-count-el" aria-live="polite" tabindex="-1">1</span>
+                    <button class="step-btn" id="step-plus" aria-label="More children"><span aria-hidden="true">＋</span></button>
+                  </div>
+                </div>
+                <div id="kid-blocks"></div>
+                <p class="error-text" id="onb-error" role="alert">Please add your name so we know who picks the videos.</p>
+                <button class="cta onb-cta" id="onb-continue">Continue</button>
+              </div>
+            </div>
+          </section>
+
+          <!-- ================= CONSENT (DPDP gate) ================= -->
+          <section class="screen" id="screen-consent" aria-label="Before we set up your child's KidQ">
+            <div class="onb-wrap">
+              <div class="onb-card">
+                <button class="back-link" title="Not in this mockup"><span aria-hidden="true">←</span> Back</button>
+                <h1>Before we set up your child's KidQ</h1>
+                <p style="color:var(--kq-text-secondary); font-size:var(--kq-text-body)">
+                  We collect only what's needed to run KidQ safely for your family — never a
+                  child's legal name, and nothing shared beyond what this app needs, in line with
+                  India's Digital Personal Data Protection Act.
+                </p>
+                <label class="check-row" for="consent-checkbox">
+                  <input class="check-box-input" type="checkbox" id="consent-checkbox">
+                  <span style="font-size:var(--kq-text-body); color:var(--foreground)">
+                    I understand and consent to KidQ collecting my child's nickname and age band to
+                    personalize their experience.
+                  </span>
+                </label>
+                <button class="cta onb-cta" id="consent-continue" disabled>Continue</button>
+              </div>
+            </div>
+          </section>
+
+          <!-- ================= HUB (Customize & curation) ================= -->
+          <section class="screen" id="screen-hub" aria-label="Customize and curation">
+            <div class="onb-wrap">
+              <div class="onb-card" style="max-width:520px">
+                <button class="back-link" id="hub-back"><span aria-hidden="true">←</span> Back</button>
+                <h1>Customize &amp; curation</h1>
+                <p style="color:var(--kq-text-secondary); font-size:var(--kq-text-caption)">
+                  Tap through the fields below, or use a shortcut to fill them in for you:
+                </p>
+                <div class="hub-shortcuts">
+                  <button class="hub-shortcut" id="hub-voice-btn">
+                    <svg width="15" height="15" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                      <rect x="7" y="2.5" width="6" height="10" rx="3" stroke="currentColor" stroke-width="1.4"/>
+                      <path d="M4.5 9.5v1a5.5 5.5 0 0 0 11 0v-1" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                      <path d="M10 15.5v2.5M7 18h6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                    </svg>
+                    Talk or type to KidQ
+                  </button>
+                  <button class="hub-shortcut" id="hub-guided-btn">Guided questions</button>
+                </div>
+
+                <div class="panel" id="hub-panel" style="border:none; padding:0"></div>
+
+                <p class="error-text" id="hub-error"></p>
+                <button class="cta onb-cta" id="hub-save">Save &amp; back</button>
+                <button class="mini-link" id="hub-nevermind" style="align-self:center">Never mind — use KidQ's recommendation instead</button>
+              </div>
+            </div>
+          </section>
+
+          <!-- ================= HUB VOICE CAPTURE ================= -->
+          <section class="screen" id="screen-hub-voice" aria-label="Talk or type to KidQ">
+            <div class="onb-wrap">
+              <div class="onb-card">
+                <button class="back-link" id="voice-back"><span aria-hidden="true">←</span> Back</button>
+                <h1>Talk or type to KidQ</h1>
+                <p style="color:var(--kq-text-secondary); font-size:var(--kq-text-body)">
+                  Tell us what your child likes, e.g. "calming animal stories before bed". We'll
+                  fill in what we can — you can review and adjust everything back on the Hub.
+                </p>
+                <button class="mic-btn" id="mic-btn" aria-label="Start voice input" aria-disabled="false">
+                  <svg width="30" height="30" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                    <rect x="7" y="2.5" width="6" height="10" rx="3" stroke="currentColor" stroke-width="1.4"/>
+                    <path d="M4.5 9.5v1a5.5 5.5 0 0 0 11 0v-1" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                    <path d="M10 15.5v2.5M7 18h6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                  </svg>
+                </button>
+                <p style="text-align:center; font-size:var(--kq-text-caption); color:var(--kq-text-secondary)"
+                   id="mic-status" aria-live="polite">Tap to speak, or type below</p>
+                <div class="field">
+                  <!-- Visually hidden: "Or type here…" (the placeholder) plus
+                     the surrounding "Tell us what your child likes…" copy
+                     above already reads fine on-screen without a repeated
+                     visible label, but the textarea still needs a
+                     programmatic name (2026-09-19 a11y pass, item 14). -->
+                  <label for="voice-transcript" class="sr-only">Describe what your child likes</label>
+                  <textarea id="voice-transcript" rows="3" placeholder="Or type here…"></textarea>
+                </div>
+                <p class="fine" id="voice-demo-caption" hidden>Demo transcript — a simulated example, not live speech recognition.</p>
+                <button class="cta onb-cta" id="voice-use" disabled>Use this</button>
+              </div>
+            </div>
+          </section>
+
+          <!-- ================= HUB GUIDED QUESTIONS ================= -->
+          <section class="screen" id="screen-hub-guided" aria-label="A couple of quick questions">
+            <div class="onb-wrap">
+              <div class="onb-card">
+                <button class="back-link" id="guided-back"><span aria-hidden="true">←</span> Back</button>
+                <h1>A couple of quick questions</h1>
+                <div>
+                  <p style="font-weight:700; color:var(--foreground); margin-bottom:8px">
+                    What does your child enjoy more — stories or active play?
+                  </p>
+                  <div class="pill-row" id="guided-enjoys" role="group" aria-label="Enjoys"></div>
+                </div>
+                <div>
+                  <p style="font-weight:700; color:var(--foreground); margin-bottom:8px">
+                    What matters most right now — calming down, focus, or energy?
+                  </p>
+                  <div class="pill-row" id="guided-priority" role="group" aria-label="Priority"></div>
+                </div>
+                <button class="cta onb-cta" id="guided-continue" disabled>Continue</button>
+              </div>
+            </div>
+          </section>
+
+          <!-- ================= RECOMMENDATIONS ================= -->
+          <section class="screen" id="screen-recommendations" aria-label="Recommendations">
+            <div class="flow-header">
+              <h1>Recommendations</h1>
+              <p id="rec-sub">Made for — based on their KidQ settings.</p>
+            </div>
+            <div class="child-switch" id="rec-children" role="group" aria-label="Child"></div>
+            <div class="panel rec-summary" id="rec-summary-panel" style="padding:16px 18px; border:none"></div>
+            <div id="rec-list"></div>
+            <div class="cta-row" id="rec-cta-row">
+              <button class="cta onb-cta" id="rec-confirm">Confirm your Q →</button>
+            </div>
+            <div id="rec-done" hidden style="flex-direction:column; gap:14px; align-items:center; text-align:center">
+              <h2 style="font-family:var(--kq-font-display); font-weight:800; font-size:24px">Your Screen Time Plan is Ready</h2>
+              <p id="rec-done-copy" style="color:var(--kq-text-secondary)"></p>
+              <button class="cta" id="rec-done-back">Back to Parent space</button>
+              <button class="mini-link" id="rec-done-kidview">View kid mode</button>
+            </div>
+          </section>
+
+          <!-- ================= KID VIEW PREVIEW ================= -->
+          <section class="screen" id="screen-kid-preview" aria-label="Kid view preview">
+            <button class="back-link" id="kidpv-back"><span aria-hidden="true">←</span> Back to dashboard</button>
+            <div class="flow-header">
+              <h1>Kid view preview</h1>
+              <p>A read-only mirror of what shows up in Kid Mode — nothing here is saved.</p>
+            </div>
+            <p class="preview-note">Preview only. Tapping a video toggles its colour here, the
+              same way it would for your child — starting a real session happens from Today.</p>
+            <div class="kid-preview-frame">
+              <div class="horizon" aria-hidden="true" style="height:120px">
+                <svg class="arc" viewBox="0 0 800 132" preserveAspectRatio="none">
+                  <path d="M40 120 Q400 8 760 120" fill="none" stroke="#E4D6B8"
+                        stroke-width="2.5" stroke-dasharray="1 9" stroke-linecap="round"/>
+                </svg>
+                <!-- decorative birds near the sun — simple double-arc silhouette, same
+                     hand-drawn stroke style as the sun's rays and the horizon's dashed arc -->
+                <svg class="bird" style="position:absolute; left:28%; top:6%; opacity:.55" width="20" height="9" viewBox="0 0 20 9" aria-hidden="true">
+                  <path d="M1,6 Q5,1 9,6 Q13,1 17,6" fill="none" stroke="#6B6459" stroke-width="1.6" stroke-linecap="round"/>
+                </svg>
+                <svg class="bird" style="position:absolute; left:66%; top:12%; opacity:.4" width="14" height="6" viewBox="0 0 20 9" aria-hidden="true">
+                  <path d="M1,6 Q5,1 9,6 Q13,1 17,6" fill="none" stroke="#6B6459" stroke-width="1.6" stroke-linecap="round"/>
+                </svg>
+                <div class="sun">
+                  <span class="halo"></span>
+                  <svg viewBox="0 0 60 60">
+                    <g stroke="#F0A72E" stroke-width="3.4" stroke-linecap="round">
+                      <line x1="30" y1="1.5" x2="30" y2="9.5"/><line x1="50" y1="30" x2="58.5" y2="30"/>
+                      <line x1="44" y1="16" x2="50" y2="10"/><line x1="44" y1="44" x2="50" y2="50"/>
+                      <line x1="30" y1="50.5" x2="30" y2="58.5"/><line x1="10" y1="50" x2="16" y2="44"/>
+                      <line x1="1.5" y1="30" x2="10" y2="30"/><line x1="10" y1="10" x2="16" y2="16"/>
+                    </g>
+                    <circle cx="30" cy="30" r="16.5" fill="#FFC64D"/>
+                    <circle cx="24.5" cy="28" r="1.9" fill="#2E2A24"/><circle cx="35.5" cy="28" r="1.9" fill="#2E2A24"/>
+                    <path d="M24.5 34.5 Q30 39 35.5 34.5" fill="none" stroke="#2E2A24"
+                          stroke-width="2.2" stroke-linecap="round"/>
+                  </svg>
+                </div>
+              </div>
+              <div style="padding:18px 20px 0">
+                <h2 style="font-family:var(--kq-font-display); font-weight:800; font-size:22px" id="kidpv-h2">Pick something for today.</h2>
+                <p style="font-size:var(--kq-text-body); color:var(--kq-text-secondary); margin-top:4px">These are the videos your parent picked. Choose what you would like to watch.</p>
+              </div>
+              <div class="kid-grid" id="kid-grid" role="group" aria-label="Today's picks"></div>
+              <div style="padding:0 20px 22px; display:flex; flex-direction:column; gap:10px; align-items:flex-start">
+                <button class="cta onb-cta" id="kidpv-start">Start selected videos</button>
+                <p class="fine" id="kidpv-msg" aria-live="polite"></p>
+              </div>
+            </div>
+          </section>
+
+          <!-- ================= INSIGHT LOG (watched) ================= -->
+          <section class="screen" id="screen-insight-log" aria-label="Insight log">
+            <div class="flow-header"><h1 id="log-h1">Watched videos</h1></div>
+            <div class="child-switch" id="log-children" role="group" aria-label="Child"></div>
+            <div id="log-rows" style="display:flex; flex-direction:column; gap:12px"></div>
+            <p class="fine" id="log-empty" hidden>Nothing watched yet.</p>
+          </section>
+
+          <!-- ================= MY VIDEOS ================= -->
+          <section class="screen" id="screen-videos" aria-label="My videos">
+            <!-- sr-only live announcement for removals (2026-09-19 a11y
+                 pass, item 8) — set by renderVideoCard()'s remove-btn
+                 handler and removeVideos(). -->
+            <p class="sr-only" id="videos-status" aria-live="polite"></p>
+            <div class="flow-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px">
+              <h1 style="margin:0">My Videos</h1>
+              <button class="hub-shortcut" id="videos-add-btn">+ Add a video</button>
+            </div>
+            <div class="videos-toolbar" id="videos-toolbar"></div>
+            <div class="select-all-row" id="videos-select-all"></div>
+            <div id="videos-list"></div>
+            <p class="fine" id="videos-empty" hidden>No videos yet.</p>
+            <div class="bulk-bar" id="bulk-bar"></div>
+          </section>
+
+          <!-- ================= ADD A VIDEO ================= -->
+          <section class="screen" id="screen-videos-add" aria-label="Add content">
+            <div class="onb-wrap">
+              <div class="onb-card" style="max-width:480px">
+                <button class="back-link" id="add-back"><span aria-hidden="true">←</span> Back</button>
+                <h1>Add content</h1>
+
+                <div id="add-form" style="display:flex; flex-direction:column; gap:14px">
+                  <div class="field">
+                    <label for="add-url">Supported URL</label>
+                    <input id="add-url" type="text" placeholder="https://www.youtube.com/watch?v=…" autocomplete="off">
+                  </div>
+                  <button class="cta onb-cta" id="add-check" disabled>Check this content</button>
+
+                  <div id="add-preview" hidden style="flex-direction:column; gap:12px; border-top:1px solid var(--kq-border); padding-top:16px">
+                    <!-- Add-a-Video's thumbnail/title/channel now join the bold
+                         color-block fill/tint system (2026-09-19 pass) inside their
+                         own tinted card — always TINT, never fill, since the video
+                         isn't in the Q yet ("available", not "selected"). The trust
+                         badge and reason text stay outside, on the plain white
+                         .onb-card background (mint badge / text-secondary would be
+                         low-contrast on a tint). --fill/--tint/--ink are set inline
+                         (JS, from hueForVideo/FILL_HUE), same pattern as elsewhere. -->
+                    <div class="add-preview-card" id="add-preview-card">
+                      <div class="rec-thumb" aria-hidden="true" style="aspect-ratio:16/9; width:100%; max-width:100%">
+                        <span class="rec-thumb-glyph" id="add-thumb-glyph" aria-hidden="true"></span>
+                      </div>
+                      <strong id="add-title" class="rec-title"></strong>
+                      <span id="add-channel" class="rec-meta"></span>
+                    </div>
+                    <span class="trust-badge" id="add-trust"></span>
+                    <p id="add-reason" style="color:var(--kq-text-secondary); font-size:var(--kq-text-caption); margin:0"></p>
+
+                    <div>
+                      <span class="row-label">Category</span>
+                      <!-- Read-only: the real submission endpoint takes only url +
+                           visibility, no category field. The preview endpoint does
+                           return the admin's own suggested category, shown here as
+                           static text, not an editable picker. -->
+                      <p id="add-category-note" style="color:var(--kq-text-secondary); font-size:var(--kq-text-body); margin:0"></p>
+                    </div>
+
+                    <button class="setting-row" id="add-visibility-row" role="switch" aria-checked="false" style="padding:14px 0">
+                      <span class="txt"><b>Suggest to other families</b>
+                        <span><b class="val">Off</b> · Private by default</span></span>
+                      <span class="switch" aria-hidden="true"></span>
+                    </button>
+
+                    <button class="cta onb-cta" id="add-submit">Add privately to Your Q</button>
+                  </div>
+                </div>
+
+                <div id="add-done" hidden style="flex-direction:column; gap:14px; text-align:center">
+                  <h1 style="margin:0">Added to Your Q</h1>
+                  <p id="add-done-copy" style="color:var(--kq-text-secondary)"></p>
+                  <button class="cta onb-cta" id="add-done-back">Back to My Videos</button>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- ================= INBOX ================= -->
+          <section class="screen" id="screen-inbox" aria-label="Notifications">
+            <div class="flow-header"><h1>Notifications</h1></div>
+            <div class="child-switch" id="inbox-children" role="group" aria-label="Child"></div>
+            <div id="inbox-list" style="display:flex; flex-direction:column; gap:12px"></div>
+            <p class="fine" id="inbox-empty" hidden>Nothing yet.</p>
+          </section>
+
+        </div><!-- /content -->
+
+        <!-- phone tab bar -->
+        <nav class="tabbar" aria-label="Main">
+          <button class="nav-go" data-screen="today" aria-current="page"><span class="ic" aria-hidden="true">☀</span>Today</button>
+          <button class="nav-go" data-screen="recommendations"><span class="ic" aria-hidden="true">✦</span>Recs</button>
+          <button class="nav-go" data-screen="insights"><span class="ic" aria-hidden="true">◔</span>Insights</button>
+          <button class="nav-go" data-screen="videos"><span class="ic" aria-hidden="true">▣</span>Videos</button>
+          <button class="nav-go" data-screen="settings"><span class="ic" aria-hidden="true">⚙</span>Settings</button>
+        </nav>
+      </div><!-- /main -->
+    </div><!-- /shell -->
+  </div><!-- /viewport -->
+
+  <!-- shared modal: recommendation / my-video content preview (placeholder frame — no real embeds in this mockup) -->
+  <div class="modal-scrim" id="preview-modal" role="dialog" aria-modal="true" aria-label="Content preview">
+    <div class="modal-card">
+      <button class="modal-close" id="preview-close" aria-label="Close preview">×</button>
+      <h2 id="preview-title" style="font-family:var(--kq-font-display); font-weight:800; font-size:22px; color:var(--foreground)"></h2>
+      <div class="modal-frame" id="preview-frame"></div>
+      <p id="preview-note" style="color:var(--kq-text-secondary); font-size:var(--kq-text-caption); margin:0"></p>
+    </div>
+  </div>
+
+</div>
+
+<!-- Design debug — designer-only tools, hidden unless the URL has
+     ?debug=tokens (see JS). Not part of the live product. -->
+<hr class="debug-hr" id="debug-hr">
+<div class="debug-section" id="debug-section">
+  <span class="debug-label">Design debug</span>
+  <div class="debug-toggle-row">
+    <label style="display:flex; gap:6px; align-items:center; cursor:pointer">
+      <input type="checkbox" id="empty-toggle"> Preview Insights empty state
+    </label>
+  </div>
+  <div class="swatches">
+    <h2>Token audit — every value from design/brand.md (contrast vs cream #FAF4E8)</h2>
+    <div class="sw-row" id="sw-row"></div>
+  </div>
+</div>
+
+<script>
+/* All interactivity is plain DOM state — no persistence, no backend. */
+const $ = (s, r=document) => r.querySelector(s);
+const $$ = (s, r=document) => [...r.querySelectorAll(s)];
+
+// Restores keyboard focus after a container's children are wiped and
+// rebuilt from scratch — every render*() function in this file does this,
+// which otherwise throws focus to <body> on every single interaction.
+// Usage: call captureFocusKey(container) before clearing it, do the
+// innerHTML="" + rebuild, then call restoreFocusKey(container, key) after.
+// Every newly-created focusable element inside the container must carry a
+// stable data-focus-key attribute (its id/value/name — whatever uniquely
+// and consistently identifies "the same logical item" across a rebuild) for
+// this to find it again.
+function captureFocusKey(container){
+  const active = document.activeElement;
+  if (active && container.contains(active)) return active.dataset.focusKey || null;
+  return null;
+}
+function restoreFocusKey(container, key){
+  if (!key) return;
+  const next = container.querySelector(`[data-focus-key="${CSS.escape(key)}"]`);
+  if (next) next.focus();
+}
+
+/* ---- data (grounded: names/ages/saved-minutes are the real Home() fields;
+        insights numbers are sample data per spec §1 "fake but plausible") ---- */
+
+/* ---- bold color-block visual layer (2026-09-19 pass): a saturated FILL
+   means "selected / in the Q / chosen", its matching light TINT means "not
+   selected / available". Text on a fill is always cream, text on a tint is
+   always ink — see the --kq-*-tint/-fill tokens' own comment in :root.
+   `ink` here is the ICON color to use when an icon sits on the TINT (not the
+   fill — on a fill, icons/text are cream, same as everything else there).
+   Shared by Recommendations, My Videos and Insights' category bars. ---- */
+const FILL_HUE = {
+  night:   { fill: "var(--kq-night)",      tint: "var(--kq-night-tint)",  ink: "var(--kq-night)" },
+  coral:   { fill: "var(--kq-coral-fill)", tint: "var(--kq-coral-tint)",  ink: "var(--kq-coral-ink)" },
+  dusk:    { fill: "var(--kq-dusk-ink)",   tint: "var(--kq-dusk-tint)",   ink: "var(--kq-dusk-ink)" },
+  rose:    { fill: "var(--kq-rose-ink)",   tint: "var(--kq-rose-tint)",   ink: "var(--kq-rose-ink)" },
+  tealdeep:{ fill: "var(--kq-teal-deep)",  tint: "var(--kq-teal-tint)",   ink: "var(--kq-teal-deep)" },
+  teal:    { fill: "var(--kq-teal)",       tint: "var(--kq-teal-tint)",   ink: "var(--kq-teal)" },
+};
+// Content category -> hue family. Same mapping used by Recommendations, My
+// Videos, and (explicit user decision) Insights' category bars, so a
+// category reads as one consistent color everywhere in the app.
+const CATEGORY_FILL = { Stories:"night", Music:"coral", Learning:"dusk", Nature:"tealdeep" };
+// Defensive fallback for any video that somehow lacks a recognized category
+// (rotated by list index, not stored) — nothing should ever render colorless.
+const FALLBACK_HUES = ["night","coral","dusk","tealdeep"];
+function hueForVideo(v, index){
+  const key = CATEGORY_FILL[v.category];
+  return FILL_HUE[key] || FILL_HUE[FALLBACK_HUES[index % FALLBACK_HUES.length]];
+}
+
+// Kid identity color (2026-09-19 Today pass): each kid's mascot slot now maps to a
+// FILL_HUE family, not a bare hex, so the kid-switcher chip can use that kid's own
+// fill (selected) / tint (unselected) surface. The old terracotta slot (icons-only
+// per brand.md, fails contrast as a large fill) collapses into the coral family —
+// same move Music already made: coral-fill is heart's verified large-fill shade.
+// teal-deep sits last so the rotation's two green families stay maximally apart.
+const KID_HUE = ["teal","coral","night","dusk","rose","tealdeep"];
+const kidHue = kid => FILL_HUE[KID_HUE[kid.hue % KID_HUE.length]];
+// Small avatar-circle color = the family's fill. Kept as MASCOT so the debug swatch
+// strip and onboarding avatar-edit read from one list.
+const MASCOT = KID_HUE.map(k => FILL_HUE[k].fill);
+
+const kids = [
+  { name:"Aarav", age:4, saved:25, hue:0 },
+  { name:"Meera", age:6, saved:40, hue:1 },
+];
+let selKid = 0;
+
+/* ---- shared motion mechanics (2026-09-19 pass): `entering` gates the
+   entrance stagger to screen-navigation only (not in-place toggles);
+   `lastToggled` marks the single most-recently-toggled card so only it
+   gets the selection pop-in. Both consumed by the CSS above. ---- */
+let entering = false;
+let lastToggled = null;
+
+const state = {
+  duration: 20, tod: "Auto",
+  // Break type used to be duplicated here as a global Settings-only value;
+  // it's now owned solely by the Hub (per-child, in hubData below).
+  settings: { autoplay:true, sensory:false, schedule:true },
+  range: "week",
+};
+
+const INSIGHTS = {
+  Aarav: {
+    day:   { time:"32m",  completed:82, bars:[["Stories",12],["Music",8],["Learning",7],["Nature",5]] },
+    week:  { time:"186m", completed:78, bars:[["Stories",58],["Music",44],["Learning",49],["Nature",35]] },
+    month: { time:"640m", completed:81, bars:[["Stories",210],["Music",150],["Learning",176],["Nature",104]] },
+  },
+  Meera: {
+    day:   { time:"45m",  completed:91, bars:[["Stories",10],["Music",14],["Learning",16],["Nature",5]] },
+    week:  { time:"240m", completed:85, bars:[["Stories",60],["Music",72],["Learning",81],["Nature",27]] },
+    month: { time:"910m", completed:83, bars:[["Stories",240],["Music",250],["Learning",300],["Nature",120]] },
+  },
+};
+
+/* ---- mockup rig: screen + width switching ---- */
+// Screens reached by drilling in (a step flow, a hand-off to the child's own
+// view) rather than by a persistent nav destination hide the dashboard shell,
+// same as "onboarding" already did before this pass.
+const SHELL_HIDDEN_SCREENS = new Set(["onboarding","consent","hub","hub-voice","hub-guided","videos-add","kid-preview"]);
+// Pre-account screens: no signed-in identity yet, so the topbar drops to
+// just a back-context (no status pill, bell, or parent avatar).
+const PRE_ACCOUNT_SCREENS = new Set(["consent","onboarding"]);
+let suppressHashUpdate = false;
+function showScreen(name){
+  // Navigating away from My Videos while mid-select always clears selection
+  // state, so coming back later always starts fresh.
+  if (name !== "videos") exitSelectMode();
+  $$(".screen").forEach(s => s.classList.toggle("active", s.id === "screen-"+name));
+  $$(".nav-go").forEach(b => {
+    if (b.dataset.screen === name) b.setAttribute("aria-current","page");
+    else b.removeAttribute("aria-current");
+  });
+  const hideShell = SHELL_HIDDEN_SCREENS.has(name);
+  $(".tabbar").style.display = hideShell ? "none" : "";
+  $(".shell").classList.toggle("nav-hidden", hideShell);
+  $(".topbar").classList.toggle("pre-account", PRE_ACCOUNT_SCREENS.has(name));
+  // Entrance stagger plays only for renders triggered by screen navigation
+  // (this block), never for an in-place toggle/filter re-render.
+  entering = true;
+  if (name === "insights") renderInsights();
+  if (name === "settings") renderSettingsSummary();
+  if (name === "hub") renderHub();
+  if (name === "hub-voice") resetVoiceCapture();
+  if (name === "hub-guided") renderGuided();
+  if (name === "recommendations") { renderRecChildren(); renderRecommendations(); }
+  if (name === "kid-preview") renderKidPreview();
+  if (name === "insight-log") { renderLogChildren(); renderWatchedLog(); }
+  if (name === "videos") renderVideos();
+  if (name === "videos-add") resetAddVideo();
+  if (name === "inbox") { renderInboxChildren(); renderInbox(); }
+  entering = false;
+  if (!suppressHashUpdate && location.hash.slice(1) !== name){
+    history.replaceState(null, "", "#" + name);
+  }
+}
+$$(".nav-go").forEach(b => b.addEventListener("click", () => showScreen(b.dataset.screen)));
+// Brandmark is a dedicated home link, not a .nav-go item: the generic
+// .nav-go click loop above also sets aria-current="page" on whichever
+// button was clicked, which would give the brandmark that state too
+// whenever Today is active — two "current page" controls for one
+// destination. Wired separately instead.
+$("#brand-home").addEventListener("click", () => showScreen("today"));
+
+/* ---- hash routing: a screen can still be linked directly (#hub,
+   #videos-add, …) for design review, without a visible picker toolbar ---- */
+function screenFromHash(){
+  const name = location.hash.slice(1);
+  return name && $("#screen-" + name) ? name : null;
+}
+window.addEventListener("hashchange", () => {
+  const name = screenFromHash();
+  if (name){ suppressHashUpdate = true; showScreen(name); suppressHashUpdate = false; }
+});
+
+/* ---- design debug strip: only for ?debug=tokens, never a normal visitor ---- */
+if (new URLSearchParams(location.search).get("debug") === "tokens"){
+  $("#debug-section").classList.add("show");
+}
+
+/* ---- Today: family card ---- */
+function renderFamily(){
+  const k = kids[selKid];
+  const av = $("#lead-avatar");
+  av.style.background = kidHue(k).fill;
+  av.textContent = k.name[0];
+  $("#lead-name").textContent = k.name;
+  $("#lead-meta").textContent = `${k.age} years · ${k.saved} min saved`;
+  const h2 = $("#session-h2");
+  h2.replaceChildren("Pick a length for ", Object.assign(document.createElement("em"), {className:"hl", textContent: k.name}));
+  $("#settings-sub").textContent = `Rarely-changed defaults for ${k.name}.`;
+  $("#insights-sub").textContent = `Viewing ${k.name}'s data — one child at a time.`;
+  const sw = $("#kid-switch");
+  const focusKey = captureFocusKey(sw);
+  sw.innerHTML = "";
+  kids.forEach((kid, i) => {
+    const b = document.createElement("button");
+    b.className = "kid-chip";
+    b.dataset.focusKey = kid.name;
+    b.setAttribute("aria-pressed", String(i === selKid));
+    const hue = kidHue(kid);
+    b.style.setProperty("--fill", hue.fill);
+    b.style.setProperty("--tint", hue.tint);
+    if (i === selKid && lastToggled === kid.name) b.classList.add("just");
+    b.innerHTML = `<i>${kid.name[0]}</i>${kid.name}`;
+    b.addEventListener("click", () => { selKid = i; lastToggled = kid.name; renderFamily(); renderInsightsChildren(); renderInsights(); });
+    sw.appendChild(b);
+  });
+  const add = document.createElement("button");
+  add.className = "kid-chip add";
+  add.dataset.focusKey = "add-child";
+  add.textContent = "＋ Add another child";
+  sw.appendChild(add);
+  restoreFocusKey(sw, focusKey);
+  lastToggled = null;
+}
+
+/* ---- Today: pills ---- */
+const DURATIONS = [15,20,30,45,60];
+const TODS = ["Auto","Morning","Daytime","Bedtime"];
+function breaksFor(min){ return min >= 45 ? 3 : min >= 30 ? 2 : 1 }
+function renderBreaksLine(){
+  const n = breaksFor(state.duration);
+  // innerHTML (not textContent) so the leading ◷ glyph can be wrapped as
+  // decorative — the words already say "mid-session break" (2026-09-19
+  // a11y pass, item 18).
+  $("#breaks-line").innerHTML =
+    `<span aria-hidden="true" style="color:var(--kq-sun-ink)">◷</span> ${n} mid-session break${n>1?"s":""} + wind-down · the sky sets as time runs out`;
+}
+function pillGroup(el, values, get, set, subs){
+  const focusKey = captureFocusKey(el);
+  el.innerHTML = "";
+  values.forEach(v => {
+    const b = document.createElement("button");
+    b.className = "pill";
+    b.dataset.focusKey = String(v);
+    b.setAttribute("aria-pressed", String(get() === v));
+    b.innerHTML = subs ? `${v}<small>min</small>` : v;
+    b.addEventListener("click", () => { set(v); pillGroup(el, values, get, set, subs); renderBreaksLine(); });
+    el.appendChild(b);
+  });
+  restoreFocusKey(el, focusKey);
+}
+pillGroup($("#duration-pills"), DURATIONS, () => state.duration, v => state.duration = v, true);
+pillGroup($("#tod-pills"), TODS, () => state.tod, v => state.tod = v, false);
+renderBreaksLine();
+
+/* ---- Today: preferences popover ---- */
+const prefBtn = $("#pref-btn"), prefPop = $("#pref-pop");
+prefBtn.addEventListener("click", () => {
+  const open = prefPop.classList.toggle("open");
+  prefBtn.setAttribute("aria-expanded", String(open));
+});
+document.addEventListener("click", e => {
+  if (!e.target.closest(".pref-wrap") && prefPop.classList.contains("open")){
+    prefPop.classList.remove("open"); prefBtn.setAttribute("aria-expanded","false");
+  }
+});
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape" && prefPop.classList.contains("open")){
+    prefPop.classList.remove("open"); prefBtn.setAttribute("aria-expanded","false"); prefBtn.focus();
+  }
+  if (e.key === "Escape" && $("#preview-modal").classList.contains("open")){
+    closePreviewModal();
+  }
+});
+
+/* ---- Settings: toggles + break chips ---- */
+$$("[data-toggle]").forEach(row => {
+  row.addEventListener("click", () => {
+    const key = row.dataset.toggle;
+    state.settings[key] = !state.settings[key];
+    const on = state.settings[key];
+    // The real state lives on this button's own role="switch" aria-checked
+    // (just above); the .switch span is aria-hidden="true" decoration and
+    // no longer duplicates it (2026-09-19 a11y pass, item 3).
+    row.setAttribute("aria-checked", String(on));
+    row.querySelector(".val").textContent = on ? "On" : "Off";
+  });
+});
+// Break type is read-only in Settings now — it deep-links into the Hub's
+// "Screen time & breaks" row (the single owner of this per-child setting)
+// via the same .hub-link wiring used by "Content & curation preferences".
+function renderSettingsSummary(){
+  $("#break-val-summary").textContent = currentHub().breakType;
+}
+
+/* ---- Insights ---- */
+const RANGES = ["day","week","month"]; // lowercase, as the source renders them
+function renderInsightsChildren(){
+  const el = $("#insights-children");
+  const focusKey = captureFocusKey(el);
+  el.innerHTML = "";
+  kids.forEach((kid, i) => {
+    const b = document.createElement("button");
+    b.className = "pill";
+    b.dataset.focusKey = kid.name;
+    b.setAttribute("aria-pressed", String(i === selKid));
+    b.textContent = kid.name;
+    b.addEventListener("click", () => { selKid = i; renderFamily(); renderInsightsChildren(); renderInsights(); });
+    el.appendChild(b);
+  });
+  restoreFocusKey(el, focusKey);
+}
+function renderRanges(){
+  const el = $("#range-pills");
+  const focusKey = captureFocusKey(el);
+  el.innerHTML = "";
+  RANGES.forEach(r => {
+    const b = document.createElement("button");
+    b.className = "pill";
+    b.dataset.focusKey = r;
+    b.setAttribute("aria-pressed", String(state.range === r));
+    b.textContent = r;
+    b.addEventListener("click", () => { state.range = r; renderRanges(); renderInsights(); });
+    el.appendChild(b);
+  });
+  restoreFocusKey(el, focusKey);
+}
+function renderInsights(){
+  const empty = $("#empty-toggle").checked;
+  $("#insights-data").hidden = empty;
+  $("#insights-empty").hidden = !empty;
+  if (empty) return;
+  renderLast7Dots();
+  const d = INSIGHTS[kids[selKid].name][state.range];
+  $("#stat-time").textContent = d.time;
+  $("#stat-completed").textContent = d.completed + "%";
+  const C = 163.36; // 2πr, r=26
+  const ring = $("#ring-fill");
+  ring.style.strokeDashoffset = C; // restart so the fill animates on each render
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    ring.style.strokeDashoffset = C * (1 - d.completed/100);
+  }));
+  const bars = $("#bars");
+  bars.innerHTML = "";
+  const max = Math.max(...d.bars.map(x => x[1]));
+  d.bars.forEach(([label, mins]) => {
+    const row = document.createElement("div");
+    row.className = "bar-row";
+    row.innerHTML = `<small>${label}</small>
+      <div class="bar-track"><div class="bar-fill"></div></div><b>${mins}m</b>`;
+    bars.appendChild(row);
+    const hueKey = CATEGORY_FILL[label];
+    row.querySelector(".bar-fill").style.background = (hueKey && FILL_HUE[hueKey].fill) || "var(--kq-teal)";
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      row.querySelector(".bar-fill").style.width = (mins/max*100) + "%";
+    }));
+  });
+}
+$("#empty-toggle").addEventListener("change", renderInsights);
+renderInsightsChildren();
+renderRanges();
+
+/* ---- Onboarding ---- */
+const onb = { count:1, kids:[{hue:0, band:"3–4"}] };
+const BANDS = ["0–2","2–3","3–4","4–5","5–6"];
+// Set by the step +/- handlers just before a full renderKidBlocks() rebuild
+// that changes the block count. Index-based data-focus-key values (below)
+// identify "the same" block only while the count is unchanged — once a
+// block is added/removed every later block re-indexes, so there's no
+// stable identity to restore focus to. This is the documented fallback:
+// land focus somewhere sensible instead of leaving it stranded on <body>.
+let kidBlocksFocusFallback = null;
+function renderKidBlocks(){
+  $("#step-count-el").textContent = onb.count;
+  $("#step-minus").disabled = onb.count <= 1;
+  $("#step-plus").disabled = onb.count >= 6;
+  const holder = $("#kid-blocks");
+  const focusKey = captureFocusKey(holder);
+  holder.innerHTML = "";
+  onb.kids.forEach((k, i) => {
+    const blk = document.createElement("div");
+    blk.className = "kid-block";
+    blk.innerHTML = `
+      <div class="row">
+        <button class="avatar-edit" aria-label="Change mascot color" data-focus-key="avatar-${i}"
+          style="background:${MASCOT[k.hue % MASCOT.length]}">${i+1}<span class="pencil" aria-hidden="true">✎</span></button>
+        <div class="field"><label for="kid-in-${i}">Nickname</label>
+          <input id="kid-in-${i}" type="text" placeholder="Child ${i+1}'s nickname" autocomplete="off" data-focus-key="nickname-${i}"></div>
+      </div>
+      <div class="pill-row" role="group" aria-label="Age band for child ${i+1}"></div>`;
+    blk.querySelector(".avatar-edit").addEventListener("click", e => {
+      k.hue = (k.hue + 1) % MASCOT.length;
+      e.currentTarget.style.background = MASCOT[k.hue];
+    });
+    const pr = blk.querySelector(".pill-row");
+    BANDS.forEach(band => {
+      const b = document.createElement("button");
+      b.className = "pill";
+      b.dataset.focusKey = `band-${i}-${band}`;
+      b.setAttribute("aria-pressed", String(k.band === band));
+      b.textContent = band;
+      b.addEventListener("click", () => {
+        k.band = band;
+        $$(".pill", pr).forEach(x => x.setAttribute("aria-pressed", String(x === b)));
+      });
+      pr.appendChild(b);
+    });
+    holder.appendChild(blk);
+  });
+  restoreFocusKey(holder, focusKey);
+  // Unconditional, not gated on "did restore fail": adding/removing a block
+  // is triggered from the stepper buttons, which sit OUTSIDE #kid-blocks, so
+  // focus is never actually inside the wiped container when this runs and
+  // captureFocusKey/restoreFocusKey above are no-ops for this interaction.
+  // The fallback here is the real fix for this call site — deliberately
+  // moving focus to the newly-relevant spot (the new block, or the step
+  // count) rather than leaving it stranded on the stepper button.
+  if (kidBlocksFocusFallback) kidBlocksFocusFallback();
+  kidBlocksFocusFallback = null;
+}
+$("#step-plus").addEventListener("click", () => {
+  if (onb.count >= 6) return;
+  onb.count++; onb.kids.push({hue: onb.count-1, band:"3–4"});
+  kidBlocksFocusFallback = () => $(`#kid-in-${onb.kids.length - 1}`)?.focus();
+  renderKidBlocks();
+});
+$("#step-minus").addEventListener("click", () => {
+  if (onb.count <= 1) return;
+  onb.count--; onb.kids.pop();
+  kidBlocksFocusFallback = () => $("#step-count-el")?.focus();
+  renderKidBlocks();
+});
+$("#onb-continue").addEventListener("click", () => {
+  const nameEl = $("#parent-name"), err = $("#onb-error"), btn = $("#onb-continue");
+  if (!nameEl.value.trim()){ err.classList.add("show"); nameEl.setAttribute("aria-invalid","true"); nameEl.focus(); return; }
+  err.classList.remove("show");
+  nameEl.setAttribute("aria-invalid","false");
+  btn.disabled = true; btn.textContent = "Saving…";
+  setTimeout(() => { btn.disabled = false; btn.textContent = "Continue"; }, 1400);
+});
+renderKidBlocks();
+
+/* ---- greeting parent name mirrors onboarding input (small live touch) ---- */
+$("#parent-name").addEventListener("input", e => {
+  $("#greet-eyebrow").textContent = `Good afternoon, ${e.target.value.trim() || "there"}`;
+});
+
+/* ---- swatch strip ---- */
+const SWATCHES = [
+  ["cream","#FAF4E8","—"], ["cream-deep","#F2E9D8","1.09:1"], ["ink","#2E2A24","13.02:1"],
+  ["ink-soft","#6B6459","5.42:1"], ["teal","#1F7A6D","4.79:1"], ["teal-deep","#16594F","7.42:1"],
+  ["sun (illustration only)","#FFC64D","1.47:1"], ["sun-deep (rays)","#F0A72E","1.93:1"],
+  ["heart (icons only)","#E2705E","2.87:1"], ["error text","#6B2E23","9.46:1"],
+  ["dusk (never text bg)","#C9B8E8","—"], ["night","#2B2955","12.44:1"], ["card","#FFFFFF","—"],
+  ["coral-ink (icons only)","#C2543F","4.53:1 white / 4.14:1 cream / 3.76:1 cream-deep"],
+  ["dusk-ink (icons only)","#6F5AA8","5.67:1 white / 5.18:1 cream / 4.70:1 cream-deep"],
+  ["rose-ink (icons only)","#A8506E","5.20:1 white / 4.75:1 cream / 4.32:1 cream-deep"],
+  ["sun-ink (icons only)","#AD6C0C","4.26:1 white / 3.89:1 cream / 3.54:1 cream-deep"],
+  ["coral-fill (large fill, cream text)","#B84B38","4.67:1 cream / 5.12:1 white"],
+  ["night-tint (fill text = ink)","#DCDAF0","10.41:1 ink"],
+  ["coral-tint (fill text = ink)","#FADBD3","10.96:1 ink"],
+  ["dusk-tint (fill text = ink)","#E3D9F4","10.52:1 ink"],
+  ["rose-tint (fill text = ink)","#F6D8E3","10.76:1 ink"],
+  ["teal-tint (fill text = ink)","#D4EBE4","11.41:1 ink"],
+  /* Bold color-block pass, teal hue (2026-09-19): Hub's Activities tile and
+     Kid View Preview/Add-a-Video's teal-category tiles are the first things
+     to actually pair --kq-teal with cream text as a large FILL, and to use
+     --kq-teal (not a generic ink/foreground) as an ICON color on its own
+     --kq-teal-tint — both genuinely new pairings this pass introduces. */
+  ["teal-fill (large fill, cream text)","#1F7A6D","4.79:1 cream"],
+  ["teal icon (Hub tile / tile-glyph) on teal-tint","#1F7A6D","4.14:1 on #D4EBE4"],
+  /* Kid-switcher chip pass (2026-09-19): each kid's chip now wears its own
+     FILL_HUE family (selected=fill, unselected=tint), and the chip's small
+     avatar dot always renders in --fill (cream ring added when the chip
+     itself is already the fill, so the dot stays visible). Coral-fill's
+     text pairing already exists above (Music); the dot-on-tint pairing is
+     new for every family — dusk-ink/rose-ink were "icons only" before this
+     pass and had never been checked against their own tint background. */
+  ["cream on coral-fill (kid-chip text)","#B84B38","4.67:1 cream"],
+  ["coral-fill dot on coral-tint","#B84B38","3.93:1 on #FADBD3"],
+  ["rose-ink dot on rose-tint","#A8506E","3.93:1 on #F6D8E3"],
+  ["dusk-ink dot on dusk-tint","#6F5AA8","4.18:1 on #E3D9F4"],
+];
+const swRow = $("#sw-row");
+SWATCHES.forEach(([n,h,c]) => {
+  const d = document.createElement("div");
+  d.className = "sw";
+  d.innerHTML = `<i style="background:${h}"></i>${n} <code>${h} · ${c}</code>`;
+  swRow.appendChild(d);
+});
+const mAv = document.createElement("div");
+mAv.className = "sw";
+mAv.innerHTML = "mascot rotation " + MASCOT.map(c =>
+  `<i style="background:${c}; border-radius:50%"></i>`).join("");
+swRow.appendChild(mAv);
+
+/* ============================================================
+   New screens (2026-09-19 pass): Consent, Hub (+ voice/guided
+   capture), Recommendations, Kid View Preview, Insight log,
+   My Videos, Add a Video, Inbox.
+   Grounded in web/src/app/{onboarding/consent,hub,recommendations,
+   watched,videos,inbox}. Sample data follows the same "real
+   structure, fake but plausible" approach as the INSIGHTS object
+   above. See report for judgment calls (no real-source analog).
+   ============================================================ */
+
+/* ---- shared: Content & curation preferences link-through ---- */
+let hubOrigin = "today";
+let hubExpandedRow = null;
+function openHub(origin, row){
+  hubOrigin = origin;
+  hubExpandedRow = row || null;
+  if (prefPop.classList.contains("open")){
+    prefPop.classList.remove("open"); prefBtn.setAttribute("aria-expanded","false");
+  }
+  showScreen("hub");
+}
+$$(".hub-link").forEach(btn => {
+  btn.addEventListener("click", () => openHub(btn.dataset.hubOrigin || "today", btn.dataset.hubRow || null));
+});
+
+/* ---- shared: content preview modal (Recommendations / My Videos) ---- */
+function openPreviewModal(title, note){
+  $("#preview-title").textContent = title;
+  $("#preview-frame").textContent = "Preview isn't wired to real media in this mockup.";
+  $("#preview-note").textContent = note || "";
+  $("#preview-modal").classList.add("open");
+}
+function closePreviewModal(){ $("#preview-modal").classList.remove("open"); }
+$("#preview-close").addEventListener("click", closePreviewModal);
+$("#preview-modal").addEventListener("click", e => { if (e.target.id === "preview-modal") closePreviewModal(); });
+$("#inbox-bell").addEventListener("click", () => showScreen("inbox"));
+
+/* ---- Hub: taxonomy + per-child draft state ---- */
+const HUB_INTERESTS = ["Animals","Stories","Music","Space & Science","Nature","Numbers & Letters","Activities","Colors & Shapes"];
+const HUB_CATEGORIES = ["Stories","Music","Learning","Nature"]; // same vocabulary as Insights' bars
+// Insights' category-breakdown bars now re-point to the same FILL_HUE/
+// CATEGORY_FILL mapping used by Recommendations and My Videos (explicit
+// user decision, 2026-09-19 bold color-block pass) — a category reads as
+// one consistent color everywhere in the app. The old CATEGORY_HUE/MASCOT-
+// indexed mapping is gone (its one usage was the bar-fill color below);
+// see FILL_HUE/CATEGORY_FILL near the top of the script.
+// Placeholder glyph set for the color-blocked Hub tiles (Interests +
+// Content-mix categories only) — plain Unicode symbols, not emoji, so they
+// pick up currentColor and swap teal/white with the tile's selected state.
+// Ready to swap for a real icon library later.
+const HUB_ICONS = {
+  "Animals":"◈", "Stories":"▤", "Music":"♪", "Space & Science":"☆",
+  "Nature":"◍", "Numbers & Letters":"∑", "Activities":"⬡", "Colors & Shapes":"◐",
+  "Learning":"✎",
+};
+// Per-tile hue mapping for Hub tiles (Interests + Content-mix categories
+// only) — mirrors CATEGORY_FILL's semantic-mapping pattern above. Hub tiles
+// are now part of the bold color-block pass too (2026-09-19): the four
+// categories shared with CATEGORY_FILL reuse it directly, so "Learning"
+// reads as the same dusk everywhere instead of Hub-only teal — a real
+// cross-screen inconsistency that existed before this change. Activities
+// joins the teal family (no sun-based fill clears text contrast).
+const HUB_TILE_HUE = {
+  ...CATEGORY_FILL,                       // Stories:night, Music:coral, Learning:dusk, Nature:tealdeep
+  "Space & Science":"dusk",  "Animals":"rose",  "Colors & Shapes":"rose",
+  "Numbers & Letters":"dusk",
+  "Activities":"teal",
+};
+const HUB_REGULATION = [
+  { key:"CALM", label:"Calm" }, { key:"FOCUS", label:"Focus" },
+  { key:"MOVEMENT", label:"Movement" }, { key:"WINDDOWN", label:"Wind-down" },
+];
+const HUB_BREAK_TYPES = ["Movement","Quiet-calm","Let KidQ alternate"]; // matches Settings' own wording
+const HUB_DURATIONS = [15,30,45,60,90];
+const HUB_BREAK_INTERVALS = [10,15,20];
+const hubData = {
+  Aarav: { interests:["Stories","Nature"], contentMix:"CHOSEN", categories:["Stories","Nature"], regulation:["CALM"], sessionMinutes:20, breakInterval:15, breakType:"Let KidQ alternate" },
+  Meera: { interests:["Music","Activities"], contentMix:"SURPRISE", categories:[], regulation:["FOCUS","MOVEMENT"], sessionMinutes:30, breakInterval:15, breakType:"Movement" },
+};
+function currentHub(){ return hubData[kids[selKid].name]; }
+function summarizeHubList(items){
+  if (!items || items.length === 0) return "None selected";
+  if (items.length <= 2) return items.join(", ");
+  return `${items.slice(0,2).join(", ")} +${items.length-2}`;
+}
+function syncTodayPrefSummary(){
+  const h = currentHub();
+  const b = $("#pref-btn b");
+  if (!b) return;
+  b.textContent = h.contentMix === "SURPRISE" ? "Balanced mix"
+    : h.categories.length === 0 ? "No categories yet" : summarizeHubList(h.categories);
+}
+function renderHub(){
+  const h = currentHub();
+  const panel = $("#hub-panel");
+  const focusKey = captureFocusKey(panel);
+  panel.innerHTML = "";
+  const regulationLabels = h.regulation.map(k => HUB_REGULATION.find(r => r.key === k).label);
+  const rows = [
+    { id:"interests", title:"Interests", summary: summarizeHubList(h.interests) },
+    { id:"contentMix", title:"Content mix", summary: h.contentMix === "SURPRISE"
+        ? "Surprise us — a good age-appropriate mix"
+        : h.categories.length === 0 ? "Let me choose categories — none chosen yet" : `Categories: ${summarizeHubList(h.categories)}` },
+    { id:"regulation", title:"Regulation goal", summary: regulationLabels.length === 0 ? "No restriction — any goal can be included" : summarizeHubList(regulationLabels) },
+    { id:"screenTime", title:"Screen time & breaks", summary: `${h.sessionMinutes} min · every ${h.breakInterval} min · ${h.breakType}` },
+  ];
+  rows.forEach(row => {
+    const expanded = hubExpandedRow === row.id;
+    const header = document.createElement("button");
+    header.className = "setting-row";
+    header.dataset.focusKey = row.id;
+    header.setAttribute("aria-expanded", String(expanded));
+    header.setAttribute("aria-controls", row.id + "-body");
+    header.innerHTML = `<span class="txt"><b>${row.title}</b><span>${row.summary}</span></span><span class="go chev" aria-hidden="true">▸</span>`;
+    header.addEventListener("click", () => { hubExpandedRow = expanded ? null : row.id; renderHub(); });
+    panel.appendChild(header);
+    // The body always exists (with a stable id matching aria-controls above)
+    // and is just hidden when collapsed, rather than only existing in the
+    // DOM while expanded — a small correctness fix over the "id only exists
+    // once expanded" accordion pattern.
+    const body = document.createElement("div");
+    body.className = "hub-body";
+    body.id = row.id + "-body";
+    body.hidden = !expanded;
+    // Single small delay-free fade-in when this row's body is shown — only
+    // one hub row is ever expanded at a time, so no stagger index needed.
+    if (expanded){ body.style.setProperty("--i", 0); body.classList.add("enter"); }
+    if (row.id === "interests"){
+      const wrap = document.createElement("div"); wrap.className = "chip-cards tiles"; wrap.style.padding = "0";
+      HUB_INTERESTS.forEach(name => {
+        const chip = document.createElement("button");
+        chip.className = "chip-card tile";
+        chip.dataset.focusKey = `interest:${name}`;
+        chip.setAttribute("aria-pressed", String(h.interests.includes(name)));
+        chip.innerHTML = `<span class="tile-icon" aria-hidden="true">${HUB_ICONS[name] || ""}</span><span>${name}</span>`;
+        const hue = FILL_HUE[HUB_TILE_HUE[name]] || FILL_HUE.tealdeep;
+        chip.style.setProperty("--fill", hue.fill); chip.style.setProperty("--tint", hue.tint); chip.style.setProperty("--ink", hue.ink);
+        if (lastToggled === chip.dataset.focusKey) chip.classList.add("just");
+        chip.addEventListener("click", () => {
+          h.interests = h.interests.includes(name) ? h.interests.filter(v => v !== name) : [...h.interests, name];
+          lastToggled = chip.dataset.focusKey;
+          renderHub();
+        });
+        wrap.appendChild(chip);
+      });
+      body.appendChild(wrap);
+    } else if (row.id === "contentMix"){
+      // Genuinely mutually-exclusive single-select, so role="radio"/aria-checked
+      // in a role="radiogroup" is the correct pattern — not independent
+      // aria-pressed toggle buttons.
+      const group = document.createElement("div");
+      group.setAttribute("role", "radiogroup");
+      group.setAttribute("aria-label", "Content mix");
+      group.style.display = "flex"; group.style.flexDirection = "column"; group.style.gap = "8px";
+      [["SURPRISE","Surprise us — a good age-appropriate mix"], ["CHOSEN","Let me choose categories"]].forEach(([val,label]) => {
+        const opt = document.createElement("button");
+        opt.className = "radio-opt";
+        opt.dataset.focusKey = `contentMix:${val}`;
+        opt.setAttribute("role", "radio");
+        opt.setAttribute("aria-checked", String(h.contentMix === val));
+        opt.innerHTML = `<span class="radio-dot" aria-hidden="true"></span>${label}`;
+        opt.addEventListener("click", () => { h.contentMix = val; renderHub(); });
+        group.appendChild(opt);
+      });
+      body.appendChild(group);
+      if (h.contentMix === "CHOSEN"){
+        const wrap = document.createElement("div"); wrap.className = "chip-cards tiles"; wrap.style.padding = "0 0 0 4px";
+        HUB_CATEGORIES.forEach(cat => {
+          const chip = document.createElement("button");
+          chip.className = "chip-card tile";
+          chip.dataset.focusKey = `category:${cat}`;
+          chip.setAttribute("aria-pressed", String(h.categories.includes(cat)));
+          chip.innerHTML = `<span class="tile-icon" aria-hidden="true">${HUB_ICONS[cat] || ""}</span><span>${cat}</span>`;
+          const hue = FILL_HUE[HUB_TILE_HUE[cat]] || FILL_HUE.tealdeep;
+          chip.style.setProperty("--fill", hue.fill); chip.style.setProperty("--tint", hue.tint); chip.style.setProperty("--ink", hue.ink);
+          if (lastToggled === chip.dataset.focusKey) chip.classList.add("just");
+          chip.addEventListener("click", () => {
+            h.categories = h.categories.includes(cat) ? h.categories.filter(v => v !== cat) : [...h.categories, cat];
+            lastToggled = chip.dataset.focusKey;
+            renderHub();
+          });
+          wrap.appendChild(chip);
+        });
+        body.appendChild(wrap);
+      }
+    } else if (row.id === "regulation"){
+      const wrap = document.createElement("div"); wrap.className = "chip-cards"; wrap.style.padding = "0";
+      HUB_REGULATION.forEach(goal => {
+        const chip = document.createElement("button");
+        chip.className = "chip-card";
+        chip.dataset.focusKey = `regulation:${goal.key}`;
+        chip.setAttribute("aria-pressed", String(h.regulation.includes(goal.key)));
+        chip.textContent = goal.label;
+        chip.addEventListener("click", () => {
+          h.regulation = h.regulation.includes(goal.key) ? h.regulation.filter(v => v !== goal.key) : [...h.regulation, goal.key];
+          renderHub();
+        });
+        wrap.appendChild(chip);
+      });
+      body.appendChild(wrap);
+    } else if (row.id === "screenTime"){
+      const durWrap = document.createElement("div");
+      durWrap.innerHTML = '<span class="row-label">Duration</span>';
+      const durPills = document.createElement("div"); durPills.className = "pill-row";
+      HUB_DURATIONS.forEach(m => {
+        const b = document.createElement("button"); b.className = "pill";
+        b.dataset.focusKey = `duration:${m}`;
+        b.setAttribute("aria-pressed", String(h.sessionMinutes === m));
+        b.innerHTML = `${m}<small>min</small>`;
+        b.addEventListener("click", () => { h.sessionMinutes = m; renderHub(); });
+        durPills.appendChild(b);
+      });
+      durWrap.appendChild(durPills); body.appendChild(durWrap);
+
+      const brkWrap = document.createElement("div");
+      brkWrap.innerHTML = '<span class="row-label">Break every</span>';
+      const brkPills = document.createElement("div"); brkPills.className = "pill-row";
+      HUB_BREAK_INTERVALS.forEach(m => {
+        const b = document.createElement("button"); b.className = "pill";
+        b.dataset.focusKey = `breakInterval:${m}`;
+        b.setAttribute("aria-pressed", String(h.breakInterval === m));
+        b.innerHTML = `${m}<small>min</small>`;
+        b.addEventListener("click", () => { h.breakInterval = m; renderHub(); });
+        brkPills.appendChild(b);
+      });
+      brkWrap.appendChild(brkPills); body.appendChild(brkWrap);
+
+      const typeWrap = document.createElement("div");
+      typeWrap.innerHTML = '<span class="row-label">Break type</span>';
+      const typeChips = document.createElement("div"); typeChips.className = "chip-cards"; typeChips.style.padding = "0";
+      HUB_BREAK_TYPES.forEach(t => {
+        const b = document.createElement("button"); b.className = "chip-card";
+        b.dataset.focusKey = `breakType:${t}`;
+        b.setAttribute("aria-pressed", String(h.breakType === t));
+        b.textContent = t;
+        b.addEventListener("click", () => { h.breakType = t; renderHub(); });
+        typeChips.appendChild(b);
+      });
+      typeWrap.appendChild(typeChips); body.appendChild(typeWrap);
+    }
+    panel.appendChild(body);
+  });
+  restoreFocusKey(panel, focusKey);
+  syncTodayPrefSummary();
+  lastToggled = null;
+}
+function applyHubPatch(patch, expandRow){
+  const h = currentHub();
+  if (patch.interests && patch.interests.length) h.interests = Array.from(new Set([...h.interests, ...patch.interests]));
+  if (patch.categories && patch.categories.length){
+    h.contentMix = "CHOSEN";
+    h.categories = Array.from(new Set([...h.categories, ...patch.categories]));
+  }
+  if (patch.regulation && patch.regulation.length) h.regulation = Array.from(new Set([...h.regulation, ...patch.regulation]));
+  hubExpandedRow = expandRow || null;
+}
+$("#hub-back").addEventListener("click", () => showScreen(hubOrigin));
+$("#hub-nevermind").addEventListener("click", () => showScreen(hubOrigin));
+$("#hub-save").addEventListener("click", () => {
+  const btn = $("#hub-save");
+  btn.disabled = true; btn.textContent = "Saving…";
+  setTimeout(() => { btn.disabled = false; btn.textContent = "Save & back"; showScreen(hubOrigin); }, 800);
+});
+$("#hub-voice-btn").addEventListener("click", () => showScreen("hub-voice"));
+$("#hub-guided-btn").addEventListener("click", () => showScreen("hub-guided"));
+
+/* ---- Hub voice capture (mic state machine — judgment call, see report) ---- */
+function resetVoiceCapture(){
+  $("#voice-transcript").value = "";
+  $("#mic-status").textContent = "Tap to speak, or type below";
+  $("#mic-btn").classList.remove("listening");
+  // aria-disabled, not the disabled property/attribute (2026-09-19 a11y pass,
+  // item 17): disabled removes the button from the tab order entirely, which
+  // can strand focus while "listening". aria-disabled keeps it focusable and
+  // announced as disabled; the click handler below no-ops instead.
+  $("#mic-btn").setAttribute("aria-disabled", "false");
+  $("#voice-use").disabled = true;
+  $("#voice-demo-caption").hidden = true;
+}
+$("#voice-transcript").addEventListener("input", () => { $("#voice-use").disabled = !$("#voice-transcript").value.trim(); });
+$("#mic-btn").addEventListener("click", () => {
+  // This is a design mockup, not the real app: it always simulates the
+  // idle -> listening -> done state machine with a plausible phrase,
+  // rather than calling the real Web Speech API. The real screen (web/src/
+  // app/hub/[childId]/voice/page.tsx) does call it, but doing that here too
+  // would make a design-review demo depend on live mic permission/hardware
+  // succeeding — first found hanging in "Listening…" forever during a
+  // browser check of this exact file, since the constructor exists in
+  // Chrome but .start() never resolves without a real mic grant.
+  const micBtn = $("#mic-btn"), status = $("#mic-status"), ta = $("#voice-transcript");
+  if (micBtn.getAttribute("aria-disabled") === "true") return;
+  micBtn.setAttribute("aria-disabled", "true"); micBtn.classList.add("listening"); status.textContent = "Listening…";
+  setTimeout(() => {
+    micBtn.setAttribute("aria-disabled", "false"); micBtn.classList.remove("listening");
+    ta.value = (ta.value ? ta.value + " " : "") + "calming animal stories before bed";
+    status.textContent = "Tap to speak, or type below";
+    $("#voice-demo-caption").hidden = false;
+    $("#voice-use").disabled = false;
+  }, 1300);
+});
+function extractCurationTags(text){
+  const t = (text || "").toLowerCase();
+  const patch = { interests:[], categories:[], regulation:[] };
+  if (/animal/.test(t)) patch.interests.push("Animals");
+  if (/stor(y|ies)/.test(t)){ patch.interests.push("Stories"); patch.categories.push("Stories"); }
+  if (/music|song/.test(t)){ patch.interests.push("Music"); patch.categories.push("Music"); }
+  if (/space|planet|star/.test(t)) patch.interests.push("Space & Science");
+  if (/nature|forest|outdoor|garden|bug/.test(t)){ patch.interests.push("Nature"); patch.categories.push("Nature"); }
+  if (/number|letter|count|learn/.test(t)){ patch.interests.push("Numbers & Letters"); patch.categories.push("Learning"); }
+  if (/calm|sleep|bed|quiet|wind.?down/.test(t)) patch.regulation.push("CALM");
+  if (/focus|attention/.test(t)) patch.regulation.push("FOCUS");
+  if (/active|energy|move|dance|play/.test(t)) patch.regulation.push("MOVEMENT");
+  return patch;
+}
+$("#voice-use").addEventListener("click", () => {
+  const btn = $("#voice-use");
+  btn.disabled = true; btn.textContent = "Working…";
+  setTimeout(() => {
+    applyHubPatch(extractCurationTags($("#voice-transcript").value), "interests");
+    btn.disabled = false; btn.textContent = "Use this";
+    resetVoiceCapture();
+    showScreen("hub");
+  }, 800);
+});
+$("#voice-back").addEventListener("click", () => showScreen("hub"));
+
+/* ---- Hub guided questions ---- */
+let guidedAnswers = { enjoys:null, priority:null };
+function renderGuided(){
+  guidedAnswers = { enjoys:null, priority:null };
+  const enjoysWrap = $("#guided-enjoys");
+  const enjoysFocusKey = captureFocusKey(enjoysWrap);
+  enjoysWrap.innerHTML = "";
+  [["stories","Stories"], ["active_play","Active play"]].forEach(([val,label]) => {
+    const b = document.createElement("button"); b.className = "pill";
+    b.dataset.focusKey = val;
+    b.setAttribute("aria-pressed", "false"); b.textContent = label;
+    b.addEventListener("click", () => {
+      guidedAnswers.enjoys = val;
+      $$("#guided-enjoys .pill").forEach(x => x.setAttribute("aria-pressed", String(x === b)));
+      $("#guided-continue").disabled = !(guidedAnswers.enjoys && guidedAnswers.priority);
+    });
+    enjoysWrap.appendChild(b);
+  });
+  restoreFocusKey(enjoysWrap, enjoysFocusKey);
+  const priorityWrap = $("#guided-priority");
+  const priorityFocusKey = captureFocusKey(priorityWrap);
+  priorityWrap.innerHTML = "";
+  [["calming_down","Calming down"], ["focus","Focus"], ["energy","Energy"]].forEach(([val,label]) => {
+    const b = document.createElement("button"); b.className = "pill";
+    b.dataset.focusKey = val;
+    b.setAttribute("aria-pressed", "false"); b.textContent = label;
+    b.addEventListener("click", () => {
+      guidedAnswers.priority = val;
+      $$("#guided-priority .pill").forEach(x => x.setAttribute("aria-pressed", String(x === b)));
+      $("#guided-continue").disabled = !(guidedAnswers.enjoys && guidedAnswers.priority);
+    });
+    priorityWrap.appendChild(b);
+  });
+  restoreFocusKey(priorityWrap, priorityFocusKey);
+  $("#guided-continue").disabled = true;
+}
+$("#guided-continue").addEventListener("click", () => {
+  if (!guidedAnswers.enjoys || !guidedAnswers.priority) return;
+  const interests = guidedAnswers.enjoys === "stories" ? ["Stories"] : ["Activities"];
+  const regulation = guidedAnswers.priority === "calming_down" ? ["CALM"] : guidedAnswers.priority === "focus" ? ["FOCUS"] : ["MOVEMENT"];
+  applyHubPatch({ interests, categories: interests.includes("Stories") ? ["Stories"] : [], regulation }, "interests");
+  showScreen("hub");
+});
+$("#guided-back").addEventListener("click", () => showScreen("hub"));
+
+/* ---- sample data shared across Recommendations / Insight log / My Videos / Inbox ---- */
+const RECS = {
+  Aarav: [
+    { id:"r1", title:"Whispering Woods Bedtime", category:"Stories", minutes:7, reviewed:true, why:"Matches Aarav's Calm regulation goal", summary:"A slow, softly narrated walk through a quiet forest." },
+    { id:"r2", title:"Counting Song Time", category:"Music", minutes:5, reviewed:true, why:"Fits the Stories & Nature content mix", summary:"An upbeat sing-along that counts from one to ten." },
+    { id:"r3", title:"Ladybug Learns Shapes", category:"Learning", minutes:8, reviewed:true, why:"Popular with children in this age band", summary:"A gentle shapes lesson told through a ladybug's day." },
+    { id:"r4", title:"Quiet Forest Walk", category:"Nature", minutes:9, reviewed:false, why:"New upload — KidQ is still reviewing it", summary:"" },
+  ],
+  Meera: [
+    { id:"r5", title:"Space Explorers Jr.", category:"Learning", minutes:10, reviewed:true, why:"Matches Meera's Focus regulation goal", summary:"A curious look at the solar system for young learners." },
+    { id:"r6", title:"Backyard Bug Hunt", category:"Nature", minutes:10, reviewed:true, why:"Fits Meera's chosen categories", summary:"An outdoor scavenger hunt for garden insects." },
+    { id:"r7", title:"Tell Me a Story: The Kind Fox", category:"Stories", minutes:11, reviewed:true, why:"Popular with children in this age band", summary:"A calm folk tale about kindness and sharing." },
+  ],
+};
+// Sample data expanded (2026-09-19 pass) so Insights' new 7-day dot row has
+// real variety to walk — same "real structure, fake but plausible"
+// convention as INSIGHTS above. Window is the 7 calendar days ending today
+// (2026-09-19); not every day has a session, on purpose (no invented streak).
+const SESSIONS = {
+  Aarav: [
+    { id:"s5", endedAt:"2026-09-18", minutes:22, outcome:"COMPLETED", items:[
+      { title:"Morning Stretch Songs", minutes:6 }, { title:"Animal Alphabet Adventure", minutes:9 },
+      { title:"Cloud Watching Break", minutes:7 } ] },
+    { id:"s1", endedAt:"2026-09-17", minutes:28, outcome:"COMPLETED", items:[
+      { title:"Sleepy Animal Sounds", minutes:6 }, { title:"Counting Song Time", minutes:5 },
+      { title:"Ladybug Learns Shapes", minutes:8 }, { title:"Quiet Forest Walk", minutes:9 } ] },
+    { id:"s2", endedAt:"2026-09-16", minutes:15, outcome:"EXITED", items:[
+      { title:"Ocean Adventures", minutes:7 }, { title:"Nursery Rhyme Roundup", minutes:8 } ] },
+    { id:"s6", endedAt:"2026-09-14", minutes:14, outcome:"EXITED", items:[
+      { title:"Puddle Jumping Tunes", minutes:8 }, { title:"Curious Caterpillar", minutes:6 } ] },
+    { id:"s7", endedAt:"2026-09-13", minutes:21, outcome:"COMPLETED", items:[
+      { title:"Bedtime Star Stories", minutes:9 }, { title:"Counting Clouds", minutes:6 },
+      { title:"Whistling Wind Chimes", minutes:6 } ] },
+  ],
+  Meera: [
+    { id:"s8", endedAt:"2026-09-19", minutes:29, outcome:"COMPLETED", items:[
+      { title:"Sunrise Yoga for Kids", minutes:9 }, { title:"Garden Bug Count", minutes:10 },
+      { title:"Space Explorers Jr.", minutes:10 } ] },
+    { id:"s3", endedAt:"2026-09-17", minutes:40, outcome:"COMPLETED", items:[
+      { title:"Space Explorers Jr.", minutes:10 }, { title:"Rainy Day Rhythms", minutes:9 },
+      { title:"Tell Me a Story: The Kind Fox", minutes:11 }, { title:"Backyard Bug Hunt", minutes:10 } ] },
+    { id:"s9", endedAt:"2026-09-16", minutes:15, outcome:"EXITED", items:[
+      { title:"Story Time Lullabies", minutes:8 }, { title:"Clap and Count", minutes:7 } ] },
+    { id:"s4", endedAt:"2026-09-15", minutes:22, outcome:"COMPLETED", items:[
+      { title:"Counting Song Time", minutes:5 }, { title:"Stretch & Breathe", minutes:6 },
+      { title:"Farmyard Friends", minutes:11 } ] },
+    { id:"s10", endedAt:"2026-09-14", minutes:30, outcome:"COMPLETED", items:[
+      { title:"Backyard Bug Hunt", minutes:10 }, { title:"Rainy Day Rhythms", minutes:9 },
+      { title:"Tell Me a Story: The Kind Fox", minutes:11 } ] },
+    { id:"s11", endedAt:"2026-09-13", minutes:16, outcome:"EXITED", items:[
+      { title:"Farmyard Friends", minutes:11 }, { title:"Counting Song Time", minutes:5 } ] },
+  ],
+};
+const OUTCOME_LABELS = { COMPLETED:"Completed", EXITED:"Ended early" };
+// Insights' 7-day dot row: a fixed calendar window (today back 6 days),
+// independent of the day/week/month range pills above it. Real derived data
+// walked from SESSIONS — never a fabricated streak count or badge (see
+// report — the streak/milestone idea was explicitly rejected).
+// Built with Date.UTC + pure millisecond math (never local setDate/getDate)
+// so the window is correct regardless of the viewer's browser timezone —
+// mixing local-time mutation with toISOString()'s UTC read-back would
+// silently shift every date by a day in most timezones ahead of UTC.
+const TODAY_REF_UTC_MS = Date.UTC(2026, 8, 19); // 2026-09-19
+// Short day-of-week names for each dot's accessible label (2026-09-19 a11y
+// pass, item 10) — derived with getUTCDay() from the same Date.UTC math
+// above, so it stays correct regardless of the viewer's browser timezone,
+// same reasoning as the iso-date derivation itself.
+const DAY_NAMES_SHORT = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+function last7DayOutcomes(name){
+  const byDate = {};
+  (SESSIONS[name] || []).forEach(s => { byDate[s.endedAt] = s.outcome; });
+  const days = [];
+  for (let i = 6; i >= 0; i--){
+    const ms = TODAY_REF_UTC_MS - i * 86400000;
+    const iso = new Date(ms).toISOString().slice(0, 10);
+    days.push({ day: DAY_NAMES_SHORT[new Date(ms).getUTCDay()], outcome: byDate[iso] || null });
+  }
+  return days;
+}
+// Lowercase, matching the dot row's own aria-labels ("Wed: completed") —
+// distinct from OUTCOME_LABELS above, which is capitalized for Inbox prose.
+const OUTCOME_DOT_LABEL = { COMPLETED:"completed", EXITED:"ended early" };
+function renderLast7Dots(){
+  const wrap = $("#last7-dots");
+  wrap.innerHTML = "";
+  last7DayOutcomes(kids[selKid].name).forEach(({ day, outcome }) => {
+    const dot = document.createElement("span");
+    dot.className = "dot" + (outcome === "COMPLETED" ? " done" : outcome === "EXITED" ? " early" : "");
+    dot.setAttribute("role", "listitem");
+    dot.setAttribute("aria-label", `${day}: ${outcome ? OUTCOME_DOT_LABEL[outcome] : "no session"}`);
+    wrap.appendChild(dot);
+  });
+}
+let videosData = {
+  Aarav: [
+    { id:"v1", title:"Quiet Forest Walk", minutes:9, state:"ADDED", category:"Nature" },
+    { id:"v2", title:"Grandma's Garden Songs", minutes:6, state:"ADDED", category:"Music" },
+    { id:"v3", title:"Dinosaur Discovery Walk", minutes:8, state:"REQUESTED", category:"Learning" },
+  ],
+  Meera: [
+    { id:"v4", title:"Rainy Day Rhythms", minutes:9, state:"ADDED", category:"Music" },
+    { id:"v5", title:"Tell Me a Story: The Kind Fox", minutes:11, state:"ADDED", category:"Stories" },
+  ],
+};
+// Submission decision notices: web/src/services/inbox.ts documents these as
+// a real gap (no backend push yet) — modeled here on the real submission
+// state machine (REQUESTED -> ADDED/DISMISSED), see report.
+const SUBMISSION_NOTICES = {
+  Aarav: [ { id:"n1", kind:"approved", title:"Dinosaur Discovery Walk", when:"2026-09-14" } ],
+  Meera: [ { id:"n2", kind:"needs-changes", title:"Playground Physics Fun", when:"2026-09-13" } ],
+};
+
+/* ---- Recommendations ---- */
+const recState = {};
+function ensureRecState(name){
+  if (!recState[name]){
+    const ids = RECS[name].map(r => r.id);
+    recState[name] = { selected:new Set(ids), ordered:ids.slice(), expanded:null, done:false };
+  }
+  return recState[name];
+}
+function renderRecChildren(){
+  const el = $("#rec-children");
+  const focusKey = captureFocusKey(el);
+  el.innerHTML = "";
+  kids.forEach((kid, i) => {
+    const b = document.createElement("button"); b.className = "pill";
+    b.dataset.focusKey = kid.name;
+    b.setAttribute("aria-pressed", String(i === selKid)); b.textContent = kid.name;
+    b.addEventListener("click", () => { selKid = i; renderRecChildren(); renderRecommendations(); });
+    el.appendChild(b);
+  });
+  restoreFocusKey(el, focusKey);
+}
+function toggleRec(name, id){
+  const st = recState[name];
+  if (st.selected.has(id)) st.selected.delete(id); else st.selected.add(id);
+  lastToggled = id;
+  renderRecommendations();
+}
+function moveRec(name, id, dir){
+  const st = recState[name];
+  const i = st.ordered.indexOf(id), j = i + dir;
+  if (i < 0 || j < 0 || j >= st.ordered.length) return;
+  [st.ordered[i], st.ordered[j]] = [st.ordered[j], st.ordered[i]];
+  renderRecommendations();
+}
+function renderRecommendations(){
+  const kid = kids[selKid];
+  const st = ensureRecState(kid.name);
+  $("#rec-sub").textContent = `Made for ${kid.name} — based on their KidQ settings.`;
+  $("#rec-done").hidden = !st.done;
+  $("#rec-cta-row").style.display = st.done ? "none" : "";
+  $("#rec-list").style.display = st.done ? "none" : "";
+  $("#rec-summary-panel").style.display = st.done ? "none" : "";
+  if (st.done){
+    $("#rec-done-copy").textContent = `${st.selected.size} item${st.selected.size === 1 ? "" : "s"} ready for a ${state.duration}-minute session.`;
+    return;
+  }
+  const ordered = st.ordered.map(id => RECS[kid.name].find(r => r.id === id)).filter(Boolean);
+  const selectedRecs = ordered.filter(r => st.selected.has(r.id));
+  const totalMinutes = selectedRecs.reduce((t, r) => t + r.minutes, 0);
+  $("#rec-summary-panel").innerHTML = `<strong>Your Q</strong>
+    <span>Screen time: ${state.duration} min · Current Q: ${totalMinutes} min</span>
+    ${totalMinutes > state.duration ? `<span class="over">Your Q is longer than the selected screen time.</span>` : ""}
+    ${selectedRecs.length === 0 ? `<span>No content selected. Add something back below.</span>` : ""}`;
+
+  const list = $("#rec-list");
+  const recFocusKey = captureFocusKey(list);
+  list.innerHTML = "";
+  ordered.forEach((rec, index) => {
+    const isSelected = st.selected.has(rec.id);
+    const isExpanded = st.expanded === rec.id;
+    const hue = FILL_HUE[CATEGORY_FILL[rec.category] || "tealdeep"];
+    const card = document.createElement("div");
+    card.className = "rec-card";
+    // `aria-pressed` belongs on the interactive control (.rec-top below);
+    // this outer div is not itself interactive, so it carries a plain
+    // data attribute for CSS targeting instead.
+    card.setAttribute("data-selected", String(isSelected));
+    // Bold color-block pass: inline custom properties only (never the
+    // actual background/color) so the plain [data-selected] stylesheet
+    // rules above can branch on fill-vs-tint without !important.
+    card.style.setProperty("--fill", hue.fill);
+    card.style.setProperty("--tint", hue.tint);
+    card.style.setProperty("--ink", hue.ink);
+    card.style.setProperty("--i", index);
+    if (entering) card.classList.add("enter");
+    if (rec.id === lastToggled) card.classList.add("just");
+
+    const top = document.createElement("button");
+    top.className = "rec-top";
+    top.dataset.focusKey = rec.id;
+    top.setAttribute("aria-pressed", String(isSelected));
+    // Selection indicator reuses the existing tap-only .check-box component
+    // (already defined/used on Consent) instead of the ✅/⬜ emoji toggle,
+    // whose green clashes with the teal-only brand accent. It now sits over
+    // the thumbnail's corner instead of trailing the row, so it no longer
+    // drops below the title/meta text once the row wraps to a column at
+    // phone width. .is-fill (selected only) swaps it to a white circle with
+    // the checkmark colored in the card's own fill.
+    // No aria-checked on this span (2026-09-19 a11y pass, item 2): it's
+    // aria-hidden anyway, so aria-checked was dead weight — the real state
+    // is aria-pressed on .rec-top itself, just below.
+    const glyph = HUB_ICONS[rec.category] || "";
+    // Eyebrow (category) and per-card age are both gone (2026-09-19
+    // compacting pass): the eyebrow only repeated what the meta line
+    // already says, and every card on this screen is for the same child, so
+    // the screen's own header already establishes who it's for.
+    top.innerHTML = `<div class="rec-thumb" aria-hidden="true">
+        <span class="rec-thumb-glyph" aria-hidden="true">${glyph}</span>
+        <span class="check-box on-thumb${isSelected ? " is-fill" : ""}" aria-hidden="true">${isSelected ? "✓" : ""}</span>
+      </div>
+      <div style="flex:1; min-width:0">
+        <p class="rec-title">${rec.title}</p>
+        <p class="rec-meta">${rec.category} · ${rec.minutes} min</p>
+      </div>`;
+    // No aria-label override (2026-09-19 a11y pass, item 4): it used to
+    // replace the button's whole accessible name, hiding the title/category/
+    // minutes text and duplicating what aria-pressed already announces. The
+    // button's own visible content is the accessible name now.
+    top.addEventListener("click", () => toggleRec(kid.name, rec.id));
+    card.appendChild(top);
+
+    const detailId = `rec-detail-${rec.id}`;
+    // Footer row (2026-09-19 compacting pass): replaces the old
+    // always-visible "✓ KidQ reviewed" .rec-badge pill. The pending badge
+    // only ever appears on the (rare) still-checking card; .rec-more is the
+    // new trigger for the detail panel below, taking over that job.
+    const foot = document.createElement("div");
+    foot.className = "rec-foot";
+    if (!rec.reviewed){
+      const pending = document.createElement("span");
+      pending.className = "tag-badge pending";
+      pending.textContent = "Checking…";
+      foot.appendChild(pending);
+    }
+    const more = document.createElement("button");
+    more.className = "rec-more";
+    more.dataset.focusKey = `${rec.id}-more`;
+    more.innerHTML = `Details <span class="chev" aria-hidden="true">▾</span>`;
+    more.setAttribute("aria-expanded", String(isExpanded));
+    more.setAttribute("aria-controls", detailId);
+    more.addEventListener("click", e => { e.stopPropagation(); st.expanded = isExpanded ? null : rec.id; renderRecommendations(); });
+    foot.appendChild(more);
+    card.appendChild(foot);
+
+    if (isExpanded){
+      const detail = document.createElement("div");
+      detail.className = "rec-detail";
+      detail.id = detailId;
+      // Plain review-status text (2026-09-19) replaces the old persistent
+      // ✓-pill — it's informational copy inside the expanded panel now, not
+      // a face-of-card element.
+      detail.innerHTML = `${rec.summary ? `<p>${rec.summary}</p>` : ""}<p style="font-style:italic">${rec.why}</p>
+        <p>${rec.reviewed ? '<span aria-hidden="true">✓</span> KidQ reviewed' : "KidQ is still reviewing this"}</p>`;
+      // Single small delay-free fade-in — only one card's detail is ever
+      // expanded at a time, so no stagger index needed.
+      detail.style.setProperty("--i", 0);
+      detail.classList.add("enter");
+
+      const actions = document.createElement("div");
+      actions.className = "rec-actions";
+      const previewBtn = document.createElement("button");
+      previewBtn.className = "link-teal"; previewBtn.textContent = "Preview content";
+      previewBtn.dataset.focusKey = `${rec.id}-preview`;
+      previewBtn.addEventListener("click", () => openPreviewModal(rec.title, `${rec.category} · ${rec.minutes} min`));
+      actions.appendChild(previewBtn);
+      if (isSelected){
+        // Relabeled from ↑/↓ "Reorder" (2026-09-19): this is a grid now, not
+        // a vertical list, so reading order is left-to-right/row-by-row —
+        // "Earlier"/"Later" is the correct framing. Same moveRec() calls and
+        // the same data-focus-key/aria-label values as before, unchanged.
+        const up = document.createElement("button"); up.className = "link-teal"; up.textContent = "◀ Earlier";
+        up.dataset.focusKey = `${rec.id}-up`;
+        up.setAttribute("aria-label", "Move up");
+        up.addEventListener("click", () => moveRec(kid.name, rec.id, -1));
+        const down = document.createElement("button"); down.className = "link-teal"; down.textContent = "Later ▶";
+        down.dataset.focusKey = `${rec.id}-down`;
+        down.setAttribute("aria-label", "Move down");
+        down.style.minWidth = "var(--kq-tap-min)";
+        down.addEventListener("click", () => moveRec(kid.name, rec.id, 1));
+        const remove = document.createElement("button"); remove.className = "link-danger"; remove.textContent = "Remove from Q";
+        remove.dataset.focusKey = `${rec.id}-remove`;
+        remove.addEventListener("click", () => toggleRec(kid.name, rec.id));
+        actions.append(up, down, remove);
+      }
+      detail.appendChild(actions);
+      card.appendChild(detail);
+    }
+    list.appendChild(card);
+  });
+  restoreFocusKey(list, recFocusKey);
+  // Consumed for this render pass — clears so an unrelated later re-render
+  // (reorder, badge expand, filter) doesn't replay the pop-in.
+  lastToggled = null;
+  $("#rec-confirm").disabled = st.selected.size === 0;
+}
+$("#rec-confirm").addEventListener("click", () => {
+  const kid = kids[selKid]; const st = ensureRecState(kid.name);
+  if (st.selected.size === 0) return;
+  const btn = $("#rec-confirm"); btn.disabled = true; btn.textContent = "Saving…";
+  setTimeout(() => {
+    btn.textContent = "Confirm your Q →";
+    st.done = true;
+    st.ordered.filter(id => st.selected.has(id)).forEach(id => {
+      const rec = RECS[kid.name].find(r => r.id === id);
+      videosData[kid.name] = videosData[kid.name] || [];
+      if (!videosData[kid.name].some(v => v.title === rec.title)){
+        videosData[kid.name].push({ id:"v-"+id, title:rec.title, minutes:rec.minutes, state:"ADDED", category:rec.category });
+      }
+    });
+    renderRecommendations();
+  }, 700);
+});
+$("#rec-done-back").addEventListener("click", () => { recState[kids[selKid].name].done = false; showScreen("today"); });
+$("#rec-done-kidview").addEventListener("click", () => { recState[kids[selKid].name].done = false; showScreen("kid-preview"); });
+
+/* ---- Kid View Preview (read-only mirror of web/src/app/kid via KidQDesktop's LibraryPicker) ---- */
+const kidPreviewSelected = {};
+function renderKidPreview(){
+  const kid = kids[selKid];
+  $("#kidpv-h2").textContent = `Pick something for today, ${kid.name}.`;
+  // Only ADDED (admin/parent-approved) content ever reaches kid mode — a
+  // REQUESTED (pending-review) item would never actually show up here.
+  const items = (videosData[kid.name] || []).filter(v => v.state === "ADDED");
+  if (!kidPreviewSelected[kid.name]) kidPreviewSelected[kid.name] = new Set(items.map(v => v.id));
+  const selected = kidPreviewSelected[kid.name];
+  const grid = $("#kid-grid");
+  const focusKey = captureFocusKey(grid);
+  grid.innerHTML = "";
+  items.forEach((v, index) => {
+    const isSelected = selected.has(v.id);
+    const tile = document.createElement("button");
+    tile.className = "kid-tile";
+    tile.dataset.focusKey = v.id;
+    tile.setAttribute("aria-pressed", String(isSelected));
+    const hue = hueForVideo(v, index);
+    tile.style.setProperty("--fill", hue.fill); tile.style.setProperty("--tint", hue.tint); tile.style.setProperty("--ink", hue.ink);
+    tile.style.setProperty("--i", index);
+    if (entering) tile.classList.add("enter");
+    if (v.id === lastToggled) tile.classList.add("just");
+    // Same checkmark-over-thumbnail pattern as Recommendations, for
+    // consistency — the tile previously had no explicit selection
+    // indicator beyond the aria-pressed border.
+    // No aria-checked on this span — same reasoning as Recommendations'
+    // matching span above (2026-09-19 a11y pass, item 2).
+    tile.innerHTML = `<span class="thumb" aria-hidden="true">
+    <span class="rec-thumb-glyph" aria-hidden="true">${HUB_ICONS[v.category] || ""}</span>
+    <span class="check-box on-thumb${isSelected ? " is-fill" : ""}" aria-hidden="true">${isSelected ? "✓" : ""}</span>
+  </span><span class="cap">${v.title}</span>`;
+    tile.addEventListener("click", () => {
+      if (selected.has(v.id)) selected.delete(v.id); else selected.add(v.id);
+      lastToggled = v.id;
+      renderKidPreview();
+    });
+    grid.appendChild(tile);
+  });
+  restoreFocusKey(grid, focusKey);
+  // Consumed for this render pass — see the matching note in
+  // renderRecommendations().
+  lastToggled = null;
+  $("#kidpv-start").disabled = selected.size === 0;
+  $("#kidpv-msg").textContent = "";
+}
+$("#kidpv-start").addEventListener("click", () => {
+  $("#kidpv-msg").textContent = "This is a read-only preview — start real sessions from Today.";
+});
+$("#kidpv-back").addEventListener("click", () => showScreen("today"));
+
+/* ---- shared: unambiguous short date (was toLocaleDateString(), which
+   renders US-format "9/17/2026" — ambiguous for a lot of readers) ---- */
+const MONTHS_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+function formatShortDate(isoDate){
+  const [y, m, d] = isoDate.split("-").map(Number);
+  return `${d} ${MONTHS_SHORT[m - 1]}`;
+}
+
+/* ---- Insight log (watched) ---- */
+function renderLogChildren(){
+  const el = $("#log-children");
+  const focusKey = captureFocusKey(el);
+  el.innerHTML = "";
+  kids.forEach((kid, i) => {
+    const b = document.createElement("button"); b.className = "pill";
+    b.dataset.focusKey = kid.name;
+    b.setAttribute("aria-pressed", String(i === selKid)); b.textContent = kid.name;
+    b.addEventListener("click", () => { selKid = i; renderLogChildren(); renderWatchedLog(); });
+    el.appendChild(b);
+  });
+  restoreFocusKey(el, focusKey);
+}
+function renderWatchedLog(){
+  const kid = kids[selKid];
+  $("#log-h1").textContent = `${kid.name}'s watched videos`;
+  const rows = (SESSIONS[kid.name] || []).flatMap(s => s.items.map(item => ({ ...item, endedAt:s.endedAt })));
+  const wrap = $("#log-rows"); wrap.innerHTML = "";
+  $("#log-empty").hidden = rows.length > 0;
+  rows.forEach((row, index) => {
+    const card = document.createElement("div");
+    card.className = "video-row";
+    card.style.setProperty("--i", index);
+    if (entering) card.classList.add("enter");
+    card.innerHTML = `<div class="video-top">
+        <div><p style="font-weight:700; color:var(--foreground)">${row.title}</p>
+          <p style="font-size:var(--kq-text-caption); color:var(--kq-text-secondary)">${row.minutes} min · ${formatShortDate(row.endedAt)}</p></div>
+        <div style="display:flex; flex-direction:column; align-items:flex-end">
+          <div class="feedback-capsule">
+            <button disabled title="Per-video feedback isn't available yet" aria-label="Thumbs up (not yet available)"
+              style="color:var(--kq-teal-deep)">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                <path d="M7 8.5H4.5a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1H7m0-8v8m0-8 2.6-5.2a1.4 1.4 0 0 1 2.6.9l-.7 3.3H15a1.6 1.6 0 0 1 1.55 1.95l-1.2 5.2A1.6 1.6 0 0 1 13.8 17.5H7"
+                  stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </button>
+            <button disabled title="Per-video feedback isn't available yet" aria-label="Thumbs down (not yet available)"
+              style="color:var(--kq-night)">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true" style="transform:rotate(180deg)">
+                <path d="M7 8.5H4.5a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1H7m0-8v8m0-8 2.6-5.2a1.4 1.4 0 0 1 2.6.9l-.7 3.3H15a1.6 1.6 0 0 1 1.55 1.95l-1.2 5.2A1.6 1.6 0 0 1 13.8 17.5H7"
+                  stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </button>
+          </div>
+          <span class="feedback-caption">Coming soon</span>
+        </div></div>
+      <div style="display:flex; align-items:center; gap:8px">
+        <button disabled title="Per-child exclude isn't available yet"
+          style="font-size:var(--kq-text-caption); color:var(--kq-text-secondary); text-decoration:underline; background:none; border:none; cursor:not-allowed; padding:0; opacity:.5">
+          Remove from ${kid.name}'s videos</button>
+        <span class="tag-badge pending">Coming soon</span>
+      </div>`;
+    wrap.appendChild(card);
+  });
+}
+
+/* ---- My Videos: grid/list toggle + multi-select bulk-remove (2026-09-19
+   pass). Split into smaller pieces rather than one giant renderVideos():
+   renderVideosToolbar() (List/Grid/Select controls), renderVideoCard() (one
+   card, branching on list/grid/select-mode), renderBulkBar() (the sticky
+   selection footer) and removeVideos() (the bulk-delete helper) — with
+   renderVideos() left as the orchestrator that calls them in sequence.
+   Scope guard: .video-row is also used by renderWatchedLog() (Insight log).
+   Every new behavior here is scoped to new modifier classes (.tile,
+   .selectable, #videos-list.grid) and to these functions specifically —
+   renderWatchedLog() itself is untouched. ---- */
+let videosView = "list"; // shared across children, not per-child
+let videosSelectMode = false;
+// child name -> Set<video id>, mirroring the existing kidPreviewSelected pattern
+const videosSelected = {};
+// Tracks whether the bulk bar has already played its one-time entrance fade,
+// so it doesn't replay on every selection-count update.
+let bulkBarShown = false;
+
+function exitSelectMode(){
+  videosSelectMode = false;
+  const kid = kids[selKid];
+  if (kid) videosSelected[kid.name] = new Set();
+  bulkBarShown = false;
+}
+
+function renderVideosToolbar(){
+  const toolbar = $("#videos-toolbar");
+  const focusKey = captureFocusKey(toolbar);
+  toolbar.innerHTML = "";
+
+  // Select sits on the left; the List/Grid view toggle (icon-only) sits on
+  // the right, pushed there via margin-left:auto on the mode-row itself.
+  const selectBtn = document.createElement("button");
+  selectBtn.className = "mode-btn";
+  selectBtn.dataset.focusKey = "select";
+  selectBtn.setAttribute("aria-pressed", String(videosSelectMode));
+  // Stable accessible name (2026-09-19 a11y pass, item 7): the visible label
+  // still flips Select/Done for sighted users, but flipping the label AND
+  // aria-pressed together reads as "Done, toggle button, pressed" — noisy.
+  // aria-pressed alone is the one state signal a screen reader needs.
+  selectBtn.setAttribute("aria-label", "Select videos");
+  selectBtn.textContent = videosSelectMode ? "Done" : "Select";
+  selectBtn.addEventListener("click", () => {
+    if (videosSelectMode){ exitSelectMode(); }
+    else {
+      videosSelectMode = true;
+      const kid = kids[selKid];
+      if (!videosSelected[kid.name]) videosSelected[kid.name] = new Set();
+    }
+    renderVideos();
+  });
+  toolbar.appendChild(selectBtn);
+
+  // role="radiogroup"/role="radio"+aria-checked (2026-09-19 a11y pass, item
+  // 6) — the same mutually-exclusive-choice pattern the Hub's content-mix
+  // picker already uses, not independent aria-pressed toggle buttons.
+  const modeRow = document.createElement("div");
+  modeRow.className = "mode-row";
+  modeRow.style.marginLeft = "auto";
+  modeRow.setAttribute("role", "radiogroup");
+  modeRow.setAttribute("aria-label", "View");
+  [["list","☰","List view"], ["grid","▦","Grid view"]].forEach(([val,icon,label]) => {
+    const b = document.createElement("button");
+    b.className = "mode-btn";
+    b.dataset.focusKey = val;
+    b.setAttribute("role", "radio");
+    b.setAttribute("aria-checked", String(videosView === val));
+    b.setAttribute("aria-label", label);
+    b.title = label;
+    b.textContent = icon;
+    b.addEventListener("click", () => { videosView = val; renderVideos(); });
+    modeRow.appendChild(b);
+  });
+  toolbar.appendChild(modeRow);
+  restoreFocusKey(toolbar, focusKey);
+}
+
+function renderVideoCard(kid, v, index){
+  const isGrid = videosView === "grid";
+  const isSelect = videosSelectMode;
+  const selectedSet = videosSelected[kid.name];
+  const isChecked = isSelect && selectedSet.has(v.id);
+  const hue = hueForVideo(v, index);
+  const glyph = HUB_ICONS[v.category] || "";
+
+  // In select mode the card itself is the <label for="sel-{id}"> — clicking
+  // anywhere on it (except the hidden action buttons) toggles the checkbox
+  // natively, no separate click handler needed on the card.
+  const card = document.createElement(isSelect ? "label" : "div");
+  card.className = "video-row" + (isGrid ? " tile" : "") + (isSelect ? " selectable" : "") + (isChecked ? " checked" : "");
+  if (isSelect) card.setAttribute("for", "sel-" + v.id);
+  // Bold color-block pass: inline custom properties only, same pattern as
+  // Recommendations — the actual background/color live in stylesheet rules
+  // keyed off .tile/.selectable/.checked, so no !important is needed.
+  card.style.setProperty("--fill", hue.fill);
+  card.style.setProperty("--tint", hue.tint);
+  card.style.setProperty("--ink", hue.ink);
+  card.style.setProperty("--i", index);
+  if (entering) card.classList.add("enter");
+  if (isSelect && isChecked && v.id === lastToggled) card.classList.add("just");
+
+  // Only the 3-value state model is real: REQUESTED gets a "pending review"
+  // badge, ADDED gets no badge at all. (No invented provenance/source tag.)
+  const badgeHtml = v.state === "REQUESTED" ? `<span class="tag-badge pending">Pending KidQ review</span>` : "";
+  // .is-fill (grid only, once checked) swaps the checkbox to the white-
+  // circle/colored-check treatment matching the tile's own flipped fill.
+  const checkboxHtml = isSelect
+    ? `<input class="check-box-input${isGrid ? " on-thumb" : ""}${isGrid && isChecked ? " is-fill" : ""}" type="checkbox" id="sel-${v.id}" data-focus-key="${v.id}-select"${isChecked ? " checked" : ""}>`
+    : "";
+  // Grid mode: reduced thumbnail above the title/minutes/badge, the same
+  // .rec-thumb override the Add-a-Video screen already uses inline for its
+  // own single-column context, now also carrying the category glyph as a
+  // background motif (same treatment as Recommendations). aria-hidden only
+  // when it has no real checkbox inside it (2026-09-19 a11y pass, item 1) —
+  // aria-hidden on an ancestor removes a genuinely focusable, interactive
+  // <input> from the accessibility tree entirely, which is wrong when
+  // select mode is on.
+  const thumbHtml = isGrid
+    ? `<div class="rec-thumb"${isSelect ? "" : ' aria-hidden="true"'} style="aspect-ratio:16/9; width:100%; max-width:100%">
+        <span class="rec-thumb-glyph" aria-hidden="true">${glyph}</span>
+        ${checkboxHtml}
+      </div>`
+    : "";
+  // List mode: checkbox sits leading/inline before the title.
+  const leadCheckbox = (isSelect && !isGrid) ? checkboxHtml : "";
+  // List-mode-only Klarna-style category swatch — always the hue's own
+  // fill + cream glyph, unaffected by select/checked state (list mode
+  // itself stays visually plain, per the plan's deliberate grid/list split).
+  const swatchHtml = !isGrid ? `<div class="video-swatch" aria-hidden="true">${glyph}</div>` : "";
+
+  // Preview/Remove aren't rendered at all in select mode (2026-09-19 a11y
+  // pass, item 5) — not just hidden with CSS. The card is a <label> in
+  // select mode, and nesting other interactive elements inside a <label>
+  // is non-conforming HTML even while display:none'd.
+  const actionsHtml = isSelect ? "" : `
+      <div class="video-actions">
+        <button class="preview-btn" data-focus-key="${v.id}-preview">Preview</button>
+        <button class="link-danger remove-btn" data-focus-key="${v.id}-remove">Remove</button>
+      </div>`;
+
+  card.innerHTML = `${thumbHtml}
+      <div class="video-top">
+        <div style="display:flex; align-items:flex-start; gap:10px; width:100%">
+          ${swatchHtml}
+          ${leadCheckbox}
+          <div style="display:flex; flex-direction:column; gap:4px; align-items:flex-start">
+            ${badgeHtml}
+            <p class="video-title">${v.title}</p>
+            <p class="video-minutes">${v.minutes} min</p>
+          </div>
+        </div>
+      </div>
+      ${actionsHtml}`;
+
+  if (!isSelect){
+    card.querySelector(".preview-btn").addEventListener("click", () =>
+      openPreviewModal(v.title, "This preview is for the parent. The child only sees content after it is added to the family queue."));
+    card.querySelector(".remove-btn").addEventListener("click", () => {
+      videosData[kid.name] = videosData[kid.name].filter(x => x.id !== v.id);
+      renderVideos();
+      // sr-only live announcement (2026-09-19 a11y pass, item 8) — removing
+      // a video otherwise happens silently for a screen reader user.
+      $("#videos-status").textContent = `${v.title} removed`;
+    });
+  }
+
+  if (isSelect){
+    const cb = card.querySelector(".check-box-input");
+    cb.addEventListener("change", () => {
+      if (cb.checked) selectedSet.add(v.id); else selectedSet.delete(v.id);
+      if (cb.checked) lastToggled = v.id;
+      renderVideos();
+    });
+  }
+
+  return card;
+}
+
+function renderBulkBar(){
+  const bar = $("#bulk-bar");
+  const focusKey = captureFocusKey(bar);
+  if (!videosSelectMode){
+    bar.classList.remove("show");
+    bar.innerHTML = "";
+    bulkBarShown = false;
+    return;
+  }
+  const kid = kids[selKid];
+  const selectedSet = videosSelected[kid.name] || (videosSelected[kid.name] = new Set());
+  const n = selectedSet.size;
+  // aria-live on just the count span, not the whole bar (2026-09-19 a11y
+  // pass, item 9) — the bar also holds buttons, and a live region on the
+  // whole container would re-announce them on every selection change too.
+  // The old "Select all" mini-link lived here; it's moved to its own master
+  // checkbox row above the list (renderSelectAllRow()) — this bar keeps
+  // just the live count and the destructive action.
+  bar.innerHTML = `
+      <span aria-live="polite" style="font-weight:600; color:var(--foreground)">${n} selected</span>
+      <button class="mode-btn" id="bulk-remove" data-focus-key="remove-selected" style="color:var(--kq-text-error); margin-left:auto"${n === 0 ? " disabled" : ""}>Remove selected (${n})</button>`;
+  bar.style.setProperty("--i", 0);
+  if (!bulkBarShown){ bar.classList.add("enter"); bulkBarShown = true; }
+  else bar.classList.remove("enter");
+  bar.classList.add("show");
+  $("#bulk-remove").addEventListener("click", () => {
+    if (selectedSet.size === 0) return;
+    removeVideos(kid.name, [...selectedSet]);
+  });
+  restoreFocusKey(bar, focusKey);
+}
+
+function removeVideos(kidName, ids){
+  const idSet = new Set(ids);
+  videosData[kidName] = (videosData[kidName] || []).filter(v => !idSet.has(v.id));
+  exitSelectMode();
+  renderVideos();
+  // sr-only live announcement (2026-09-19 a11y pass, item 8) — matches the
+  // single-item announcement in renderVideoCard()'s remove-btn handler.
+  $("#videos-status").textContent = `${ids.length} video${ids.length === 1 ? "" : "s"} removed`;
+}
+
+// Select-all master checkbox row (2026-09-19 pass), between the toolbar and
+// the list. Renders nothing while select mode is off. `checked` reflects
+// "every visible video selected"; `indeterminate` reflects "some, not all" —
+// indeterminate MUST be set as a live DOM property after the element exists
+// (there's no HTML attribute for it), so it's reapplied every render since
+// the checkbox is recreated from scratch each time.
+function renderSelectAllRow(){
+  const wrap = $("#videos-select-all");
+  const focusKey = captureFocusKey(wrap);
+  wrap.innerHTML = "";
+  if (!videosSelectMode){ restoreFocusKey(wrap, focusKey); return; }
+  const kid = kids[selKid];
+  const selectedSet = videosSelected[kid.name] || (videosSelected[kid.name] = new Set());
+  const visible = (videosData[kid.name] || []).map(v => v.id);
+  const n = visible.filter(id => selectedSet.has(id)).length;
+  wrap.innerHTML = `<label class="select-all-row-inner" for="sel-all">
+      <input class="check-box-input" type="checkbox" id="sel-all" data-focus-key="select-all">
+      <span>Select all · ${visible.length} videos</span>
+    </label>`;
+  const cb = $("#sel-all", wrap);
+  cb.checked = n > 0 && n === visible.length;
+  cb.indeterminate = n > 0 && n < visible.length;
+  cb.addEventListener("change", () => {
+    // Selecting/deselecting everything at once is not a single-item
+    // toggle, so this deliberately does not set lastToggled — that flag
+    // gates the one-at-a-time kq-pop selection animation.
+    if (cb.checked) visible.forEach(id => selectedSet.add(id));
+    else visible.forEach(id => selectedSet.delete(id));
+    renderVideos();
+  });
+  restoreFocusKey(wrap, focusKey);
+}
+
+function renderVideos(){
+  const kid = kids[selKid];
+  if (!videosSelected[kid.name]) videosSelected[kid.name] = new Set();
+  const list = videosData[kid.name] || [];
+
+  renderVideosToolbar();
+  renderSelectAllRow();
+
+  const wrap = $("#videos-list");
+  const focusKey = captureFocusKey(wrap);
+  wrap.classList.toggle("grid", videosView === "grid");
+  wrap.innerHTML = "";
+  $("#videos-empty").hidden = list.length > 0;
+  list.forEach((v, index) => wrap.appendChild(renderVideoCard(kid, v, index)));
+  restoreFocusKey(wrap, focusKey);
+  // Consumed for this render pass — same convention as
+  // renderRecommendations()/renderKidPreview() above.
+  lastToggled = null;
+
+  renderBulkBar();
+  // Select mode owns the bottom edge at phone width — same style.display
+  // toggling mechanism showScreen() already uses for shell-hidden screens.
+  $(".tabbar").style.display = videosSelectMode ? "none" : "";
+}
+$("#videos-add-btn").addEventListener("click", () => showScreen("videos-add"));
+
+/* ---- Add a Video ---- */
+// The real submission endpoint takes only url + visibility — no category
+// field exists on submission, so there's nothing here to edit. The preview
+// endpoint does return a read-only suggested category (the admin's own
+// categorization), shown as static text below.
+let addVideoDraft = null;
+function resetAddVideo(){
+  $("#add-url").value = "";
+  $("#add-check").disabled = true; $("#add-check").textContent = "Check this content";
+  $("#add-preview").hidden = true;
+  $("#add-form").hidden = false; $("#add-done").hidden = true;
+  $("#add-visibility-row").setAttribute("aria-checked","false");
+  $("#add-visibility-row .val").textContent = "Off";
+  addVideoDraft = null;
+}
+$("#add-url").addEventListener("input", () => { $("#add-check").disabled = !$("#add-url").value.trim(); });
+$("#add-check").addEventListener("click", () => {
+  const btn = $("#add-check");
+  btn.disabled = true; btn.textContent = "Scoring…";
+  setTimeout(() => {
+    btn.disabled = false; btn.textContent = "Check this content";
+    // Sample fetched metadata — a real check calls POST /children/{id}/submissions/preview,
+    // which returns a read-only suggested category alongside the trust signal.
+    const score = 55 + Math.floor(Math.random() * 40);
+    addVideoDraft = { title:"Discovering Backyard Bugs", channel:"Little Explorers Channel", score, good: score >= 60, suggestedCategory:"Nature" };
+    $("#add-title").textContent = addVideoDraft.title;
+    $("#add-channel").textContent = addVideoDraft.channel;
+    // Preview card always reads as TINT (never fill) — the video isn't in
+    // the Q yet, so it's "available", not "selected" (2026-09-19 pass).
+    const hue = hueForVideo({ category: addVideoDraft.suggestedCategory }, 0);
+    const card = $("#add-preview-card");
+    card.style.setProperty("--fill", hue.fill); card.style.setProperty("--tint", hue.tint); card.style.setProperty("--ink", hue.ink);
+    $("#add-thumb-glyph").textContent = HUB_ICONS[addVideoDraft.suggestedCategory] || "";
+    $("#add-category-note").innerHTML = `KidQ would file this under <strong style="color:var(--foreground)">${addVideoDraft.suggestedCategory}</strong>.`;
+    const trust = $("#add-trust");
+    trust.className = "trust-badge " + (addVideoDraft.good ? "good" : "review");
+    // ✓ is a purely decorative prefix here — "Good fit for this age" alone
+    // already conveys the meaning, so it's wrapped instead of read aloud
+    // as part of the badge's text (2026-09-19 a11y pass, item 18).
+    trust.innerHTML = addVideoDraft.good ? '<span aria-hidden="true">✓</span> Good fit for this age' : "Needs a quick review";
+    $("#add-reason").textContent = addVideoDraft.good
+      ? "KidQ's rule checks and rubric found this a comfortable fit for young viewers."
+      : "This one needs a closer look before KidQ can vouch for it — you can still add it privately.";
+    // Stagger the preview's reveal (thumbnail, title, channel, trust badge,
+    // reason, category note, visibility row, submit button) using the same
+    // .enter/kq-fade-up mechanics as the card-list stagger elsewhere, just
+    // applied to a form's reveal instead of a list.
+    const previewChildren = [...$("#add-preview").children];
+    previewChildren.forEach((el, i) => {
+      el.classList.remove("enter");
+      el.style.setProperty("--i", i);
+    });
+    $("#add-preview").hidden = false;
+    // Force a reflow so the animation replays even if these elements still
+    // carried "enter" from a previous check-this-content pass.
+    void $("#add-preview").offsetWidth;
+    previewChildren.forEach(el => el.classList.add("enter"));
+    updateAddSubmitLabel();
+  }, 900);
+});
+$("#add-visibility-row").addEventListener("click", () => {
+  const row = $("#add-visibility-row");
+  const on = row.getAttribute("aria-checked") !== "true";
+  row.setAttribute("aria-checked", String(on));
+  row.querySelector(".val").textContent = on ? "On" : "Off";
+  updateAddSubmitLabel();
+});
+function updateAddSubmitLabel(){
+  const on = $("#add-visibility-row").getAttribute("aria-checked") === "true";
+  $("#add-submit").textContent = on ? "Add and suggest to other families" : "Add privately to Your Q";
+}
+$("#add-submit").addEventListener("click", () => {
+  const btn = $("#add-submit");
+  btn.disabled = true; btn.textContent = "Adding…";
+  setTimeout(() => {
+    btn.disabled = false;
+    const kid = kids[selKid];
+    const isPublic = $("#add-visibility-row").getAttribute("aria-checked") === "true";
+    videosData[kid.name] = videosData[kid.name] || [];
+    videosData[kid.name].push({ id:"v-"+Date.now(), title:addVideoDraft.title, minutes:6, state:"REQUESTED", category:addVideoDraft.suggestedCategory });
+    $("#add-done-copy").textContent = isPublic
+      ? "KidQ saved this content for your family and will consider suggesting it to other families once it's reviewed."
+      : "KidQ saved this content privately for your family. It will not be suggested to other families.";
+    $("#add-form").hidden = true; $("#add-done").hidden = false;
+  }, 700);
+});
+$("#add-done-back").addEventListener("click", () => { resetAddVideo(); showScreen("videos"); });
+$("#add-back").addEventListener("click", () => { resetAddVideo(); showScreen("videos"); });
+
+/* ---- Inbox ---- */
+let inboxExpanded = null;
+function renderInboxChildren(){
+  const el = $("#inbox-children");
+  const focusKey = captureFocusKey(el);
+  el.innerHTML = "";
+  kids.forEach((kid, i) => {
+    const b = document.createElement("button"); b.className = "pill";
+    b.dataset.focusKey = kid.name;
+    b.setAttribute("aria-pressed", String(i === selKid)); b.textContent = kid.name;
+    b.addEventListener("click", () => { selKid = i; renderInboxChildren(); renderInbox(); });
+    el.appendChild(b);
+  });
+  restoreFocusKey(el, focusKey);
+}
+function renderInbox(){
+  const kid = kids[selKid];
+  const sessions = (SESSIONS[kid.name] || []).map(s => ({ kind:"session", id:s.id, when:s.endedAt, session:s }));
+  const notices = (SUBMISSION_NOTICES[kid.name] || []).map(n => ({ kind:"submission", id:n.id, when:n.when, notice:n }));
+  const combined = [...sessions, ...notices].sort((a, b) => new Date(b.when) - new Date(a.when));
+  const wrap = $("#inbox-list");
+  const focusKey = captureFocusKey(wrap);
+  wrap.innerHTML = "";
+  $("#inbox-empty").hidden = combined.length > 0;
+  combined.forEach((entry, index) => {
+    const card = document.createElement("button");
+    card.className = "notif-card";
+    card.dataset.focusKey = entry.id;
+    card.style.setProperty("--i", index);
+    if (entering) card.classList.add("enter");
+    if (entry.kind === "session"){
+      const s = entry.session;
+      const expanded = inboxExpanded === entry.id;
+      card.setAttribute("aria-expanded", String(expanded));
+      card.innerHTML = `<div class="notif-top"><p class="notif-title">Session finished — ${s.minutes} min</p>
+          <span style="display:flex; align-items:center; gap:8px; flex:none">
+            <span class="notif-when">${formatShortDate(s.endedAt)}</span>
+            <span class="go chev" aria-hidden="true">▸</span>
+          </span></div>
+        <span class="notif-kind">${kid.name}'s session</span>
+        ${expanded ? `<div class="notif-body"><p>How it ended: ${OUTCOME_LABELS[s.outcome] ?? s.outcome}</p>
+            <p style="font-weight:700; color:var(--foreground)">Watched:</p>
+            ${s.items.map(item => `<p>${item.title} · ${item.minutes} min</p>`).join("")}</div>` : ""}`;
+      if (expanded){
+        // Single small delay-free fade-in — only one session is ever
+        // expanded at a time, so no stagger index needed.
+        const body = card.querySelector(".notif-body");
+        if (body){ body.style.setProperty("--i", 0); body.classList.add("enter"); }
+      }
+      card.addEventListener("click", () => { inboxExpanded = expanded ? null : entry.id; renderInbox(); });
+    } else {
+      const n = entry.notice;
+      const approved = n.kind === "approved";
+      card.style.cursor = "default";
+      card.innerHTML = `<div class="notif-top"><p class="notif-title">${n.title}</p>
+          <span class="notif-when">${formatShortDate(n.when)}</span></div>
+        <span class="notif-kind ${approved ? "" : "warn"}">${approved ? "Added to my videos" : "Needs changes"}</span>
+        <div class="notif-body"><p>${approved
+          ? `Your submission was approved and added to ${kid.name}'s library.`
+          : `KidQ needs another look before this can be approved — no action needed from you yet.`}</p></div>`;
+    }
+    wrap.appendChild(card);
+  });
+  restoreFocusKey(wrap, focusKey);
+}
+
+/* ---- Consent gate ---- */
+$("#consent-checkbox").addEventListener("change", () => {
+  $("#consent-continue").disabled = !$("#consent-checkbox").checked;
+});
+$("#consent-continue").addEventListener("click", () => {
+  const btn = $("#consent-continue");
+  btn.disabled = true; btn.textContent = "Continuing…";
+  setTimeout(() => { btn.disabled = false; btn.textContent = "Continue"; showScreen("onboarding"); }, 800);
+});
+
+renderFamily();
+
+/* ---- initial route: honor a direct link (#hub, #videos-add, …), else
+   default to Today — the screen-picker toolbar no longer exists, this
+   (plus the in-product nav) is now the only way to land on a screen ---- */
+(function initRoute(){
+  const initial = screenFromHash();
+  suppressHashUpdate = true;
+  showScreen(initial || "today");
+  suppressHashUpdate = false;
+})();
+</script>
+</body>
+</html>
